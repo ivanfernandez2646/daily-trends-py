@@ -1,0 +1,20 @@
+# S07 · Front page
+
+**Status:** draft · **Fidelity:** exact. Depends on S03 (criteria) and S06 (scraping).
+
+## `GET /feed/home`
+1. Search with filter `source = EL_MUNDO OR source = EL_PAIS`, sort `createdAt` desc, `limit 10`.
+2. If there are results and the **newest** is from a day before today (day-level comparison, server local time) → run the scraping from S06 **inside the request** and repeat the search.
+3. If there are no results, scraping is **not** triggered (returns `[]`).
+4. Response 200 with the array. Never includes `CMS` feeds.
+
+- If scraping fails with a propagated error, the response is 500 (only 400 is mapped for this route).
+- Sample data where an EL_MUNDO feed with an empty `createdAt` sorts first must show it first: reproduce the textual ordering of `createdAt`.
+
+## Edge cases
+- If both scrapers fail, the retry repeats on every request while the newest feed is from a previous day.
+- Scrapers return nothing: the front page is still returned with what existed.
+
+## Acceptance criteria
+- Tests with a fixed clock: newest is today (no scraping), newest is older (scraping + re-search), empty (no scraping).
+- Cover the `home` `.feature` file (external only; empty → `[]`).

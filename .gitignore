@@ -1,0 +1,32 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# Tool caches
+.pytest_cache/
+.ruff_cache/
+.pyright/
+.mypy_cache/
+.hypothesis/
+
+# Coverage and build output
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Read-only reference copy of the Node project
+reference/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Personal Claude Code config and editor files
+.claude/settings.local.json
+.vscode/
+.idea/
+.DS_Store
