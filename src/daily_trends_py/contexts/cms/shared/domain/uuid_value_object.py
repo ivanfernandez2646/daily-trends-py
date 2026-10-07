@@ -10,7 +10,7 @@ from daily_trends_py.contexts.cms.shared.domain.required_string_value_object imp
     RequiredStringValueObject,
 )
 
-# The `validate` regex of uuid@9, which the reference uses: versions 1 to 5 and the nil UUID.
+# Only versions 1 to 5 and the nil UUID are valid; newer versions (6 to 8) are rejected.
 _UUID = re.compile(
     r"[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"
     r"|00000000-0000-0000-0000-000000000000",

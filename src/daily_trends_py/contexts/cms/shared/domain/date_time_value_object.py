@@ -12,7 +12,7 @@ def _ensure_is_parseable(value: str) -> None:
     try:
         datetime.fromisoformat(value)
     except ValueError:
-        # Node builds the name from `this.constructor` inside a static method, which is `Function`.
+        # The message names `Function` instead of the class; clients already depend on it.
         raise InvalidArgumentError(f"<Function> doesn't allow the value <{value}>") from None
 
 

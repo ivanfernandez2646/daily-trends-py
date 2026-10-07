@@ -37,7 +37,6 @@ def test_date_time_rejects_unparseable_values() -> None:
     with pytest.raises(InvalidArgumentError) as error:
         DummyDateTime(value)
 
-    # Node builds this message from `this.constructor.name` inside a static method.
     assert str(error.value) == f"<Function> doesn't allow the value <{value}>"
 
 

@@ -35,7 +35,7 @@ def test_accepts_uuids_from_version_1_to_5_and_nil(value: str) -> None:
     [
         "not-a-uuid",
         "",
-        "01890a5d-ac96-774b-bcce-b302099a8057",  # v7, rejected by uuid@9
+        "01890a5d-ac96-774b-bcce-b302099a8057",  # v7
         "04deff28-6c34-4634-c7c8-a4a09dabd87a",  # wrong variant
         "04deff28-6c34-4634-a7c8-a4a09dabd87a\n",
     ],

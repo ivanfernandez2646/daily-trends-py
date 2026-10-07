@@ -7,13 +7,18 @@ created_at: '2026-10-07T12:46:22Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-07T12:51:22Z'
+updated_at: '2026-10-07T12:57:49Z'
 implementation:
   - phase: 1
-    status: 'done, pending review'
+    status: 'done, committed'
     tool: 'Claude Code'
     model: 'claude-opus-5-5'
     finished_at: '2026-10-07T12:51:22Z'
+  - phase: 2
+    status: 'done, pending review'
+    tool: 'Claude Code'
+    model: 'claude-opus-5-5'
+    finished_at: '2026-10-07T12:57:49Z'
 ---
 
 # S02 · Create and find a feed
@@ -184,37 +189,40 @@ JSON body parsing and `PUT /feed/{id}`.
     description, author in that order (first failure wins); an existing id → `FeedAlreadyExists`
     with nothing saved; otherwise saves, then publishes the pulled events.
 - `daily_trends_py.apps.cms_backend.request_body.parse_body(request: Request) -> Mapping[str, object]`:
-  JSON bodies only in this phase; any non-JSON content type → `{}`.
+  JSON bodies only in this phase; any non-JSON content type, an empty body or a non-object JSON → `{}`.
+  *(Until Phase 3 the route casts raw body values to the `str` props; a missing or non-string
+  title or author answers 500.)*
 - HTTP: `PUT /feed/{id}` with `title`, `description` (optional, missing → `null`), `author`; `source`
   is always `CMS`. 201 with the feed JSON (`updatedAt: null`); `FeedAlreadyExists` → 302
   `{"error": "Feed with id <{id}> already exists"}` without `Location`; `InvalidArgumentError` → 400.
 - Composition root: `FeedCreator` built in the lifespan with the shared event bus.
 - Test suites: `tests/apps/cms_backend/features/create-feed.feature` (verbatim) with a
   `I send a PUT request to "…" with body:` step; `tests/contexts/cms/shared/fakes/recording_event_bus.py`;
-  `tests/contexts/cms/feeds/domain/feed_created_domain_event_mother.py`;
+  *(Dropped during implementation: `feed_created_domain_event_mother.py`. The event has a random id
+  and date, so tests assert its name, aggregate id and title directly.)*
   `tests/contexts/cms/feeds/application/create/`.
 
 ### Tests first
 
-- [ ] `AggregateRoot.pull_domain_events` returns recorded events in order and a second pull returns `[]`.
-- [ ] `Feed.create` sets `updated_at` to `None`, `created_at` to now, and records one `FeedCreatedDomainEvent` with the feed id and title.
-- [ ] `FeedCreator` saves the feed with `updatedAt: None` and returns it.
-- [ ] `FeedCreator` publishes `feed.created` with the feed id and title.
-- [ ] `FeedCreator` raises `FeedAlreadyExists` when the id exists; nothing is saved and nothing is published.
-- [ ] `FeedCreator` raises the first validation failure in order id → title → description → author.
-- [ ] `integration`: `create-feed.feature` — new id → 201 containing the feed; existing id → 302 with the exact error.
-- [ ] `integration`: the same id twice in a row → 201 then 302, no `Location` header; the stored feed is unchanged.
-- [ ] `integration`: `PUT` without `description` → 201 with `"description": null`; a `source` in the body is ignored (`CMS`).
-- [ ] `integration`: `PUT /feed/not-a-uuid` → 400 `<FeedId> does not allow the value <not-a-uuid>`; blank title → 400 mandatory message.
+- [x] `AggregateRoot.pull_domain_events` returns recorded events in order and a second pull returns `[]`.
+- [x] `Feed.create` sets `updated_at` to `None`, `created_at` to now, and records one `FeedCreatedDomainEvent` with the feed id and title.
+- [x] `FeedCreator` saves the feed with `updatedAt: None` and returns it.
+- [x] `FeedCreator` publishes `feed.created` with the feed id and title.
+- [x] `FeedCreator` raises `FeedAlreadyExists` when the id exists; nothing is saved and nothing is published.
+- [x] `FeedCreator` raises the first validation failure in order id → title → description → author.
+- [x] `integration`: `create-feed.feature` — new id → 201 containing the feed; existing id → 302 with the exact error.
+- [x] `integration`: the same id twice in a row → 201 then 302, no `Location` header; the stored feed is unchanged.
+- [x] `integration`: `PUT` without `description` → 201 with `"description": null`; a `source` in the body is ignored (`CMS`).
+- [x] `integration`: `PUT /feed/not-a-uuid` → 400 `<FeedId> does not allow the value <not-a-uuid>`; blank title → 400 mandatory message.
 
 ### Implementation
 
-- [ ] Implement `AggregateRoot`, `FeedCreatedDomainEvent`, `Feed.create`, `FeedAlreadyExists` and `FeedCreator`.
-- [ ] Add `parse_body` (JSON only) and `PUT /feed/{id}` in `routes/feed.py`, keeping fixed `/feed/*` routes before `/feed/{id}`.
-- [ ] Wire `FeedCreator` in `create_app`'s lifespan.
-- [ ] Refactor without changing behavior.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Implement `AggregateRoot`, `FeedCreatedDomainEvent`, `Feed.create`, `FeedAlreadyExists` and `FeedCreator`.
+- [x] Add `parse_body` (JSON only) and `PUT /feed/{id}` in `routes/feed.py`, keeping fixed `/feed/*` routes before `/feed/{id}`.
+- [x] Wire `FeedCreator` in `create_app`'s lifespan.
+- [x] Refactor without changing behavior.
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ### Verification
 
@@ -276,6 +284,6 @@ uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run 
 ## Next step
 
 Run `/ai-project-implement-phase .agents/plans/2026_10_07-s02-create-and-find-feed/2026_10_07-s02-create-and-find-feed-plan.md`
-to implement Phase 2.
+to implement Phase 3.
 
-Phase 1 is implemented and awaits review (and an optional `/ai-project-conventional-commit`).
+Phase 2 is implemented and awaits review (and an optional `/ai-project-conventional-commit`).
