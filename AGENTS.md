@@ -5,7 +5,7 @@ and keeps its hexagonal architecture with bounded contexts.
 
 ## Required workflow
 
-1. Write or update `specs/<context>/<feature>.md` (bounded context `feeds`: `specs/feeds/S0N-*.md`, read in order from `S00`).
+1. Write or update `specs/<subdomain>/<feature>.md` (bounded context `cms`, subdomain `feeds`: `specs/feeds/S0N-*.md`, read in order from `S00`).
 2. Run `/ai-project-create-plan` to agree public contracts and vertical phases.
 3. After approving the plan, the agent creates a feature branch automatically.
 4. Run `/ai-project-implement-phase`. It implements exactly one phase using TDD, then stops for review.
@@ -27,6 +27,8 @@ are user-invoked. Supporting skills under `.agents/skills/` are selected by the 
 - `src/<package>/contexts/<context>/<subdomain>/domain`: framework-free business types and rules.
 - `src/<package>/contexts/<context>/<subdomain>/infrastructure`: external SDK, database and network adapters.
 - `src/<package>/contexts/<context>/shared`: shared kernel for that context.
+
+In this project: `src/daily_trends_py/apps/cms_backend` and `src/daily_trends_py/contexts/cms/{feeds,shared}`.
 
 Application code depends on ports (`typing.Protocol`). Infrastructure adapters contain only
 technology details. Domain and application code never import FastAPI, Pydantic or database drivers.
@@ -58,7 +60,8 @@ Wiring lives in one composition root; there is no DI container.
 
 ```bash
 uv sync                      # install
-uv run fastapi dev           # run the API (once the app exists)
+uv run fastapi dev           # run the API with reload
+uv run daily-trends-py       # run the API on PORT (default 5000)
 uv run ruff check .          # lint
 uv run ruff format .         # format
 uv run pyright               # type-check

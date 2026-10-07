@@ -11,7 +11,7 @@ The port keeps the current behavior of the Node project (same routes, status cod
 - MongoDB (PyMongo async)
 - httpx and BeautifulSoup for scraping
 - ruff, pyright (strict), pytest, pytest-asyncio, pytest-bdd
-- Hexagonal architecture with a single bounded context (`feeds`)
+- Hexagonal architecture with a single bounded context (`cms`, subdomain `feeds`)
 
 ## API
 
@@ -32,11 +32,25 @@ Full contract and error format: [`specs/feeds/S01-foundation.md`](specs/feeds/S0
 
 Requirements: [uv](https://docs.astral.sh/uv/), Docker (for MongoDB).
 
+Run everything in Docker (API and MongoDB):
+
 ```bash
-uv sync                       # install dependencies
-docker compose up -d mongo    # start MongoDB (once the compose file exists)
-uv run fastapi dev            # run the API (once the app exists)
+docker compose up --build -d  # API on http://localhost:5000, Swagger UI at /
+docker compose down           # stop (add -v to delete the MongoDB volume)
 ```
+
+Or run the API locally against MongoDB in Docker:
+
+```bash
+uv sync                           # install dependencies
+docker compose up -d --wait mongo # start MongoDB
+uv run fastapi dev                # run the API with reload on http://localhost:8000
+uv run daily-trends-py            # run the API on PORT (default 5000)
+```
+
+On macOS, port 5000 is used by AirPlay Receiver. Either turn the receiver off or put `PORT=5123` in a
+local `.env` (git-ignored): `docker compose` reads it automatically, and `uv run --env-file .env
+daily-trends-py` uses it for a local run.
 
 ### Configuration
 
@@ -72,14 +86,16 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 ## Project layout
 
 ```text
-src/<package>/
-  apps/<app>/                 entry points and composition root
-  contexts/feeds/
-    api/                      routers and schemas
-    application/              use cases
-    domain/                   entities, value objects, ports
-    infrastructure/           MongoDB and scraper adapters
-    shared/                   shared kernel
+src/daily_trends_py/
+  apps/cms_backend/           entry points and composition root
+  contexts/cms/               bounded context
+    feeds/                    subdomain
+      api/                    routers and schemas
+      application/            use cases
+      domain/                 entities, value objects, ports
+      infrastructure/         MongoDB and scraper adapters
+    shared/                   shared kernel of the context
+tests/                        mirrors src/ (apps/cms_backend, contexts/cms/...)
 specs/
   feeds/                      functional specs (S00 to S07)
   improvements/               known defects, out of scope for the port

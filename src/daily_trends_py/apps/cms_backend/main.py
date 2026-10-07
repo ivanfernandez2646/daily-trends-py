@@ -1,0 +1,77 @@
+import logging
+import sys
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+from types import TracebackType
+
+import uvicorn
+from fastapi import FastAPI, Request, Response, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import PlainTextResponse
+from uvicorn.config import STARTUP_FAILURE
+
+from daily_trends_py.apps.cms_backend.routes import register_routes
+from daily_trends_py.apps.cms_backend.settings import Settings
+from daily_trends_py.contexts.cms.shared.infrastructure.event_bus.in_memory_event_bus import (
+    InMemoryEventBus,
+)
+from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_client_factory import (  # noqa: E501
+    create_mongo_client,
+)
+
+logger = logging.getLogger(__name__)
+
+
+async def _handle_unhandled_error(_request: Request, error: Exception) -> Response:
+    logger.error("Unhandled error", exc_info=error)
+    return PlainTextResponse(str(error), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+def create_app(settings: Settings) -> FastAPI:
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+        mongo_client = await create_mongo_client(settings.mongo_url)
+        app.state.mongo_client = mongo_client
+        app.state.event_bus = InMemoryEventBus()
+        try:
+            yield
+        finally:
+            await mongo_client.close()
+
+    app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
+    app.add_middleware(GZipMiddleware, minimum_size=1024)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
+        allow_headers=["*"],
+    )
+    app.add_exception_handler(Exception, _handle_unhandled_error)
+    register_routes(app)
+    return app
+
+
+def _log_uncaught_exception(
+    exc_type: type[BaseException],
+    exc_value: BaseException,
+    traceback: TracebackType | None,
+) -> None:
+    # The interpreter exits with code 1 after the hook returns.
+    logger.critical("uncaughtException", exc_info=(exc_type, exc_value, traceback))
+
+
+def main() -> None:
+    logging.basicConfig(level=logging.INFO)
+    sys.excepthook = _log_uncaught_exception
+    try:
+        settings = Settings()
+        uvicorn.run(create_app(settings), host="0.0.0.0", port=settings.port)
+    except SystemExit as error:
+        # uvicorn logs why it could not start and exits with its own code (3).
+        if error.code == STARTUP_FAILURE:
+            sys.exit(1)
+        raise
+    except Exception:
+        logger.exception("Startup failed")
+        sys.exit(1)
