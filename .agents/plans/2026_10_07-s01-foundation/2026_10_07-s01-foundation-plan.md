@@ -7,7 +7,7 @@ created_at: '2026-10-07T11:47:34Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-07T12:10:39Z'
+updated_at: '2026-10-07T12:22:30Z'
 implementation:
   - phase: 1
     status: 'done, committed'
@@ -20,10 +20,15 @@ implementation:
     model: 'claude-opus-5-5'
     finished_at: '2026-10-07T12:04:35Z'
   - phase: 3
-    status: 'done, pending review'
+    status: 'done, committed'
     tool: 'Claude Code'
     model: 'claude-opus-5-5'
     finished_at: '2026-10-07T12:10:39Z'
+  - phase: 4
+    status: 'done, pending review'
+    tool: 'Claude Code'
+    model: 'claude-opus-5-5'
+    finished_at: '2026-10-07T12:22:30Z'
 ---
 
 # S01 · Foundation
@@ -252,26 +257,35 @@ Ship the app as an image, run it with Mongo via compose, and run the quality gat
 
 ### Public contracts
 
-- `Dockerfile`: `python:3.14-slim` + `uv`, `uv sync --frozen --no-dev`, `CMD ["uv", "run", "--no-sync", "daily-trends-py"]`, `EXPOSE 5000`.
-- `.dockerignore`: excludes `.venv`, `reference/`, caches, `.git`.
+- `Dockerfile`: `python:3.14-slim` + `uv` 0.12.23, `uv sync --frozen --no-dev` (dependencies layer
+  first, then the project), copies `docs/` for Swagger, runs as a non-root `app` user,
+  `ENV PATH=/app/.venv/bin:$PATH`, `CMD ["daily-trends-py"]`, `EXPOSE 5000`. *(Changed during
+  implementation: `uv run` needs a writable cache the non-root user does not have; running the venv
+  script directly also makes the app PID 1 so it receives signals.)*
+- `.dockerignore`: excludes `.venv`, `reference/`, caches, `.git`, `.github`, `.agents`, `.claude`, `specs/`, `tests/`, `.env*`.
 - `docker-compose.yml`: the `mongo` service already exists (added during Phase 3 review: `mongo:8`,
   `27017:27017`, named volume `mongodb`, `mongosh` ping healthcheck). Phase 4 adds the `api` service
-  (build `.`, `PORT=5000`, `MONGO_URL=mongodb://mongo:27017/daily-trends`, port `5000:5000`,
+  (build `.`, `MONGO_URL=mongodb://mongo:27017/daily-trends`, `PORT=${PORT:-5000}` and port
+  `${PORT:-5000}:${PORT:-5000}`, so one `PORT` (e.g. in a local `.env`) moves both the app and the
+  published port away from macOS AirPlay on 5000,
   `depends_on: mongo: condition: service_healthy`).
-- `.github/workflows/ci.yml`: on push and pull request; `astral-sh/setup-uv`, Python 3.14, `mongo` service, `uv sync --frozen`, then the quality gate from `AGENTS.md`.
+- `.github/workflows/ci.yml`: on push and pull request; `actions/checkout@v7`, `astral-sh/setup-uv` pinned to the v10.2.0 commit (it publishes no floating `v10` tag)
+  (uv 0.12.23, Python from `.python-version`), `mongo:8` service with a ping health check,
+  `MONGO_URL=mongodb://localhost:27017/daily-trends-test`, `uv sync --frozen`, then each quality-gate
+  command as its own step. Not run yet: it runs on the first push.
 - README "Getting started" updated with `docker compose up`.
 
 ### Tests first
 
-- [ ] Manual acceptance: `docker compose up --build -d` then `curl -i localhost:5000/status` → `200` with empty body.
-- [ ] Manual: stopping Mongo and starting the `api` container exits with code 1 and logs the error.
+- [x] Manual acceptance: `docker compose up --build -d` then `curl -i localhost:5000/status` → `200` with empty body (verified with `PORT=5123`; `/` and `/openapi.yml` also 200 inside the image).
+- [x] Manual: stopping Mongo and starting the `api` container exits with code 1 and logs the error (`ServerSelectionTimeoutError`).
 
 ### Implementation
 
-- [ ] Add `Dockerfile`, `.dockerignore`, `docker-compose.yml`, `.github/workflows/ci.yml`.
-- [ ] Update `README.md`.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Add `Dockerfile`, `.dockerignore`, `docker-compose.yml`, `.github/workflows/ci.yml`.
+- [x] Update `README.md`.
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ### Verification
 
@@ -282,4 +296,4 @@ uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run 
 
 ## Next step
 
-Phase 3 is implemented and awaiting review. After review (and an optional `/ai-project-conventional-commit`), run `/ai-project-implement-phase .agents/plans/2026_10_07-s01-foundation/2026_10_07-s01-foundation-plan.md` to implement Phase 4.
+All S01 phases are implemented; Phase 4 awaits review. After review (and an optional `/ai-project-conventional-commit`), S01 is complete: push the branch, open a PR, and check the first CI run. Then plan S02 with `/ai-project-create-plan specs/feeds/S02-create-and-find-feed.md`.

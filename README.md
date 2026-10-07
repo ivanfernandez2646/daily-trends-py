@@ -32,14 +32,25 @@ Full contract and error format: [`specs/feeds/S01-foundation.md`](specs/feeds/S0
 
 Requirements: [uv](https://docs.astral.sh/uv/), Docker (for MongoDB).
 
+Run everything in Docker (API and MongoDB):
+
 ```bash
-uv sync                       # install dependencies
-docker compose up -d mongo    # start MongoDB (once the compose file exists)
-uv run fastapi dev            # run the API with reload on http://localhost:8000
-uv run daily-trends-py        # run the API on PORT (default 5000)
+docker compose up --build -d  # API on http://localhost:5000, Swagger UI at /
+docker compose down           # stop (add -v to delete the MongoDB volume)
 ```
 
-On macOS, port 5000 is used by AirPlay Receiver; set `PORT` to another value or turn the receiver off.
+Or run the API locally against MongoDB in Docker:
+
+```bash
+uv sync                           # install dependencies
+docker compose up -d --wait mongo # start MongoDB
+uv run fastapi dev                # run the API with reload on http://localhost:8000
+uv run daily-trends-py            # run the API on PORT (default 5000)
+```
+
+On macOS, port 5000 is used by AirPlay Receiver. Either turn the receiver off or put `PORT=5123` in a
+local `.env` (git-ignored): `docker compose` reads it automatically, and `uv run --env-file .env
+daily-trends-py` uses it for a local run.
 
 ### Configuration
 

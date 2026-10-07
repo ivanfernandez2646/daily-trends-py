@@ -1,0 +1,15 @@
+.git
+.github
+.agents
+.claude
+.venv
+reference
+specs
+tests
+**/__pycache__
+.pytest_cache
+.ruff_cache
+.pyright
+.hypothesis
+.env
+.env.*

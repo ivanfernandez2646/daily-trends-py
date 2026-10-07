@@ -1,4 +1,15 @@
 services:
+  api:
+    build: .
+    environment:
+      PORT: ${PORT:-5000}
+      MONGO_URL: mongodb://mongo:27017/daily-trends
+    ports:
+      - "${PORT:-5000}:${PORT:-5000}"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
   mongo:
     image: mongo:8
     ports:
