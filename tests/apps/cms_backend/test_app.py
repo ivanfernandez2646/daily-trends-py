@@ -5,6 +5,8 @@ from fastapi.testclient import TestClient
 from daily_trends_py.apps.cms_backend.main import create_app
 from daily_trends_py.apps.cms_backend.settings import Settings
 
+pytestmark = pytest.mark.integration
+
 
 def test_unhandled_error_returns_500_with_plain_message_and_is_logged(
     caplog: pytest.LogCaptureFixture,

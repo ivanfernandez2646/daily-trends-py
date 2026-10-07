@@ -1,6 +1,9 @@
 import httpx2
+import pytest
 from fastapi.testclient import TestClient
 from pytest_bdd import parsers, scenarios, then, when
+
+pytestmark = pytest.mark.integration
 
 scenarios("features/status.feature")
 

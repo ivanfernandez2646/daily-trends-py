@@ -7,7 +7,7 @@ created_at: '2026-10-07T11:47:34Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-07T12:04:35Z'
+updated_at: '2026-10-07T12:10:39Z'
 implementation:
   - phase: 1
     status: 'done, committed'
@@ -15,10 +15,15 @@ implementation:
     model: 'claude-opus-5-5'
     finished_at: '2026-10-07T11:53:45Z'
   - phase: 2
-    status: 'done, pending review'
+    status: 'done, committed'
     tool: 'Claude Code'
     model: 'claude-opus-5-5'
     finished_at: '2026-10-07T12:04:35Z'
+  - phase: 3
+    status: 'done, pending review'
+    tool: 'Claude Code'
+    model: 'claude-opus-5-5'
+    finished_at: '2026-10-07T12:10:39Z'
 ---
 
 # S01 · Foundation
@@ -185,40 +190,54 @@ the in-memory event bus that later capabilities use.
 
 ### Public contracts
 
-- `daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_client_factory.create_mongo_client(url: str) -> AsyncMongoClient[dict[str, object]]`:
-  connects (`aconnect`) and returns the client.
+- `daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_client_factory`:
+  type aliases `MongoDocument = dict[str, object]`, `MongoClient = AsyncMongoClient[MongoDocument]`,
+  `MongoCollection = AsyncCollection[MongoDocument]`; `create_mongo_client(url: str) -> MongoClient`
+  pings the server and returns the client (closing it if the ping fails). *(Changed during
+  implementation: `aconnect` is lazy and does not fail on an unreachable server; a ping does, like
+  Node's `client.connect()`.)*
 - `create_app(settings)` lifespan: creates the client before serving, closes it on shutdown; a
   connection failure aborts startup (→ exit 1 via `main()`).
 - `daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_repository.MongoRepository`
   (base class, constructor takes the client and a collection name; database from the URL):
   `_persist(id: str, primitives: Mapping[str, object]) -> None` (`update_one({"_id": id}, {"$set": {...primitives without "id", "_id": id}}, upsert=True)`),
-  `_by_id(id: str) -> dict[str, object] | None` (returns the document with `id` set from `_id`),
+  `_by_id(id: str) -> MongoDocument | None` (returns the document, keeping `_id`, with `id` set from
+  `_id`, as Node does),
   `_remove(id: str) -> None`. `_by_criteria` is added in S03.
-- `daily_trends_py.contexts.cms.shared.domain.event_bus`: `DomainEvent` (frozen dataclass:
-  `event_name: ClassVar[str]`, `aggregate_id: str`, `event_id: str`, `occurred_on: datetime` UTC),
+- `daily_trends_py.contexts.cms.shared.domain.event_bus`: `DomainEvent` (frozen, keyword-only
+  dataclass: `event_name: ClassVar[str]`, `aggregate_id: str`, `event_id: str` defaulting to a random
+  UUID, `occurred_on: datetime` defaulting to now in UTC, as in Node),
   `DomainEventSubscriber` Protocol, `EventBus` Protocol (`async publish(events: Sequence[DomainEvent]) -> None`,
   `add_subscribers(subscribers: Sequence[DomainEventSubscriber]) -> None`).
 - `daily_trends_py.contexts.cms.shared.infrastructure.event_bus.in_memory_event_bus.InMemoryEventBus(EventBus)`:
-  `publish` delivers each event to subscribers of its `event_name`; the composition root registers none.
+  `publish` delivers each event to subscribers of its `event_name`, awaiting them in order; the
+  composition root registers none. *(Node emits without awaiting subscribers; with no subscribers the
+  difference is not observable. S02 revisits this if a subscriber appears.)*
+- `create_app` keeps the client and the bus on `app.state.mongo_client` / `app.state.event_bus`.
+- Tests that start the app (`test_status.py`, `test_app.py`, the port-in-use test) are marked
+  `integration`, because the lifespan now needs Mongo. `uv run pytest -m "not integration"` runs
+  without Mongo.
 - Test suite: `tests/contexts/cms/shared/...` (integration tests marked `integration`).
 
 ### Tests first
 
-- [ ] `integration`: `create_mongo_client` returns a connected client (`ping` succeeds).
-- [ ] `integration`: `_persist` upserts by `_id`, does not store `id`, stores `None` as `null`; a second `_persist` with the same id updates with `$set` (fields not sent are kept).
-- [ ] `integration`: `_by_id` returns the document with `id` == `_id`; missing id → `None`.
-- [ ] `integration`: `_remove` deletes by `_id`; removing a missing id does not raise.
-- [ ] `InMemoryEventBus.publish` calls a fake subscriber subscribed to the event's name and skips others.
-- [ ] `InMemoryEventBus.publish` with no subscribers completes without error.
-- [ ] `status.feature` still passes with the lifespan opening the Mongo client.
+- [x] `integration`: `create_mongo_client` returns a connected client (`ping` succeeds).
+- [x] `integration`: `_persist` upserts by `_id`, does not store `id`, stores `None` as `null`; a second `_persist` with the same id updates with `$set` (fields not sent are kept).
+- [x] `integration`: `_by_id` returns the document with `id` == `_id`; missing id → `None`.
+- [x] `integration`: `_remove` deletes by `_id`; removing a missing id does not raise.
+- [x] `InMemoryEventBus.publish` calls a fake subscriber subscribed to the event's name and skips others.
+- [x] `InMemoryEventBus.publish` with no subscribers completes without error.
+- [x] `status.feature` still passes with the lifespan opening the Mongo client.
+- [x] `create_mongo_client` raises `ServerSelectionTimeoutError` for an unreachable server.
+- [x] `main()` exits with code 1 when Mongo is unreachable (subprocess test; `main()` tests now run on a free port).
 
 ### Implementation
 
-- [ ] Implement the client factory, `MongoRepository`, the event-bus port and `InMemoryEventBus`.
-- [ ] Wire the client and the event bus in `create_app`'s lifespan (single composition root, strong references kept on `app.state`).
-- [ ] Refactor without changing behavior.
-- [ ] Run the quality gate from `AGENTS.md` (with `docker compose up -d mongo` or a local Mongo) and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Implement the client factory, `MongoRepository`, the event-bus port and `InMemoryEventBus`.
+- [x] Wire the client and the event bus in `create_app`'s lifespan (single composition root, strong references kept on `app.state`).
+- [x] Refactor without changing behavior.
+- [x] Run the quality gate from `AGENTS.md` (with `docker compose up -d mongo` or a local Mongo) and fix failures.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ### Verification
 
@@ -235,7 +254,10 @@ Ship the app as an image, run it with Mongo via compose, and run the quality gat
 
 - `Dockerfile`: `python:3.14-slim` + `uv`, `uv sync --frozen --no-dev`, `CMD ["uv", "run", "--no-sync", "daily-trends-py"]`, `EXPOSE 5000`.
 - `.dockerignore`: excludes `.venv`, `reference/`, caches, `.git`.
-- `docker-compose.yml`: services `api` (build `.`, `PORT=5000`, `MONGO_URL=mongodb://mongo:27017/daily-trends`, port `5000:5000`, depends on `mongo`) and `mongo` (`mongo` image, `27017:27017`, named volume).
+- `docker-compose.yml`: the `mongo` service already exists (added during Phase 3 review: `mongo:8`,
+  `27017:27017`, named volume `mongodb`, `mongosh` ping healthcheck). Phase 4 adds the `api` service
+  (build `.`, `PORT=5000`, `MONGO_URL=mongodb://mongo:27017/daily-trends`, port `5000:5000`,
+  `depends_on: mongo: condition: service_healthy`).
 - `.github/workflows/ci.yml`: on push and pull request; `astral-sh/setup-uv`, Python 3.14, `mongo` service, `uv sync --frozen`, then the quality gate from `AGENTS.md`.
 - README "Getting started" updated with `docker compose up`.
 
@@ -260,4 +282,4 @@ uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run 
 
 ## Next step
 
-Phase 2 is implemented and awaiting review. After review (and an optional `/ai-project-conventional-commit`), run `/ai-project-implement-phase .agents/plans/2026_10_07-s01-foundation/2026_10_07-s01-foundation-plan.md` to implement Phase 3.
+Phase 3 is implemented and awaiting review. After review (and an optional `/ai-project-conventional-commit`), run `/ai-project-implement-phase .agents/plans/2026_10_07-s01-foundation/2026_10_07-s01-foundation-plan.md` to implement Phase 4.

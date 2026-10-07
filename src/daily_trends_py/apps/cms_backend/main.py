@@ -1,5 +1,7 @@
 import logging
 import sys
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from types import TracebackType
 
 import uvicorn
@@ -11,6 +13,12 @@ from uvicorn.config import STARTUP_FAILURE
 
 from daily_trends_py.apps.cms_backend.routes import register_routes
 from daily_trends_py.apps.cms_backend.settings import Settings
+from daily_trends_py.contexts.cms.shared.infrastructure.event_bus.in_memory_event_bus import (
+    InMemoryEventBus,
+)
+from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_client_factory import (  # noqa: E501
+    create_mongo_client,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +29,17 @@ async def _handle_unhandled_error(_request: Request, error: Exception) -> Respon
 
 
 def create_app(settings: Settings) -> FastAPI:
-    app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+        mongo_client = await create_mongo_client(settings.mongo_url)
+        app.state.mongo_client = mongo_client
+        app.state.event_bus = InMemoryEventBus()
+        try:
+            yield
+        finally:
+            await mongo_client.close()
+
+    app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
     app.add_middleware(GZipMiddleware, minimum_size=1024)
     app.add_middleware(
         CORSMiddleware,
