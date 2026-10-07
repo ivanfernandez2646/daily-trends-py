@@ -7,13 +7,18 @@ created_at: '2026-10-07T11:47:34Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-07T11:53:45Z'
+updated_at: '2026-10-07T12:04:35Z'
 implementation:
   - phase: 1
-    status: 'done, pending review'
+    status: 'done, committed'
     tool: 'Claude Code'
     model: 'claude-opus-5-5'
     finished_at: '2026-10-07T11:53:45Z'
+  - phase: 2
+    status: 'done, pending review'
+    tool: 'Claude Code'
+    model: 'claude-opus-5-5'
+    finished_at: '2026-10-07T12:04:35Z'
 ---
 
 # S01 · Foundation
@@ -133,31 +138,38 @@ Swagger UI.
   `Exception` → `JSONResponse({"error": str(err)}, 500)`. No `Location` header on 302.
 - Final handler for `Exception` raised outside `run_controller`: logs it, returns
   `PlainTextResponse(str(exc), 500)`.
-- Middlewares: `CORSMiddleware` (open), `GZipMiddleware(minimum_size=1024)`.
+- Middlewares: `CORSMiddleware` (open: any origin, the `cors()` default methods, `allow_headers=["*"]`
+  so preflights for any requested header succeed as with Express), `GZipMiddleware(minimum_size=1024)`.
+  *(`allow_headers` added during implementation: Starlette's default rejected preflights requesting
+  non-safelisted headers with 400.)* Known divergence kept: a preflight answers 200 `OK` instead of
+  Express's 204.
+- `daily_trends_py.apps.cms_backend.routes.register_routes(app: FastAPI) -> None` holds the
+  route-order rule; Swagger routes live in `routes/swagger.py`.
 - HTTP: `GET /` → Swagger UI HTML loading `/openapi.yml`; `GET /openapi.yml` → `docs/openapi.yml`;
   `/docs`, `/redoc`, `/openapi.json` → 404.
 - `docs/openapi.yml` copied from the reference.
 
 ### Tests first
 
-- [ ] `run_controller` with `InvalidArgumentError("bad")` declared as 400 → 400, `{"error": "bad"}`.
-- [ ] Test-only `NotFoundError` declared as 404 → 404, body `{"error": "Feed with id <x> not found"}` (literal `<` `>` preserved).
-- [ ] Test-only `AlreadyExistsError` declared as 302 → 302, `{"error": …}`, no `Location` header.
-- [ ] Undeclared error (e.g. `InvalidArgumentError` on a route declaring nothing) → 500, `{"error": "<message>"}`.
-- [ ] First matching mapping wins when several match by inheritance.
-- [ ] Route raising outside `run_controller` → 500, plain-text body equal to the message, and the error is logged.
-- [ ] `GET /status` with `Origin` header → `access-control-allow-origin: *`.
-- [ ] Response larger than 1024 bytes with `Accept-Encoding: gzip` → `content-encoding: gzip`.
-- [ ] `GET /` → 200 HTML referencing `/openapi.yml`; `GET /openapi.yml` → 200 with the file contents; `GET /docs` → 404.
+- [x] `run_controller` with `InvalidArgumentError("bad")` declared as 400 → 400, `{"error": "bad"}`.
+- [x] Test-only `NotFoundError` declared as 404 → 404, body `{"error": "Feed with id <x> not found"}` (literal `<` `>` preserved).
+- [x] Test-only `AlreadyExistsError` declared as 302 → 302, `{"error": …}`, no `Location` header.
+- [x] Undeclared error (e.g. `InvalidArgumentError` on a route declaring nothing) → 500, `{"error": "<message>"}`.
+- [x] First matching mapping wins when several match by inheritance.
+- [x] Route raising outside `run_controller` → 500, plain-text body equal to the message, and the error is logged.
+- [x] `GET /status` with `Origin` header → `access-control-allow-origin: *`.
+- [x] Preflight requesting a custom header succeeds and echoes it in `access-control-allow-headers`.
+- [x] Response larger than 1024 bytes with `Accept-Encoding: gzip` → `content-encoding: gzip`.
+- [x] `GET /` → 200 HTML referencing `/openapi.yml`; `GET /openapi.yml` → 200 with the file contents; `GET /docs` → 404.
 
 ### Implementation
 
-- [ ] Add `InvalidArgumentError`, `run_controller`, the final exception handler, middlewares and the Swagger routes; register them in `create_app`.
-- [ ] Wrap the status route in `run_controller` (declares no errors), as every route will.
-- [ ] Add a router-registration function with the route-order rule as its docstring.
-- [ ] Refactor without changing behavior.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Add `InvalidArgumentError`, `run_controller`, the final exception handler, middlewares and the Swagger routes; register them in `create_app`.
+- [x] Wrap the status route in `run_controller` (declares no errors), as every route will.
+- [x] Add a router-registration function with the route-order rule as its docstring.
+- [x] Refactor without changing behavior.
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ### Verification
 
@@ -248,4 +260,4 @@ uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run 
 
 ## Next step
 
-Phase 1 is implemented and awaiting review. After review (and an optional `/ai-project-conventional-commit`), run `/ai-project-implement-phase .agents/plans/2026_10_07-s01-foundation/2026_10_07-s01-foundation-plan.md` to implement Phase 2.
+Phase 2 is implemented and awaiting review. After review (and an optional `/ai-project-conventional-commit`), run `/ai-project-implement-phase .agents/plans/2026_10_07-s01-foundation/2026_10_07-s01-foundation-plan.md` to implement Phase 3.

@@ -3,18 +3,34 @@ import sys
 from types import TracebackType
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import PlainTextResponse
 from uvicorn.config import STARTUP_FAILURE
 
-from daily_trends_py.apps.cms_backend.routes import status
+from daily_trends_py.apps.cms_backend.routes import register_routes
 from daily_trends_py.apps.cms_backend.settings import Settings
 
 logger = logging.getLogger(__name__)
 
 
+async def _handle_unhandled_error(_request: Request, error: Exception) -> Response:
+    logger.error("Unhandled error", exc_info=error)
+    return PlainTextResponse(str(error), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 def create_app(settings: Settings) -> FastAPI:
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
-    app.include_router(status.router)
+    app.add_middleware(GZipMiddleware, minimum_size=1024)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
+        allow_headers=["*"],
+    )
+    app.add_exception_handler(Exception, _handle_unhandled_error)
+    register_routes(app)
     return app
 
 
