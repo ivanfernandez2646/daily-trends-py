@@ -1,7 +1,7 @@
 [project]
 name = "daily-trends-py"
 version = "0.1.0"
-description = "Add your description here"
+description = "Python port of daily-trends, a news feeds API"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.scripts]
-daily-trends-py = "daily_trends_py:main"
+daily-trends-py = "daily_trends_py.apps.cms_backend.main:main"
 
 [build-system]
 requires = ["uv_build>=0.12.23,<0.13.0"]
@@ -23,6 +23,8 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "fastapi-cli>=0.0.32",
+    "httpx2>=2.13.1",
     "hypothesis>=6.168.5",
     "import-linter>=2.15",
     "pre-commit>=4.6.2",
@@ -32,3 +34,23 @@ dev = [
     "pytest-bdd>=9.0.0",
     "ruff>=0.16.10",
 ]
+
+[tool.fastapi]
+entrypoint = "daily_trends_py.apps.cms_backend.asgi:app"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.pyright]
+include = ["src", "tests"]
+exclude = ["reference", ".venv"]
+typeCheckingMode = "strict"
+pythonVersion = "3.14"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = ["integration: needs a running MongoDB at MONGO_URL"]

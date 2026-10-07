@@ -11,7 +11,7 @@ The port keeps the current behavior of the Node project (same routes, status cod
 - MongoDB (PyMongo async)
 - httpx and BeautifulSoup for scraping
 - ruff, pyright (strict), pytest, pytest-asyncio, pytest-bdd
-- Hexagonal architecture with a single bounded context (`feeds`)
+- Hexagonal architecture with a single bounded context (`cms`, subdomain `feeds`)
 
 ## API
 
@@ -35,8 +35,11 @@ Requirements: [uv](https://docs.astral.sh/uv/), Docker (for MongoDB).
 ```bash
 uv sync                       # install dependencies
 docker compose up -d mongo    # start MongoDB (once the compose file exists)
-uv run fastapi dev            # run the API (once the app exists)
+uv run fastapi dev            # run the API with reload on http://localhost:8000
+uv run daily-trends-py        # run the API on PORT (default 5000)
 ```
+
+On macOS, port 5000 is used by AirPlay Receiver; set `PORT` to another value or turn the receiver off.
 
 ### Configuration
 
@@ -72,14 +75,16 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 ## Project layout
 
 ```text
-src/<package>/
-  apps/<app>/                 entry points and composition root
-  contexts/feeds/
-    api/                      routers and schemas
-    application/              use cases
-    domain/                   entities, value objects, ports
-    infrastructure/           MongoDB and scraper adapters
-    shared/                   shared kernel
+src/daily_trends_py/
+  apps/cms_backend/           entry points and composition root
+  contexts/cms/               bounded context
+    feeds/                    subdomain
+      api/                    routers and schemas
+      application/            use cases
+      domain/                 entities, value objects, ports
+      infrastructure/         MongoDB and scraper adapters
+    shared/                   shared kernel of the context
+tests/                        mirrors src/ (apps/cms_backend, contexts/cms/...)
 specs/
   feeds/                      functional specs (S00 to S07)
   improvements/               known defects, out of scope for the port
