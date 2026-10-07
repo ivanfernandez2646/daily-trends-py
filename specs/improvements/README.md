@@ -19,3 +19,4 @@ Each item is current behavior that the port **keeps**, with the proposed improve
 | 13 | Events without subscribers and an unused deserializer | S02 | Decide whether the bus stays |
 | 14 | CI on Node 14/15 and Dockerfile without `CMD` | S01 | Already solved in the port |
 | 15 | No authentication or pagination on `/feed/list` | S03 | Out of scope for now |
+| 16 | Date-time validation errors name `<Function>` instead of the value object | S02 | Use the class name |

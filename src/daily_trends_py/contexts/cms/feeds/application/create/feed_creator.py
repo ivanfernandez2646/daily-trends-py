@@ -12,10 +12,12 @@ from daily_trends_py.contexts.cms.shared.domain.event_bus import EventBus
 
 
 class FeedCreatorProps(TypedDict):
-    id: str
-    title: str
-    description: str | None
-    author: str
+    """Raw input: each value may be of any type, or `MISSING` when it was not sent."""
+
+    id: object
+    title: object
+    description: object
+    author: object
     source: FeedSource
 
 
@@ -25,10 +27,10 @@ class FeedCreator:
         self._event_bus = event_bus
 
     async def execute(self, props: FeedCreatorProps) -> Feed:
-        id = FeedId(props["id"])
-        title = FeedTitle(props["title"])
-        description = FeedDescription(props["description"])
-        author = FeedAuthor(props["author"])
+        id = FeedId.from_raw(props["id"])
+        title = FeedTitle.from_raw(props["title"])
+        description = FeedDescription.from_raw(props["description"])
+        author = FeedAuthor.from_raw(props["author"])
 
         if await self._repository.find(id) is not None:
             raise FeedAlreadyExists(id)

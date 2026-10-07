@@ -6,6 +6,7 @@ from uuid import uuid4
 from daily_trends_py.contexts.cms.shared.domain.invalid_argument_error import (
     InvalidArgumentError,
 )
+from daily_trends_py.contexts.cms.shared.domain.raw_value import render_value
 from daily_trends_py.contexts.cms.shared.domain.required_string_value_object import (
     RequiredStringValueObject,
 )
@@ -22,10 +23,20 @@ _UUID = re.compile(
 class UuidValueObject(RequiredStringValueObject):
     def __post_init__(self) -> None:
         if not _UUID.fullmatch(self.value):
-            raise InvalidArgumentError(
-                f"<{type(self).__name__}> does not allow the value <{self.value}>"
-            )
+            raise self._not_allowed(self.value)
         super().__post_init__()
+
+    @classmethod
+    def from_raw(cls, value: object) -> Self:
+        if not isinstance(value, str):
+            raise cls._not_allowed(value)
+        return cls(value)
+
+    @classmethod
+    def _not_allowed(cls, value: object) -> InvalidArgumentError:
+        return InvalidArgumentError(
+            f"<{cls.__name__}> does not allow the value <{render_value(value)}>"
+        )
 
     @classmethod
     def random(cls) -> Self:

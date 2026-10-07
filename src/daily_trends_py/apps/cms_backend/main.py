@@ -11,6 +11,10 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import PlainTextResponse
 from uvicorn.config import STARTUP_FAILURE
 
+from daily_trends_py.apps.cms_backend.request_body import (
+    MalformedRequestBody,
+    handle_malformed_request_body,
+)
 from daily_trends_py.apps.cms_backend.routes import register_routes
 from daily_trends_py.apps.cms_backend.settings import Settings
 from daily_trends_py.contexts.cms.feeds.application.create.feed_creator import FeedCreator
@@ -57,6 +61,7 @@ def create_app(settings: Settings) -> FastAPI:
         allow_methods=["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
         allow_headers=["*"],
     )
+    app.add_exception_handler(MalformedRequestBody, handle_malformed_request_body)
     app.add_exception_handler(Exception, _handle_unhandled_error)
     register_routes(app)
     return app

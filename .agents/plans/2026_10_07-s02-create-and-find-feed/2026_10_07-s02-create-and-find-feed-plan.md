@@ -7,7 +7,7 @@ created_at: '2026-10-07T12:46:22Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-07T12:57:49Z'
+updated_at: '2026-10-07T13:02:07Z'
 implementation:
   - phase: 1
     status: 'done, committed'
@@ -15,10 +15,15 @@ implementation:
     model: 'claude-opus-5-5'
     finished_at: '2026-10-07T12:51:22Z'
   - phase: 2
-    status: 'done, pending review'
+    status: 'done, committed'
     tool: 'Claude Code'
     model: 'claude-opus-5-5'
     finished_at: '2026-10-07T12:57:49Z'
+  - phase: 3
+    status: 'done, pending review'
+    tool: 'Claude Code'
+    model: 'claude-opus-5-5'
+    finished_at: '2026-10-07T13:02:07Z'
 ---
 
 # S02 · Create and find a feed
@@ -238,6 +243,8 @@ bodies answer as agreed, and record the divergences in the specs.
 
 ### Public contracts
 
+- *(Renamed during implementation to keep JS references out of the code: `js_value` →
+  `raw_value`, `js_string` → `render_value`.)*
 - `daily_trends_py.contexts.cms.shared.domain.js_value`: `MISSING` sentinel (an absent field) and
   `js_string(value: object) -> str` rendering as JS `String()` does for the cases we hit (`MISSING` →
   `undefined`, `None` → `null`, `True`/`False` → `true`/`false`, integral floats without `.0`, lists
@@ -248,6 +255,9 @@ bodies answer as agreed, and record the divergences in the specs.
   `<{ClassName}> does not allow the value <{js value}>`), `UuidValueObject.from_raw(value: object)`.
 - `FeedCreatorProps` fields `id`, `title`, `description`, `author` become `object` (raw body values,
   `MISSING` when absent).
+- *(Implementation: `parse_body` runs before `run_controller` and raises `MalformedRequestBody`, which
+  an app exception handler turns into the plain-text 400. A JSON body that does not start with `{` or
+  `[` (e.g. `"a title"`, `123`) is also malformed.)*
 - `parse_body`: adds `application/x-www-form-urlencoded` (flat keys; repeated key → `list[str]`);
   malformed JSON → `PlainTextResponse("Bad Request", 400)`; a JSON body that is not an object (e.g.
   an array) behaves as having no fields.
@@ -257,22 +267,22 @@ bodies answer as agreed, and record the divergences in the specs.
 
 ### Tests first
 
-- [ ] `js_string` renders `MISSING`, `None`, booleans, integers, integral and non-integral floats, lists and dicts as JS does.
-- [ ] `from_raw` factories: valid strings pass; `MISSING`, `None`, numbers and booleans fail with the agreed messages and class names.
-- [ ] `FeedCreator` with a missing title → `<FeedTitle> is mandatory. Current value: <undefined>`; `null` title → `<null>`; missing description → `None`.
-- [ ] `integration`: `PUT` with no body → 400 `{"error": "<FeedTitle> is mandatory. Current value: <undefined>"}`.
-- [ ] `integration`: `PUT` with `"title": 123` → 400 `<FeedTitle> is mandatory. Current value: <123>`; `"description": true` → 400 `<FeedDescription> does not allow the value <true>`.
-- [ ] `integration`: urlencoded `title=…&author=…` → 201; a repeated `title` key → 400.
-- [ ] `integration`: malformed JSON → 400 plain text `Bad Request`.
+- [x] `js_string` renders `MISSING`, `None`, booleans, integers, integral and non-integral floats, lists and dicts as JS does.
+- [x] `from_raw` factories: valid strings pass; `MISSING`, `None`, numbers and booleans fail with the agreed messages and class names.
+- [x] `FeedCreator` with a missing title → `<FeedTitle> is mandatory. Current value: <undefined>`; `null` title → `<null>`; missing description → `None`.
+- [x] `integration`: `PUT` with no body → 400 `{"error": "<FeedTitle> is mandatory. Current value: <undefined>"}`.
+- [x] `integration`: `PUT` with `"title": 123` → 400 `<FeedTitle> is mandatory. Current value: <123>`; `"description": true` → 400 `<FeedDescription> does not allow the value <true>`.
+- [x] `integration`: urlencoded `title=…&author=…` → 201; a repeated `title` key → 400.
+- [x] `integration`: malformed JSON → 400 plain text `Bad Request`.
 
 ### Implementation
 
-- [ ] Implement `js_value`, the `from_raw` factories and raw `FeedCreatorProps`.
-- [ ] Extend `parse_body` for urlencoded and malformed JSON.
-- [ ] Update the S02 spec and `specs/improvements/README.md`.
-- [ ] Refactor without changing behavior.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Implement `js_value`, the `from_raw` factories and raw `FeedCreatorProps`.
+- [x] Extend `parse_body` for urlencoded and malformed JSON.
+- [x] Update the S02 spec and `specs/improvements/README.md`.
+- [x] Refactor without changing behavior.
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ### Verification
 
@@ -283,7 +293,6 @@ uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run 
 
 ## Next step
 
-Run `/ai-project-implement-phase .agents/plans/2026_10_07-s02-create-and-find-feed/2026_10_07-s02-create-and-find-feed-plan.md`
-to implement Phase 3.
-
-Phase 2 is implemented and awaits review (and an optional `/ai-project-conventional-commit`).
+All S02 phases are implemented; Phase 3 awaits review (and an optional `/ai-project-conventional-commit`).
+Then push the branch, open a PR, and plan S03 with
+`/ai-project-create-plan specs/feeds/S03-list-feeds.md`.

@@ -65,3 +65,66 @@ def test_rejects_a_blank_title(client: TestClient) -> None:
 
     assert response.status_code == 400
     assert response.json() == {"error": "<FeedTitle> is mandatory. Current value: <  >"}
+
+
+def test_without_body_the_title_is_undefined(client: TestClient) -> None:
+    response = client.put(f"/feed/{MotherCreator.uuid()}")
+
+    assert response.status_code == 400
+    assert response.json() == {"error": "<FeedTitle> is mandatory. Current value: <undefined>"}
+
+
+@pytest.mark.parametrize(
+    ("body", "message"),
+    [
+        ({"title": None, "author": "Ivan"}, "<FeedTitle> is mandatory. Current value: <null>"),
+        ({"title": 123, "author": "Ivan"}, "<FeedTitle> is mandatory. Current value: <123>"),
+        (
+            {"title": "A title", "author": "Ivan", "description": True},
+            "<FeedDescription> does not allow the value <true>",
+        ),
+        (["a title"], "<FeedTitle> is mandatory. Current value: <undefined>"),
+    ],
+)
+def test_rejects_null_non_string_or_non_object_values(
+    client: TestClient, body: object, message: str
+) -> None:
+    response = client.put(f"/feed/{MotherCreator.uuid()}", json=body)
+
+    assert response.status_code == 400
+    assert response.json() == {"error": message}
+
+
+def test_creates_a_feed_from_an_urlencoded_body(client: TestClient) -> None:
+    id = MotherCreator.uuid()
+
+    response = client.put(f"/feed/{id}", data={"title": "A title", "author": "Ivan"})
+
+    assert response.status_code == 201
+    assert response.json()["title"] == "A title"
+
+
+def test_rejects_an_urlencoded_body_with_a_repeated_title(client: TestClient) -> None:
+    response = client.put(
+        f"/feed/{MotherCreator.uuid()}",
+        content="title=a&title=b&author=Ivan",
+        headers={"content-type": "application/x-www-form-urlencoded"},
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {"error": "<FeedTitle> is mandatory. Current value: <a,b>"}
+
+
+@pytest.mark.parametrize("content", ['{"title": ', '"a title"', "123"])
+def test_rejects_malformed_or_non_object_json_with_a_plain_bad_request(
+    client: TestClient, content: str
+) -> None:
+    response = client.put(
+        f"/feed/{MotherCreator.uuid()}",
+        content=content,
+        headers={"content-type": "application/json"},
+    )
+
+    assert response.status_code == 400
+    assert response.headers["content-type"].startswith("text/plain")
+    assert response.text == "Bad Request"

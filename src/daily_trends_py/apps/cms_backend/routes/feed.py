@@ -1,5 +1,3 @@
-from typing import cast
-
 from fastapi import APIRouter, Request, Response, status
 from fastapi.responses import JSONResponse
 
@@ -14,6 +12,7 @@ from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
 from daily_trends_py.contexts.cms.shared.domain.invalid_argument_error import (
     InvalidArgumentError,
 )
+from daily_trends_py.contexts.cms.shared.domain.raw_value import MISSING
 
 router = APIRouter()
 
@@ -22,15 +21,15 @@ router = APIRouter()
 async def create_feed(id: str, request: Request) -> Response:
     feed_creator: FeedCreator = request.app.state.feed_creator
 
+    body = await parse_body(request)
+
     async def action() -> Response:
-        body = await parse_body(request)
-        # Raw body values are not type-checked yet: missing or non-string values are S02 Phase 3.
         feed = await feed_creator.execute(
             {
                 "id": id,
-                "title": cast(str, body.get("title")),
-                "description": cast(str | None, body.get("description")),
-                "author": cast(str, body.get("author")),
+                "title": body.get("title", MISSING),
+                "description": body.get("description", MISSING),
+                "author": body.get("author", MISSING),
                 "source": FeedSource.CMS,
             }
         )
