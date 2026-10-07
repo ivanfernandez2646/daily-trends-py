@@ -23,6 +23,7 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "faker>=40.41.0",
     "fastapi-cli>=0.0.32",
     "httpx2>=2.13.1",
     "hypothesis>=6.168.5",

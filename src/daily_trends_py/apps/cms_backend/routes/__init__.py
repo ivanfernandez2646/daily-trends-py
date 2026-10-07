@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from daily_trends_py.apps.cms_backend.routes import status, swagger
+from daily_trends_py.apps.cms_backend.routes import feed, status, swagger
 
 
 def register_routes(app: FastAPI) -> None:
@@ -11,3 +11,4 @@ def register_routes(app: FastAPI) -> None:
     """
     app.include_router(status.router)
     app.include_router(swagger.router)
+    app.include_router(feed.router)

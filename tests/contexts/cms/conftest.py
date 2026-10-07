@@ -1,4 +1,3 @@
-import os
 from collections.abc import AsyncIterator
 
 import pytest
@@ -7,8 +6,7 @@ from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_
     MongoClient,
     create_mongo_client,
 )
-
-TEST_MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017/daily-trends-test")
+from tests.mongo import TEST_MONGO_URL
 
 
 @pytest.fixture
