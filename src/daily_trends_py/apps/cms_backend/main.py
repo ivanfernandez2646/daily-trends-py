@@ -13,6 +13,11 @@ from uvicorn.config import STARTUP_FAILURE
 
 from daily_trends_py.apps.cms_backend.routes import register_routes
 from daily_trends_py.apps.cms_backend.settings import Settings
+from daily_trends_py.contexts.cms.feeds.application.find.feed_finder import FeedFinder
+from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
+from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.mongo_feed_repository import (  # noqa: E501
+    MongoFeedRepository,
+)
 from daily_trends_py.contexts.cms.shared.infrastructure.event_bus.in_memory_event_bus import (
     InMemoryEventBus,
 )
@@ -34,6 +39,8 @@ def create_app(settings: Settings) -> FastAPI:
         mongo_client = await create_mongo_client(settings.mongo_url)
         app.state.mongo_client = mongo_client
         app.state.event_bus = InMemoryEventBus()
+        feed_repository: FeedRepository = MongoFeedRepository(mongo_client)
+        app.state.feed_finder = FeedFinder(feed_repository)
         try:
             yield
         finally:
