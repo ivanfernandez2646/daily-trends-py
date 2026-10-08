@@ -36,4 +36,4 @@ def _without_last_description_character(feed: Feed) -> Feed:
     description = feed.description.value
     if description is None:
         return feed
-    return dataclasses.replace(feed, description=FeedDescription(description[:-1]))
+    return dataclasses.replace(feed, description=FeedDescription(description[:-1] or None))

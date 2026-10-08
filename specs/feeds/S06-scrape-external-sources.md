@@ -12,8 +12,14 @@ source replacement described in "Deliberate divergences". Depends on S02.
   - Skip an article with no author or no title.
   - Maximum **5 per source**.
   - Each article creates a new feed: random UUID, `source` per scraper, `createdAt` now, `updatedAt` `null`. The description is the text (can be `""`, not `null`).
+
+> **Superseded by [I02](../improvements/I02-scraper-robustness.md):** a missing or blank description is stored as `null`.
+
 - Every feed is saved. No content deduplication: each run inserts 5+5 new feeds even for the same headlines.
 - If the id already existed it would be regenerated until free (never happens in practice).
+
+> **Superseded by [I02](../improvements/I02-scraper-robustness.md):** the id is not looked up; each feed is saved with the id it was created with.
+
 - A save error propagates as 500; feeds already saved are not rolled back.
 
 ## Selectors

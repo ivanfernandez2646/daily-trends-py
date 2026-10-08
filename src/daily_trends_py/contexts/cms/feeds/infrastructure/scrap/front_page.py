@@ -43,7 +43,7 @@ def extract_feeds(html: str, mapping: ScrapMapping) -> list[Feed]:
             Feed.create(
                 id=FeedId.random(),
                 title=FeedTitle(title),
-                description=FeedDescription(_text(article, mapping.description_selector)),
+                description=FeedDescription(_text(article, mapping.description_selector) or None),
                 author=FeedAuthor(author),
                 source=mapping.source,
             )

@@ -46,7 +46,7 @@ async def test_scraps_five_feeds_decoding_the_page_as_iso_8859_1(
     assert {feed.source for feed in feeds} == {FeedSource.EL_MUNDO}
 
 
-async def test_removes_the_last_character_of_every_description(
+async def test_removes_the_last_character_of_every_description_and_keeps_a_missing_one_null(
     client: httpx.AsyncClient,
 ) -> None:
     feeds = await ElMundoFeedScraper(client).scrap()
@@ -54,7 +54,7 @@ async def test_removes_the_last_character_of_every_description(
     assert [feed.description.value for feed in feeds] == [
         "Economía",
         "Deportes",
-        "",
+        None,
         "Urbanismo",
         "Ciencia",
     ]

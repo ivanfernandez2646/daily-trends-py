@@ -43,10 +43,10 @@ async def test_scraps_five_feeds_from_the_front_page(client: httpx.AsyncClient) 
     ]
     assert [feed.description.value for feed in feeds] == [
         "La obra costará menos de lo previsto según el pleno.",
-        "",
-        "",
-        "",
-        "",
+        None,
+        None,
+        None,
+        None,
     ]
     assert {feed.source for feed in feeds} == {FeedSource.EL_ESPANOL}
 
@@ -69,4 +69,4 @@ async def test_scraps_five_feeds_from_the_real_front_page() -> None:
         assert feed.source == FeedSource.EL_ESPANOL
         assert feed.author.value
         assert feed.title.value
-        assert isinstance(feed.description.value, str)
+        assert feed.description.value != ""

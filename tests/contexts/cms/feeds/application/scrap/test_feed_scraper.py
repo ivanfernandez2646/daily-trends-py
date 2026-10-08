@@ -50,17 +50,15 @@ async def test_saves_nothing_when_the_scrapers_return_nothing() -> None:
     assert repository.saved == []
 
 
-async def test_regenerates_and_returns_the_id_of_a_feed_whose_id_already_exists() -> None:
-    existing = FeedMother.random()
-    scraped = FeedMother.random(id=existing.id)
-    repository = InMemoryFeedRepository([existing])
+async def test_saves_each_feed_with_its_own_id_without_looking_it_up() -> None:
+    scraped = FeedMother.random()
+    repository = InMemoryFeedRepository()
 
     result = await FeedScraper(repository, [StubFeedScrap([scraped])]).execute()
 
-    [saved] = repository.saved
-    assert result == [saved]
-    assert saved.id != existing.id
-    assert {**saved.to_primitives(), "id": scraped.id.value} == scraped.to_primitives()
+    assert repository.saved == [scraped]
+    assert result == [scraped]
+    assert repository.searched_ids == []
 
 
 async def test_propagates_a_save_error_keeping_the_feeds_already_saved() -> None:

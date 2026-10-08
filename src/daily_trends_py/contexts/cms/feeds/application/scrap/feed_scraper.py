@@ -1,10 +1,8 @@
 import asyncio
-import dataclasses
 import logging
 from collections.abc import Sequence
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
-from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
 from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
 from daily_trends_py.contexts.cms.feeds.domain.feed_scrap import FeedScrap
 
@@ -19,8 +17,6 @@ class FeedScraper:
     async def execute(self) -> list[Feed]:
         saved: list[Feed] = []
         for feed in await self._scrap_all():
-            while await self._repository.find(feed.id) is not None:
-                feed = dataclasses.replace(feed, id=FeedId.random())
             await self._repository.save(feed)
             saved.append(feed)
         return saved

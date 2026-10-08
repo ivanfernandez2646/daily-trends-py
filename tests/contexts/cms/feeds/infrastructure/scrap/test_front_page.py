@@ -72,12 +72,15 @@ def test_stops_at_five_feeds() -> None:
     assert [feed.title.value for feed in feeds] == [f"Title {index}" for index in range(5)]
 
 
-def test_stores_a_missing_description_as_an_empty_string() -> None:
-    html = "<article><span class='author'>Ana</span><h2 class='title'>A title</h2></article>"
+def test_stores_a_missing_or_blank_description_as_null() -> None:
+    html = (
+        "<article><span class='author'>Ana</span><h2 class='title'>No description</h2></article>"
+        + _article(title="Blank description", description="  \n ")
+    )
 
-    [feed] = extract_feeds(html, MAPPING)
+    feeds = extract_feeds(html, MAPPING)
 
-    assert feed.description.value == ""
+    assert [feed.description.value for feed in feeds] == [None, None]
 
 
 def test_joins_the_text_of_every_match() -> None:
