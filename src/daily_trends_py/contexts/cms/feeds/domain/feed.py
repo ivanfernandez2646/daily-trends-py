@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TypedDict
 
 from daily_trends_py.contexts.cms.feeds.domain.feed_author import FeedAuthor
@@ -68,6 +68,21 @@ class Feed(AggregateRoot):
             source=FeedSource(primitives["source"]),
             created_at=RequiredDateTimeValueObject(primitives["createdAt"]),
             updated_at=DateTimeValueObject(primitives["updatedAt"]),
+        )
+
+    def update(
+        self, *, title: FeedTitle | None = None, description: FeedDescription | None = None
+    ) -> Feed | None:
+        """Return the updated feed, or `None` if nothing changes; `None` keeps a value."""
+        new_title = self.title if title is None else title
+        new_description = self.description if description is None else description
+        if new_title == self.title and new_description == self.description:
+            return None
+        return replace(
+            self,
+            title=new_title,
+            description=new_description,
+            updated_at=DateTimeValueObject.now(),
         )
 
     def to_primitives(self) -> FeedPrimitives:
