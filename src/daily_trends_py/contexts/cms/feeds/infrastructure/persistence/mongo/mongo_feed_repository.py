@@ -1,7 +1,10 @@
+from datetime import date, timedelta
 from typing import cast
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed, FeedPrimitives
 from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
+from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
+from daily_trends_py.contexts.cms.feeds.domain.feed_title import FeedTitle
 from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.invalid_stored_feed import (  # noqa: E501
     InvalidStoredFeed,
 )
@@ -37,6 +40,17 @@ class MongoFeedRepository(MongoRepository):
     async def search(self, criteria: Criteria | None = None) -> list[Feed]:
         documents = await self._by_criteria(criteria or {})
         return [_to_feed(document) for document in documents]
+
+    async def exists_headline(self, source: FeedSource, title: FeedTitle, day: date) -> bool:
+        # `createdAt` is stored as UTC ISO text, so a day is the text range [day, next day).
+        next_day = day + timedelta(days=1)
+        return await self._exists(
+            {
+                "source": source,
+                "title": title.value,
+                "createdAt": {"$gte": day.isoformat(), "$lt": next_day.isoformat()},
+            }
+        )
 
 
 def _to_feed(document: MongoDocument) -> Feed:

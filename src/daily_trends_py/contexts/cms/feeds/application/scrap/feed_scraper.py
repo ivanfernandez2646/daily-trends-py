@@ -1,10 +1,12 @@
 import asyncio
 import logging
 from collections.abc import Sequence
+from datetime import UTC, date, datetime
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
 from daily_trends_py.contexts.cms.feeds.domain.feed_scrap import FeedScrap
+from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
 
 logger = logging.getLogger(__name__)
 
@@ -16,9 +18,17 @@ class FeedScraper:
 
     async def execute(self) -> list[Feed]:
         saved: list[Feed] = []
+        saved_headlines: set[tuple[FeedSource, str | None, date]] = set()
         for feed in await self._scrap_all():
+            day = _utc_day(feed)
+            headline = (feed.source, feed.title.value, day)
+            if headline in saved_headlines or await self._repository.exists_headline(
+                feed.source, feed.title, day
+            ):
+                continue
             await self._repository.save(feed)
             saved.append(feed)
+            saved_headlines.add(headline)
         return saved
 
     async def _scrap_all(self) -> list[Feed]:
@@ -35,3 +45,7 @@ class FeedScraper:
             else:
                 feeds.extend(result)
         return feeds
+
+
+def _utc_day(feed: Feed) -> date:
+    return datetime.fromisoformat(feed.created_at.value).astimezone(UTC).date()

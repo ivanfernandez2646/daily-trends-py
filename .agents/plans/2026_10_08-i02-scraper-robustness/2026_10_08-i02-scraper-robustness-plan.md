@@ -7,7 +7,7 @@ created_at: '2026-10-08T11:44:26Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-implemented_at: '2026-10-08T11:59:13Z'
+implemented_at: '2026-10-08T12:07:23Z'
 implemented_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -145,7 +145,8 @@ A new port method, its Mongo implementation and the use-case rule, verified end 
   `True` when a feed with that source and exact title has a `createdAt` in that UTC day.
 - `MongoFeedRepository.exists_headline`: `find_one({"source": ..., "title": ...,
   "createdAt": {"$gte": "YYYY-MM-DD", "$lt": "<next day>"}})` (text range, see #12).
-- `InMemoryFeedRepository` / `FailingFeedRepository` fakes implement it.
+- `InMemoryFeedRepository` implements it (`FailingFeedRepository` inherits it).
+- `MongoRepository._exists(query)`: protected helper (`find_one` with an `_id` projection).
 - `FeedScraper.execute()`: skips a feed when `exists_headline(...)` is true or when its
   `(source, title, day)` was already saved in this run. Skipped feeds are not returned.
 - `GET /feed/scrap`: a second run on the same UTC day with unchanged pages → `200 []`.
@@ -153,27 +154,27 @@ A new port method, its Mongo implementation and the use-case rule, verified end 
 
 ### Tests first
 
-- [ ] `test_feed_scraper.py`:
+- [x] `test_feed_scraper.py`:
   - a feed whose headline exists on the same UTC day is not saved nor returned;
   - two identical headlines in one run → only the first saved;
   - the same title from another source, or stored on a previous UTC day, is saved.
-- [ ] `test_mongo_feed_repository.py` (integration): `exists_headline` is true for same source, title
+- [x] `test_mongo_feed_repository.py` (integration): `exists_headline` is true for same source, title
       and day. It is false for another source, another title, the previous day, and the next day at
-      `00:00:00.000Z`.
-- [ ] `features/scrap-feed.feature`: after the existing steps, a second `/feed/scrap` answers an
+      `00:00:00.000Z`. Titles are case-sensitive.
+- [x] `features/scrap-feed.feature`: after the existing steps, a second `/feed/scrap` answers an
       array of length 0 and `/feed/list` stays at 12.
 
 ### Implementation
 
-- [ ] Add `exists_headline` to the port, the Mongo repository and the fakes.
-- [ ] `FeedScraper`: derive the UTC day from `feed.created_at` and track the run's seen headlines.
-- [ ] `docs/openapi.yml` and an S06 "Superseded by I02" note on "No content deduplication".
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggested commits:
+- [x] Add `exists_headline` to the port, the Mongo repository and the fakes.
+- [x] `FeedScraper`: derive the UTC day from `feed.created_at` and track the run's seen headlines.
+- [x] `docs/openapi.yml` and an S06 "Superseded by I02" note on "No content deduplication".
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggested commits:
   - `fix(i02): skip scraped headlines already stored the same UTC day`
   - `feat(i02): add a same-day headline lookup to the feed repository`
   - `fix(i02): deduplicate scraped feeds by source, title and day`
 
 ## Next step
 
-Review Phase 2, then run `/ai-project-implement-phase` for Phase 3.
+Review Phase 3. I02 is complete; merge `fix/i01-http-contract-fixes` and then this branch.

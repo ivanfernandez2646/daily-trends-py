@@ -16,6 +16,9 @@ source replacement described in "Deliberate divergences". Depends on S02.
 > **Superseded by [I02](../improvements/I02-scraper-robustness.md):** a missing or blank description is stored as `null`.
 
 - Every feed is saved. No content deduplication: each run inserts 5+5 new feeds even for the same headlines.
+
+> **Superseded by [I02](../improvements/I02-scraper-robustness.md):** a headline already stored with the same source and title on the same UTC day, or already saved in this run, is skipped.
+
 - If the id already existed it would be regenerated until free (never happens in practice).
 
 > **Superseded by [I02](../improvements/I02-scraper-robustness.md):** the id is not looked up; each feed is saved with the id it was created with.

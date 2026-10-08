@@ -135,11 +135,16 @@ paths:
       tags:
         - feed
       summary: Scrap feeds
-      description: Scrap feeds from external services.
+      description: >-
+        Scrap feeds from external services. A headline already stored with the
+        same source and title on the same UTC day is skipped. A scraped article
+        without a description is stored with a null description.
       operationId: scrapFeed
       responses:
         '200':
-          description: The feeds saved by this run, empty when every source fails
+          description: >-
+            The feeds saved by this run, empty when every source fails or every
+            headline was already stored that day
           content:
             application/json:
               schema:
@@ -191,6 +196,7 @@ components:
           example: theFeed
         description:
           type: string
+          nullable: true
           example: theFeedDescription
         author:
           type: string
