@@ -15,6 +15,7 @@ from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
 from tests.contexts.cms.shared.domain.date_time_value_object_mother import (
     RequiredDateTimeValueObjectMother,
 )
+from tests.scrap_fixtures import FrontPagesTransport
 
 pytestmark = pytest.mark.integration
 
@@ -50,3 +51,39 @@ def test_home_returns_the_ten_newest_external_feeds(app: FastAPI, client: TestCl
     assert [feed["id"] for feed in response.json()] == [
         feed.id.value for feed in external_feeds[:10]
     ]
+
+
+def _save_stale_feed(app: FastAPI, client: TestClient) -> Feed:
+    stale = _feed_created_at(datetime(2023, 6, 17, 14, 58, tzinfo=UTC), FeedSource.EL_MUNDO)
+    repository = MongoFeedRepository(app.state.mongo_client)
+    run_in_app(client, lambda: repository.save(stale))
+    return stale
+
+
+def test_home_scrapes_and_returns_the_new_feeds_when_the_newest_is_stale(
+    app: FastAPI, client: TestClient
+) -> None:
+    stale = _save_stale_feed(app, client)
+
+    response = client.get("/feed/home")
+
+    assert response.status_code == 200
+    feeds = response.json()
+    assert len(feeds) == 10
+    assert stale.id.value not in [feed["id"] for feed in feeds]
+    assert len(client.get("/feed/list").json()) == 11
+
+
+@pytest.mark.parametrize(
+    "front_pages_transport",
+    [FrontPagesTransport(failing_hosts={"elmundo.es", "www.elespanol.com"})],
+)
+def test_home_returns_the_stale_feeds_when_every_source_fails(
+    app: FastAPI, client: TestClient
+) -> None:
+    stale = _save_stale_feed(app, client)
+
+    response = client.get("/feed/home")
+
+    assert response.status_code == 200
+    assert [feed["id"] for feed in response.json()] == [stale.id.value]

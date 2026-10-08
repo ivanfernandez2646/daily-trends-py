@@ -7,7 +7,7 @@ created_at: '2026-10-08T10:37:46Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-implemented_at: '2026-10-08T10:40:26Z'
+implemented_at: '2026-10-08T10:54:13Z'
 implemented_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -161,7 +161,9 @@ from a previous local day. Restore the `/feed/home` checks in `scrap-feed.featur
 - Composition root:
   `FeedHomeSearcher(feed_repository, app.state.feed_scraper, SystemClock())`. The searcher is built
   after the scraper.
-- Test support: `tests/contexts/cms/shared/fakes/fixed_clock.py` with `FixedClock(now: datetime)`.
+- Test support:
+  - `tests/contexts/cms/shared/fakes/fixed_clock.py` with `FixedClock(now: datetime)`.
+  - `FailingFeedRepository` gains an optional `feeds` keyword to seed a stale feed.
 - Test suites:
   - `tests/contexts/cms/feeds/application/home/test_feed_home_searcher.py` (extended)
   - `tests/contexts/cms/shared/infrastructure/test_system_clock.py`
@@ -171,39 +173,40 @@ from a previous local day. Restore the `/feed/home` checks in `scrap-feed.featur
 
 ### Tests first
 
-- [ ] With a `FixedClock`, the unit tests use `InMemoryFeedRepository` and a real `FeedScraper` over
+- [x] With a `FixedClock`, the unit tests use `InMemoryFeedRepository` and a real `FeedScraper` over
       `StubFeedScrap`:
-  - [ ] When the newest feed is from today, the searcher does not scrape (stub `calls == 0`) and
+  - [x] When the newest feed is from today, the searcher does not scrape (stub `calls == 0`) and
         searches once.
-  - [ ] When the newest feed is from yesterday, the searcher scrapes once, searches twice with
+  - [x] When the newest feed is from yesterday, the searcher scrapes once, searches twice with
         `HOME_CRITERIA`, and returns the second result, which includes the scraped feeds.
-  - [ ] When there are no feeds, the searcher does not scrape and returns `[]`.
-  - [ ] Only the first feed decides. A stale feed further down the list does not trigger scraping
+  - [x] When there are no feeds, the searcher does not scrape and returns `[]`.
+  - [x] Only the first feed decides. A stale feed further down the list does not trigger scraping
         when the first feed is from today.
-  - [ ] The comparison uses the clock's local zone, not UTC.
+  - [x] The comparison uses the clock's local zone, not UTC.
     - The clock is `2026-10-08T00:30+02:00` and the newest feed is `2026-10-07T22:15:00.000Z`.
       That is the same local day, so the searcher does not scrape.
     - The newest feed is `2026-10-07T21:59:00.000Z`. That is the previous local day, so it scrapes.
-  - [ ] When every scraper fails, the searcher returns what already existed. Calling it again
+  - [x] When every scraper fails, the searcher returns what already existed. Calling it again
         scrapes again (the kept defect, improvement #4).
-  - [ ] A save error from scraping propagates.
-- [ ] `SystemClock().now()` is timezone-aware and within a bracket of `datetime.now(UTC)`.
-- [ ] `integration`: `scrap-feed.feature` restored, with home 0 → 10.
-- [ ] `integration`:
-  - [ ] With one stale `EL_MUNDO` feed from 2023, `GET /feed/home` scrapes through
+  - [x] A save error from scraping propagates.
+- [x] `SystemClock().now()` is timezone-aware and within a bracket of `datetime.now(UTC)`. This test
+      was written right after the one-line adapter, not before it.
+- [x] `integration`: `scrap-feed.feature` restored, with home 0 → 10.
+- [x] `integration`:
+  - [x] With one stale `EL_MUNDO` feed from 2023, `GET /feed/home` scrapes through
         `FrontPagesTransport`. It answers 200 with 10 feeds, every one created today, and
         `GET /feed/list` then has 11.
-  - [ ] With a stale feed and every host failing, `GET /feed/home` → 200 with just the stale feed.
+  - [x] With a stale feed and every host failing, `GET /feed/home` → 200 with just the stale feed.
 
 ### Implementation
 
-- [ ] Add `Clock`, `SystemClock` and `FixedClock`.
-- [ ] Extend `FeedHomeSearcher` with the day check, the scraping and the re-search.
-- [ ] Update the wiring in `create_app`.
-- [ ] Restore the `/feed/home` steps in `scrap-feed.feature`.
-- [ ] Refactor without changing behavior.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Add `Clock`, `SystemClock` and `FixedClock`.
+- [x] Extend `FeedHomeSearcher` with the day check, the scraping and the re-search.
+- [x] Update the wiring in `create_app`.
+- [x] Restore the `/feed/home` steps in `scrap-feed.feature`.
+- [x] Refactor without changing behavior.
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ### Verification
 
@@ -214,5 +217,5 @@ uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run 
 
 ## Next step
 
-Phase 1 is implemented and awaits review (and an optional `/ai-project-conventional-commit`).
-Then run `/ai-project-implement-phase` for Phase 2 on `feat/s07-front-page`.
+Phases 1 and 2 are implemented. Phase 2 awaits review (and an optional
+`/ai-project-conventional-commit`). Then push the branch and open a PR.

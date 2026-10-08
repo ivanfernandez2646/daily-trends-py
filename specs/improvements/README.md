@@ -22,3 +22,4 @@ Each item is current behavior that the port **keeps**, with the proposed improve
 | 16 | Date-time validation errors name `<Function>` instead of the value object | S02 | Use the class name |
 | 17 | Concurrent `/feed/home` requests on a stale day each run the scraping and store duplicate batches | S07 | Single-flight lock, or solved by #5 |
 | 18 | "Today" for the front page depends on the server's timezone (`TZ`), usually UTC in containers | S07 | Explicit business timezone in settings |
+| 19 | A malformed `createdAt` stored in Mongo answers 400 on `/feed/home` (it maps `InvalidArgumentError`) but 500 on `/feed/list`, although the client sent nothing wrong | S03/S07 | Treat invalid stored data as a server error (500) everywhere, or validate on write |

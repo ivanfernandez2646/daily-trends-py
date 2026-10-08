@@ -43,6 +43,7 @@ from daily_trends_py.contexts.cms.shared.infrastructure.event_bus.in_memory_even
 from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_client_factory import (  # noqa: E501
     create_mongo_client,
 )
+from daily_trends_py.contexts.cms.shared.infrastructure.system_clock import SystemClock
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,6 @@ def create_app(
         app.state.feed_creator = FeedCreator(feed_repository, event_bus)
         app.state.feed_finder = FeedFinder(feed_repository)
         app.state.feed_searcher = FeedSearcher(feed_repository)
-        app.state.feed_home_searcher = FeedHomeSearcher(feed_repository)
         app.state.feed_updater = FeedUpdater(feed_repository)
         app.state.feed_deleter = FeedDeleter(feed_repository)
         # No timeout on purpose: a known defect kept by the port (specs/improvements, #8).
@@ -75,6 +75,9 @@ def create_app(
         app.state.feed_scraper = FeedScraper(
             feed_repository,
             [ElMundoFeedScraper(http_client), ElEspanolFeedScraper(http_client)],
+        )
+        app.state.feed_home_searcher = FeedHomeSearcher(
+            feed_repository, app.state.feed_scraper, SystemClock()
         )
         try:
             yield
