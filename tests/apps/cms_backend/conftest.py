@@ -107,6 +107,13 @@ def response_is_empty(response: httpx2.Response) -> None:
     assert response.content == b""
 
 
+@then(parsers.parse("The response is an array with length {length:d}"))
+def response_is_an_array_with_length(response: httpx2.Response, length: int) -> None:
+    body: object = response.json()
+    assert isinstance(body, list)
+    assert len(cast(list[object], body)) == length
+
+
 def _matching_part(actual: object, expected: object) -> object:
     """The part of `actual` shaped like `expected`: only its keys, at any depth, in list order."""
     if isinstance(expected, dict) and isinstance(actual, dict):

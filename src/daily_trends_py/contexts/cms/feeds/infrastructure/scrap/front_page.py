@@ -1,3 +1,4 @@
+import asyncio
 from dataclasses import dataclass
 
 import httpx
@@ -20,12 +21,15 @@ class ScrapMapping:
     author_selector: str
     title_selector: str
     description_selector: str
+    encoding: str
+    """Used whatever charset the response declares."""
 
 
-async def fetch_front_page(client: httpx.AsyncClient, url: str) -> bytes:
+async def scrap_front_page(client: httpx.AsyncClient, mapping: ScrapMapping) -> list[Feed]:
     # A non-2xx answer is not an error: its body is parsed like any other page.
-    response = await client.get(url, headers={"Content-Type": "text/html; charset=UTF-8"})
-    return response.content
+    response = await client.get(mapping.url, headers={"Content-Type": "text/html; charset=UTF-8"})
+    html = response.content.decode(mapping.encoding, errors="replace")
+    return await asyncio.to_thread(extract_feeds, html, mapping)
 
 
 def extract_feeds(html: str, mapping: ScrapMapping) -> list[Feed]:

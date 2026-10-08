@@ -7,7 +7,7 @@ created_at: '2026-10-08T10:11:04Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-implemented_at: '2026-10-08T10:24:27Z'
+implemented_at: '2026-10-08T10:30:44Z'
 implemented_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -216,8 +216,12 @@ El Mundo first, and port `scrap-feed.feature`.
     `.ue-c-cover-content__headline` and `.ue-c-cover-content__kicker`.
   - It always decodes iso-8859-1 and removes the last character of each description.
 - Composition root: `FeedScraper(repo, [ElMundoFeedScraper(client), ElEspanolFeedScraper(client)])`.
+- Refactor of the Phase 1 contract in `front_page.py`. Both adapters now share download, decode and
+  parse:
+  - `ScrapMapping` gains `encoding: str`, used whatever charset the response declares.
+  - `async scrap_front_page(client, mapping) -> list[Feed]` replaces `fetch_front_page`.
 - Test support: `tests/fixtures/scrap/el_mundo.html` (iso-8859-1 bytes), served by
-  `FrontPagesTransport`.
+  `FrontPagesTransport` at `www.elmundo.es`. `elmundo.es` answers 301 to it, as the real site does.
 - Test suites:
   - `tests/apps/cms_backend/features/scrap-feed.feature`: the reference scenario without the two
     `/feed/home` checks. It runs list=2 → scrap (200, empty) → list=12.
@@ -229,26 +233,28 @@ El Mundo first, and port `scrap-feed.feature`.
 
 ### Tests first
 
-- [ ] `ElMundoFeedScraper`, through the `MockTransport` fixture:
-  - [ ] Requests `https://elmundo.es/`.
-  - [ ] Decodes iso-8859-1, so accents and `ñ` are intact.
-  - [ ] Returns 5 `EL_MUNDO` feeds, skipping articles with no author or title.
-  - [ ] Removes the last character of each description, and `""` stays `""`.
-- [ ] `network`: the live `ElMundoFeedScraper` returns 5 feeds. Each has source `EL_MUNDO`, a
+- [x] `ElMundoFeedScraper`, through the `MockTransport` fixture:
+  - [x] Requests `https://elmundo.es/`.
+  - [x] Decodes iso-8859-1, so accents and `ñ` are intact.
+  - [x] Returns 5 `EL_MUNDO` feeds, skipping articles with no author or title.
+  - [x] Removes the last character of each description, and `""` stays `""`.
+- [x] `network`: the live `ElMundoFeedScraper` returns 5 feeds. Each has source `EL_MUNDO`, a
       non-empty author and title, and no mojibake (`Ã`/`Â`) in any text.
-- [ ] `integration`: `scrap-feed.feature` checks list=2, then scrap → 200 with an empty body, then
+- [x] `integration`: `scrap-feed.feature` checks list=2, then scrap → 200 with an empty body, then
       list=12.
-- [ ] `integration`: when El Mundo fails and El Español succeeds, `GET /feed/scrap` → 200 and list
+- [x] `integration`: when El Mundo fails and El Español succeeds, `GET /feed/scrap` → 200 and list
       grows by 5.
+- [x] `integration`: when every source fails, `GET /feed/scrap` → 200 with an empty body and nothing
+      is saved. This replaces the Phase 1 single-source failure test.
 
 ### Implementation
 
-- [ ] Add `ElMundoFeedScraper` and the `el_mundo.html` fixture.
-- [ ] Wire both scrapers in `create_app`, El Mundo first.
-- [ ] Add the array-length step and `scrap-feed.feature`.
-- [ ] Refactor without changing behavior.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Add `ElMundoFeedScraper` and the `el_mundo.html` fixture.
+- [x] Wire both scrapers in `create_app`, El Mundo first.
+- [x] Add the array-length step and `scrap-feed.feature`.
+- [x] Refactor without changing behavior.
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ### Verification
 
@@ -260,5 +266,7 @@ uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run 
 
 ## Next step
 
-Phase 1 is implemented and awaits review (and an optional `/ai-project-conventional-commit`). Then
-run `/ai-project-implement-phase` for Phase 2.
+Phases 1 and 2 are implemented. Phase 2 awaits review (and an optional
+`/ai-project-conventional-commit`). Then push the branch, open a PR, and plan S07 with
+`/ai-project-create-plan specs/feeds/S07-front-page.md`. S07 restores the `/feed/home` checks in
+`scrap-feed.feature`.

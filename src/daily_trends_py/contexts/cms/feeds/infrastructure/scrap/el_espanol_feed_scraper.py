@@ -1,13 +1,10 @@
-import asyncio
-
 import httpx
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
 from daily_trends_py.contexts.cms.feeds.infrastructure.scrap.front_page import (
     ScrapMapping,
-    extract_feeds,
-    fetch_front_page,
+    scrap_front_page,
 )
 
 _MAPPING = ScrapMapping(
@@ -16,6 +13,7 @@ _MAPPING = ScrapMapping(
     author_selector=".art__author",
     title_selector=".art__title",
     description_selector=".art__subtitle",
+    encoding="utf-8",
 )
 
 
@@ -24,7 +22,4 @@ class ElEspanolFeedScraper:
         self._client = client
 
     async def scrap(self) -> list[Feed]:
-        body = await fetch_front_page(self._client, _MAPPING.url)
-        # Always UTF-8, whatever charset the response declares.
-        html = body.decode("utf-8", errors="replace")
-        return await asyncio.to_thread(extract_feeds, html, _MAPPING)
+        return await scrap_front_page(self._client, _MAPPING)

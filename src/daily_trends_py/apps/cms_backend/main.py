@@ -31,6 +31,9 @@ from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.mongo_f
 from daily_trends_py.contexts.cms.feeds.infrastructure.scrap.el_espanol_feed_scraper import (
     ElEspanolFeedScraper,
 )
+from daily_trends_py.contexts.cms.feeds.infrastructure.scrap.el_mundo_feed_scraper import (
+    ElMundoFeedScraper,
+)
 from daily_trends_py.contexts.cms.shared.infrastructure.event_bus.in_memory_event_bus import (
     InMemoryEventBus,
 )
@@ -65,7 +68,10 @@ def create_app(
         http_client = httpx.AsyncClient(
             transport=http_transport, timeout=None, follow_redirects=True
         )
-        app.state.feed_scraper = FeedScraper(feed_repository, [ElEspanolFeedScraper(http_client)])
+        app.state.feed_scraper = FeedScraper(
+            feed_repository,
+            [ElMundoFeedScraper(http_client), ElEspanolFeedScraper(http_client)],
+        )
         try:
             yield
         finally:

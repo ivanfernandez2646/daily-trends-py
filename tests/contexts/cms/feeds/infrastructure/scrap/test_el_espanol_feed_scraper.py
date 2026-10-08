@@ -35,14 +35,14 @@ async def test_scraps_five_feeds_from_the_front_page(client: httpx.AsyncClient) 
     feeds = await ElEspanolFeedScraper(client).scrap()
 
     assert [(feed.author.value, feed.title.value) for feed in feeds] == [
-        ("María Peral", "Anticorrupción ve indicios pero esperará a completar las diligencias"),
-        ("M. León", '"No habrá paz en las calles", dice la portavoz'),
-        ("Alberto D. Prieto", "La muerte de Maricarmen tensiona el debate sobre la vivienda"),
-        ("Alberto Cheli", "Los acampados de Sol piden una ley de alquileres"),
-        ("Rubén Fernández", "El Gobierno estudia la primera huelga de inquilinos"),
+        ("Begoña Ejemplo", "Villaejemplo inaugurará su biblioteca municipal en otoño"),
+        ("Í. Prueba", '"Habrá más árboles en las calles", promete la alcaldesa'),
+        ("Ramón Ficticio", "El festival de cometas reúne a cien familias"),
+        ("Lucía Muestra", "Los vecinos piden un carril bici junto al río"),
+        ("Óscar Inventado", "La panadería más antigua celebra su centenario"),
     ]
     assert [feed.description.value for feed in feeds] == [
-        "La imputación no se produciría antes del otoño.",
+        "La obra costará menos de lo previsto según el pleno.",
         "",
         "",
         "",

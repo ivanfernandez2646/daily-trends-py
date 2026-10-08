@@ -13,6 +13,7 @@ MAPPING = ScrapMapping(
     author_selector=".author",
     title_selector=".title",
     description_selector=".description",
+    encoding="utf-8",
 )
 
 
