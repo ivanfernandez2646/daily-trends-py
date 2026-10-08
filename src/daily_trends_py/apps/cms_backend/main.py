@@ -21,6 +21,9 @@ from daily_trends_py.apps.cms_backend.settings import Settings
 from daily_trends_py.contexts.cms.feeds.application.create.feed_creator import FeedCreator
 from daily_trends_py.contexts.cms.feeds.application.delete.feed_deleter import FeedDeleter
 from daily_trends_py.contexts.cms.feeds.application.find.feed_finder import FeedFinder
+from daily_trends_py.contexts.cms.feeds.application.home.feed_home_searcher import (
+    FeedHomeSearcher,
+)
 from daily_trends_py.contexts.cms.feeds.application.scrap.feed_scraper import FeedScraper
 from daily_trends_py.contexts.cms.feeds.application.search.feed_searcher import FeedSearcher
 from daily_trends_py.contexts.cms.feeds.application.update.feed_updater import FeedUpdater
@@ -62,6 +65,7 @@ def create_app(
         app.state.feed_creator = FeedCreator(feed_repository, event_bus)
         app.state.feed_finder = FeedFinder(feed_repository)
         app.state.feed_searcher = FeedSearcher(feed_repository)
+        app.state.feed_home_searcher = FeedHomeSearcher(feed_repository)
         app.state.feed_updater = FeedUpdater(feed_repository)
         app.state.feed_deleter = FeedDeleter(feed_repository)
         # No timeout on purpose: a known defect kept by the port (specs/improvements, #8).

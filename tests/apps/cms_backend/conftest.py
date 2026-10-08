@@ -65,7 +65,7 @@ def there_are_feeds(app: FastAPI, client: TestClient, datatable: list[list[str]]
                 "author": values["author"],
                 "source": FeedSource(values["source"]),
                 "createdAt": values.get("createdAt")
-                or RequiredDateTimeValueObjectMother.random().value,
+                or RequiredDateTimeValueObjectMother.now().value,
                 "updatedAt": DateTimeValueObjectMother.random().value,
             }
         )
