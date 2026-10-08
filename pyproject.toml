@@ -54,4 +54,7 @@ pythonVersion = "3.14"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-markers = ["integration: needs a running MongoDB at MONGO_URL"]
+markers = [
+    "integration: needs a running MongoDB at MONGO_URL",
+    "network: hits real external websites",
+]

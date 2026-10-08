@@ -30,7 +30,7 @@ Create a CMS feed and retrieve it by id. This spec also defines the domain build
 - Response 201 with the feed JSON:
 ```json
 { "id": "uuid", "title": "string", "description": "string|null", "author": "string",
-  "source": "CMS|EL_PAIS|EL_MUNDO", "createdAt": "ISO-8601", "updatedAt": "ISO-8601|null" }
+  "source": "CMS|EL_PAIS|EL_MUNDO|EL_ESPANOL", "createdAt": "ISO-8601", "updatedAt": "ISO-8601|null" }
 ```
 - *Given* a new id and valid title/author, *when* PUT, *then* 201 and the feed is stored with `updatedAt: null`.
 

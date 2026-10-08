@@ -3,7 +3,7 @@
 **Status:** draft · **Fidelity:** exact. Depends on S03 (criteria) and S06 (scraping).
 
 ## `GET /feed/home`
-1. Search with filter `source = EL_MUNDO OR source = EL_PAIS`, sort `createdAt` desc, `limit 10`.
+1. Search with filter `source = EL_MUNDO OR source = EL_PAIS OR source = EL_ESPANOL`, sort `createdAt` desc, `limit 10`. (`EL_ESPANOL` is added because it replaces El País as a scraped source, see S06.)
 2. If there are results and the **newest** is from a day before today (day-level comparison, server local time) → run the scraping from S06 **inside the request** and repeat the search.
 3. If there are no results, scraping is **not** triggered (returns `[]`).
 4. Response 200 with the array. Never includes `CMS` feeds.

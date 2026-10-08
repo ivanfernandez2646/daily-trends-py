@@ -1,6 +1,6 @@
 # daily-trends-py
 
-Python port of [daily-trends](https://github.com/ivanfernandez2646/daily-trends): a small news API that stores feeds created through the API and scraped from the front pages of El País and El Mundo.
+Python port of [daily-trends](https://github.com/ivanfernandez2646/daily-trends): a small news API that stores feeds created through the API and scraped from the front pages of El Mundo and El Español (El País in the original, which now blocks scrapers; see [S06](specs/feeds/S06-scrape-external-sources.md)).
 
 The port keeps the current behavior of the Node project (same routes, status codes, bodies and data in MongoDB). Known defects are tracked in [`specs/improvements/`](specs/improvements/README.md) and are intentionally not fixed during the migration.
 
@@ -23,7 +23,7 @@ The port keeps the current behavior of the Node project (same routes, status cod
 | `DELETE /feed/{id}` | Delete a feed |
 | `GET /feed/list` | List all feeds, newest first |
 | `GET /feed/home` | 10 newest scraped feeds; scrapes on demand if the newest is older than today |
-| `GET /feed/scrap` | Scrape El País and El Mundo and store the results |
+| `GET /feed/scrap` | Scrape El Mundo and El Español and store the results |
 | `GET /status` | Health check |
 
 Full contract and error format: [`specs/feeds/S01-foundation.md`](specs/feeds/S01-foundation.md).
