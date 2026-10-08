@@ -1,5 +1,6 @@
 import json
 from collections.abc import Awaitable, Callable, Iterator
+from typing import cast
 
 import httpx2
 import pytest
@@ -57,7 +58,8 @@ def there_are_feeds(app: FastAPI, client: TestClient, datatable: list[list[str]]
                 "description": values["description"],
                 "author": values["author"],
                 "source": FeedSource(values["source"]),
-                "createdAt": RequiredDateTimeValueObjectMother.random().value,
+                "createdAt": values.get("createdAt")
+                or RequiredDateTimeValueObjectMother.random().value,
                 "updatedAt": DateTimeValueObjectMother.random().value,
             }
         )
@@ -84,8 +86,28 @@ def response_is(response: httpx2.Response, docstring: str) -> None:
     assert response.json() == json.loads(docstring)
 
 
+def _matching_part(actual: object, expected: object) -> object:
+    """The part of `actual` shaped like `expected`: only its keys, at any depth, in list order."""
+    if isinstance(expected, dict) and isinstance(actual, dict):
+        expected_fields = cast(dict[str, object], expected)
+        actual_fields = cast(dict[str, object], actual)
+        return {
+            key: _matching_part(actual_fields.get(key), value)
+            for key, value in expected_fields.items()
+        }
+    if isinstance(expected, list) and isinstance(actual, list):
+        expected_items = cast(list[object], expected)
+        actual_items = cast(list[object], actual)
+        if len(actual_items) != len(expected_items):
+            return actual_items
+        return [
+            _matching_part(item, value)
+            for item, value in zip(actual_items, expected_items, strict=True)
+        ]
+    return actual
+
+
 @then("The response should contains:")
 def response_contains(response: httpx2.Response, docstring: str) -> None:
-    body = response.json()
-    expected = json.loads(docstring)
-    assert {key: body.get(key) for key in expected} == expected
+    expected: object = json.loads(docstring)
+    assert _matching_part(response.json(), expected) == expected
