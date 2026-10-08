@@ -12,6 +12,9 @@ Return all feeds, most recent first. This spec also defines the search criteria 
 ## `GET /feed/list`
 - 200 with an array of all feeds (any source), sorted by `createdAt` descending. No filter. Empty → `[]`.
 
+> **Superseded by [I01](../improvements/I01-http-contract-fixes.md):** an invalid stored feed answers 500 with `Stored feed <{id}> is invalid: {reason}`.
+
+
 ## Acceptance criteria
 - Repository integration test: sort, limit, OR filter.
 - Cover the `list` `.feature` file.

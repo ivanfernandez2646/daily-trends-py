@@ -5,11 +5,12 @@ import pytest
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.feed_description import FeedDescription
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
+from daily_trends_py.contexts.cms.feeds.domain.feed_updated_at import FeedUpdatedAt
+from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.invalid_stored_feed import (  # noqa: E501
+    InvalidStoredFeed,
+)
 from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.mongo_feed_repository import (  # noqa: E501
     MongoFeedRepository,
-)
-from daily_trends_py.contexts.cms.shared.domain.date_time_value_object import (
-    DateTimeValueObject,
 )
 from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_client_factory import (  # noqa: E501
     MongoClient,
@@ -47,9 +48,7 @@ async def test_saves_a_feed_that_can_be_found_by_id(repository: MongoFeedReposit
 async def test_stores_the_feed_document_under_its_id_keeping_nulls(
     repository: MongoFeedRepository, collection: MongoCollection
 ) -> None:
-    feed = FeedMother.random(
-        description=FeedDescription(None), updated_at=DateTimeValueObject(None)
-    )
+    feed = FeedMother.random(description=FeedDescription(None), updated_at=FeedUpdatedAt(None))
 
     await repository.save(feed)
 
@@ -69,6 +68,40 @@ async def test_find_returns_none_when_the_feed_does_not_exist(
     repository: MongoFeedRepository,
 ) -> None:
     assert await repository.find(FeedIdMother.random()) is None
+
+
+@pytest.fixture
+async def malformed_feed_id(collection: MongoCollection) -> str:
+    primitives = FeedMother.random().to_primitives()
+    await collection.insert_one(
+        {
+            **{k: v for k, v in primitives.items() if k != "id"},
+            "_id": primitives["id"],
+            "createdAt": "not-a-date",
+        }
+    )
+    return primitives["id"]
+
+
+async def test_find_raises_when_the_stored_feed_is_invalid(
+    repository: MongoFeedRepository, malformed_feed_id: str
+) -> None:
+    with pytest.raises(InvalidStoredFeed) as error:
+        await repository.find(FeedIdMother.create(malformed_feed_id))
+
+    assert str(error.value) == (
+        f"Stored feed <{malformed_feed_id}> is invalid: "
+        "<FeedCreatedAt> does not allow the value <not-a-date>"
+    )
+
+
+async def test_search_raises_when_a_stored_feed_is_invalid(
+    repository: MongoFeedRepository, malformed_feed_id: str
+) -> None:
+    await repository.save(FeedMother.random())
+
+    with pytest.raises(InvalidStoredFeed, match=f"Stored feed <{malformed_feed_id}> is invalid"):
+        await repository.search()
 
 
 async def test_delete_removes_only_the_given_feed(repository: MongoFeedRepository) -> None:

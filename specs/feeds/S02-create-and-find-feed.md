@@ -15,6 +15,9 @@ Create a CMS feed and retrieve it by id. This spec also defines the domain build
 | Required date-time | Parseable | same as above |
 
 - Date-time messages always say `<Function>`, not the class name: the original reads `this.constructor.name` inside a static method. Kept as is (improvement #16).
+
+> **Superseded by [I01](../improvements/I01-http-contract-fixes.md):** date-time messages are `<{ClassName}> does not allow the value <{value}>`, with `FeedCreatedAt` and `FeedUpdatedAt` as the feed's date value objects.
+
 - Values in messages are rendered as JavaScript's `String()` does: an absent field is `undefined`, `null` is `null`, `true`/`false`, `123`, lists joined with `,`.
 - `FeedId` = UUID; `FeedTitle` and `FeedAuthor` = required string; `FeedDescription` = optional string.
 - Equality by value. The value is **not normalized** (no trim on store).

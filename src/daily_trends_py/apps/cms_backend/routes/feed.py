@@ -60,7 +60,7 @@ async def home_feeds(request: Request) -> Response:
             [feed.to_primitives() for feed in feeds], status_code=status.HTTP_200_OK
         )
 
-    return await run_controller(action, [(InvalidArgumentError, status.HTTP_400_BAD_REQUEST)])
+    return await run_controller(action)
 
 
 @router.put("/feed/{id}")

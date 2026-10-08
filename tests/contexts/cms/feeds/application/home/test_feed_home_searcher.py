@@ -9,13 +9,11 @@ from daily_trends_py.contexts.cms.feeds.application.home.feed_home_searcher impo
 from daily_trends_py.contexts.cms.feeds.application.scrap.feed_scraper import FeedScraper
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
+from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
 from tests.contexts.cms.feeds.fakes.failing_feed_repository import FailingFeedRepository
 from tests.contexts.cms.feeds.fakes.in_memory_feed_repository import InMemoryFeedRepository
 from tests.contexts.cms.feeds.fakes.stub_feed_scrap import StubFeedScrap
-from tests.contexts.cms.shared.domain.date_time_value_object_mother import (
-    RequiredDateTimeValueObjectMother,
-)
 from tests.contexts.cms.shared.fakes.fixed_clock import FixedClock
 
 NOW = datetime(2026, 10, 8, 12, 0, tzinfo=UTC)
@@ -26,7 +24,7 @@ YESTERDAY = "2026-10-07T23:59:59.999Z"
 def _feed_created_at(created_at: str) -> Feed:
     return FeedMother.random(
         source=FeedSource.EL_MUNDO,
-        created_at=RequiredDateTimeValueObjectMother.create(created_at),
+        created_at=FeedCreatedAtMother.create(created_at),
     )
 
 

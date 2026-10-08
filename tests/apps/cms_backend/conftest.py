@@ -17,11 +17,9 @@ from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.mongo_f
 from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_client_factory import (  # noqa: E501
     MongoClient,
 )
+from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
-from tests.contexts.cms.shared.domain.date_time_value_object_mother import (
-    DateTimeValueObjectMother,
-    RequiredDateTimeValueObjectMother,
-)
+from tests.contexts.cms.feeds.domain.feed_updated_at_mother import FeedUpdatedAtMother
 from tests.mongo import TEST_MONGO_URL
 from tests.scrap_fixtures import FrontPagesTransport
 
@@ -64,9 +62,8 @@ def there_are_feeds(app: FastAPI, client: TestClient, datatable: list[list[str]]
                 "description": values["description"],
                 "author": values["author"],
                 "source": FeedSource(values["source"]),
-                "createdAt": values.get("createdAt")
-                or RequiredDateTimeValueObjectMother.now().value,
-                "updatedAt": DateTimeValueObjectMother.random().value,
+                "createdAt": values.get("createdAt") or FeedCreatedAtMother.now().value,
+                "updatedAt": FeedUpdatedAtMother.random().value,
             }
         )
         run_in_app(client, lambda feed=feed: repository.save(feed))

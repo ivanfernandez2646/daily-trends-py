@@ -7,7 +7,7 @@ created_at: '2026-10-08T11:09:26Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-implemented_at: '2026-10-08T11:28:12Z'
+implemented_at: '2026-10-08T11:32:21Z'
 implemented_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -145,30 +145,32 @@ The two changes that only touch status codes in the routes.
 
 ### Tests first
 
-- [ ] `test_date_time_value_object.py`: messages name the class and say "does not allow".
-- [ ] `test_feed_value_objects.py`: `FeedCreatedAt("not-a-date")` →
+- [x] `test_date_time_value_object.py`: messages name the class and say "does not allow".
+- [x] `test_feed_value_objects.py`: `FeedCreatedAt("not-a-date")` →
       `<FeedCreatedAt> does not allow the value <not-a-date>`; same for `FeedUpdatedAt`.
-- [ ] Add `FeedCreatedAtMother` and `FeedUpdatedAtMother`; `FeedMother` and the acceptance tests use
-      them instead of the generic date-time mothers.
-- [ ] `test_mongo_feed_repository.py`: a raw document with `createdAt: "not-a-date"` makes `find`
+- [x] Add `FeedCreatedAtMother` and `FeedUpdatedAtMother`; `FeedMother` and the acceptance tests use
+      them instead of the generic date-time mothers; the generic date-time mothers are removed
+      as unused.
+- [x] `test_mongo_feed_repository.py`: a raw document with `createdAt: "not-a-date"` makes `find`
       and `search` raise `InvalidStoredFeed` with the full message.
-- [ ] Acceptance (`test_*.py` per route): a raw malformed document inserted into Mongo makes
+- [x] Acceptance (one parametrized `test_invalid_stored_feed.py` instead of one test per route file,
+      since the scenario is identical): a raw malformed document inserted into Mongo makes
       `GET /feed/:id`, `PUT /feed/:id`, `PATCH /feed/:id`, `DELETE /feed/:id`, `GET /feed/list` and
       `GET /feed/home` answer `500 {"error": "Stored feed <{id}> is invalid: <FeedCreatedAt> does not
       allow the value <not-a-date>"}`.
-- [ ] An invalid UUID in the path still answers 400 (existing tests stay green).
+- [x] An invalid UUID in the path still answers 400 (existing tests stay green).
 
 ### Implementation
 
-- [ ] Pass the class name into the date-time parse check; drop the `<Function>` comment.
-- [ ] Add `FeedCreatedAt`/`FeedUpdatedAt` and retype `Feed`.
-- [ ] Add `InvalidStoredFeed` and wrap reconstruction in `MongoFeedRepository`.
-- [ ] Remove the `InvalidArgumentError` mapping from `home_feeds`.
-- [ ] Update `docs/openapi.yml`; add "Superseded by I01" notes in S02 (date-time row), S03 and S07.
-- [ ] Refactor without changing behavior.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Pass the class name into the date-time parse check; drop the `<Function>` comment.
+- [x] Add `FeedCreatedAt`/`FeedUpdatedAt` and retype `Feed`.
+- [x] Add `InvalidStoredFeed` and wrap reconstruction in `MongoFeedRepository`.
+- [x] Remove the `InvalidArgumentError` mapping from `home_feeds`.
+- [x] Update `docs/openapi.yml`; add "Superseded by I01" notes in S02 (date-time row), S03 and S07.
+- [x] Refactor without changing behavior.
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ## Next step
 
-Phase 3 is implemented and awaiting review. Then run `/ai-project-implement-phase` to implement Phase 4.
+All phases are implemented. After reviewing Phase 4, commit it and open a pull request for `fix/i01-http-contract-fixes`.
