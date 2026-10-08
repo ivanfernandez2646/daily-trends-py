@@ -25,3 +25,7 @@ class RequiredDateTimeValueObjectMother:
     @staticmethod
     def random() -> RequiredDateTimeValueObject:
         return RequiredDateTimeValueObject(MotherCreator.iso_date_time())
+
+    @staticmethod
+    def now() -> RequiredDateTimeValueObject:
+        return RequiredDateTimeValueObject.now()

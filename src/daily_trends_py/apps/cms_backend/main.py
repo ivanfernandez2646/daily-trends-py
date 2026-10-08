@@ -21,6 +21,9 @@ from daily_trends_py.apps.cms_backend.settings import Settings
 from daily_trends_py.contexts.cms.feeds.application.create.feed_creator import FeedCreator
 from daily_trends_py.contexts.cms.feeds.application.delete.feed_deleter import FeedDeleter
 from daily_trends_py.contexts.cms.feeds.application.find.feed_finder import FeedFinder
+from daily_trends_py.contexts.cms.feeds.application.home.feed_home_searcher import (
+    FeedHomeSearcher,
+)
 from daily_trends_py.contexts.cms.feeds.application.scrap.feed_scraper import FeedScraper
 from daily_trends_py.contexts.cms.feeds.application.search.feed_searcher import FeedSearcher
 from daily_trends_py.contexts.cms.feeds.application.update.feed_updater import FeedUpdater
@@ -40,6 +43,7 @@ from daily_trends_py.contexts.cms.shared.infrastructure.event_bus.in_memory_even
 from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_client_factory import (  # noqa: E501
     create_mongo_client,
 )
+from daily_trends_py.contexts.cms.shared.infrastructure.system_clock import SystemClock
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +75,9 @@ def create_app(
         app.state.feed_scraper = FeedScraper(
             feed_repository,
             [ElMundoFeedScraper(http_client), ElEspanolFeedScraper(http_client)],
+        )
+        app.state.feed_home_searcher = FeedHomeSearcher(
+            feed_repository, app.state.feed_scraper, SystemClock()
         )
         try:
             yield
