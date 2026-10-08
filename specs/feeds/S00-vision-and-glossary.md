@@ -6,7 +6,7 @@
 Re-implement daily-trends in Python (FastAPI + Mongo) with the same observable behavior: same API, same status codes and bodies, same data in Mongo.
 
 ## What the system is
-A news API ("feeds"). A feed is a headline with an author and an optional description. Sources: `CMS` (created by hand through the API), `EL_PAIS` and `EL_MUNDO` (obtained by scraping their front pages).
+A news API ("feeds"). A feed is a headline with an author and an optional description. Sources: `CMS` (created by hand through the API), `EL_MUNDO` and `EL_ESPANOL` (obtained by scraping their front pages), and `EL_PAIS` (scraped by the original; no longer scraped, see S06).
 
 ## Bounded context
 A single one, `cms/feeds`.
@@ -28,9 +28,9 @@ Implementation order is the table order. S04 and S05 are independent of each oth
 
 ## Glossary
 - **Feed:** aggregate root. Fields: `id`, `title`, `description` (nullable), `author`, `source`, `createdAt`, `updatedAt` (nullable).
-- **Source:** `CMS` | `EL_PAIS` | `EL_MUNDO`.
+- **Source:** `CMS` | `EL_PAIS` | `EL_MUNDO` | `EL_ESPANOL`.
 - **Front page (home):** the 10 most recent feeds from external sources.
-- **Scrap:** acquiring headlines from the El País and El Mundo front pages.
+- **Scrap:** acquiring headlines from the El Mundo and El Español front pages (El País in the original; see S06).
 
 ## Out of scope
 Authentication, scheduler, pagination, Django, production deployment. Known improvements are in `improvements/`.

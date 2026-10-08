@@ -23,6 +23,7 @@ from tests.contexts.cms.shared.domain.date_time_value_object_mother import (
     RequiredDateTimeValueObjectMother,
 )
 from tests.mongo import TEST_MONGO_URL
+from tests.scrap_fixtures import FrontPagesTransport
 
 
 def run_in_app[T](client: TestClient, function: Callable[[], Awaitable[T]]) -> T:
@@ -32,8 +33,13 @@ def run_in_app[T](client: TestClient, function: Callable[[], Awaitable[T]]) -> T
 
 
 @pytest.fixture
-def app() -> FastAPI:
-    return create_app(Settings(mongo_url=TEST_MONGO_URL))
+def front_pages_transport() -> FrontPagesTransport:
+    return FrontPagesTransport()
+
+
+@pytest.fixture
+def app(front_pages_transport: FrontPagesTransport) -> FastAPI:
+    return create_app(Settings(mongo_url=TEST_MONGO_URL), http_transport=front_pages_transport)
 
 
 @pytest.fixture

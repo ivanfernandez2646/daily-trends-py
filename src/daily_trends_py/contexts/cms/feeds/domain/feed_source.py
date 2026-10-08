@@ -5,3 +5,4 @@ class FeedSource(StrEnum):
     CMS = "CMS"
     EL_PAIS = "EL_PAIS"
     EL_MUNDO = "EL_MUNDO"
+    EL_ESPANOL = "EL_ESPANOL"

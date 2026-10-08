@@ -6,6 +6,7 @@ from daily_trends_py.apps.cms_backend.request_body import parse_body
 from daily_trends_py.contexts.cms.feeds.application.create.feed_creator import FeedCreator
 from daily_trends_py.contexts.cms.feeds.application.delete.feed_deleter import FeedDeleter
 from daily_trends_py.contexts.cms.feeds.application.find.feed_finder import FeedFinder
+from daily_trends_py.contexts.cms.feeds.application.scrap.feed_scraper import FeedScraper
 from daily_trends_py.contexts.cms.feeds.application.search.feed_searcher import FeedSearcher
 from daily_trends_py.contexts.cms.feeds.application.update.feed_updater import FeedUpdater
 from daily_trends_py.contexts.cms.feeds.domain.feed_already_exists import FeedAlreadyExists
@@ -29,6 +30,17 @@ async def list_feeds(request: Request) -> Response:
         return JSONResponse(
             [feed.to_primitives() for feed in feeds], status_code=status.HTTP_200_OK
         )
+
+    return await run_controller(action)
+
+
+@router.get("/feed/scrap")
+async def scrap_feeds(request: Request) -> Response:
+    feed_scraper: FeedScraper = request.app.state.feed_scraper
+
+    async def action() -> Response:
+        await feed_scraper.execute()
+        return Response(status_code=status.HTTP_200_OK)
 
     return await run_controller(action)
 

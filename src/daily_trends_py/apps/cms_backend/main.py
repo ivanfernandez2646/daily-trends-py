@@ -4,6 +4,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from types import TracebackType
 
+import httpx
 import uvicorn
 from fastapi import FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,11 +21,15 @@ from daily_trends_py.apps.cms_backend.settings import Settings
 from daily_trends_py.contexts.cms.feeds.application.create.feed_creator import FeedCreator
 from daily_trends_py.contexts.cms.feeds.application.delete.feed_deleter import FeedDeleter
 from daily_trends_py.contexts.cms.feeds.application.find.feed_finder import FeedFinder
+from daily_trends_py.contexts.cms.feeds.application.scrap.feed_scraper import FeedScraper
 from daily_trends_py.contexts.cms.feeds.application.search.feed_searcher import FeedSearcher
 from daily_trends_py.contexts.cms.feeds.application.update.feed_updater import FeedUpdater
 from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
 from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.mongo_feed_repository import (  # noqa: E501
     MongoFeedRepository,
+)
+from daily_trends_py.contexts.cms.feeds.infrastructure.scrap.el_espanol_feed_scraper import (
+    ElEspanolFeedScraper,
 )
 from daily_trends_py.contexts.cms.shared.infrastructure.event_bus.in_memory_event_bus import (
     InMemoryEventBus,
@@ -41,7 +46,9 @@ async def _handle_unhandled_error(_request: Request, error: Exception) -> Respon
     return PlainTextResponse(str(error), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-def create_app(settings: Settings) -> FastAPI:
+def create_app(
+    settings: Settings, http_transport: httpx.AsyncBaseTransport | None = None
+) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         mongo_client = await create_mongo_client(settings.mongo_url)
@@ -54,9 +61,15 @@ def create_app(settings: Settings) -> FastAPI:
         app.state.feed_searcher = FeedSearcher(feed_repository)
         app.state.feed_updater = FeedUpdater(feed_repository)
         app.state.feed_deleter = FeedDeleter(feed_repository)
+        # No timeout on purpose: a known defect kept by the port (specs/improvements, #8).
+        http_client = httpx.AsyncClient(
+            transport=http_transport, timeout=None, follow_redirects=True
+        )
+        app.state.feed_scraper = FeedScraper(feed_repository, [ElEspanolFeedScraper(http_client)])
         try:
             yield
         finally:
+            await http_client.aclose()
             await mongo_client.close()
 
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)

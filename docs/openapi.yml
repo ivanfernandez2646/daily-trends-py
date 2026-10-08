@@ -184,6 +184,7 @@ components:
             - CMS
             - EL_PAIS
             - EL_MUNDO
+            - EL_ESPANOL
           example: CMS
         createdAt:
           type: string
