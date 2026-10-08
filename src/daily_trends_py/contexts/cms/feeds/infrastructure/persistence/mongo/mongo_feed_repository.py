@@ -2,6 +2,7 @@ from typing import cast
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed, FeedPrimitives
 from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
+from daily_trends_py.contexts.cms.shared.domain.criteria import Criteria
 from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_client_factory import (  # noqa: E501
     MongoClient,
 )
@@ -23,3 +24,7 @@ class MongoFeedRepository(MongoRepository):
             return None
         # Documents are only written by `save`; the value objects validate them on the way back.
         return Feed.from_primitives(cast(FeedPrimitives, document))
+
+    async def search(self, criteria: Criteria | None = None) -> list[Feed]:
+        documents = await self._by_criteria(criteria or {})
+        return [Feed.from_primitives(cast(FeedPrimitives, document)) for document in documents]
