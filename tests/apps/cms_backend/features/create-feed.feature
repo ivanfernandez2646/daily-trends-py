@@ -36,7 +36,7 @@ Feature: Create feed
         "author": "Ivan"
       }
       """
-    Then The response status code should be 302
+    Then The response status code should be 409
     And The response should be:
       """
       {

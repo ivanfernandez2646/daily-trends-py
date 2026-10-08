@@ -82,7 +82,7 @@ async def create_feed(id: str, request: Request) -> Response:
     return await run_controller(
         action,
         [
-            (FeedAlreadyExists, status.HTTP_302_FOUND),
+            (FeedAlreadyExists, status.HTTP_409_CONFLICT),
             (InvalidArgumentError, status.HTTP_400_BAD_REQUEST),
         ],
     )
@@ -111,7 +111,7 @@ async def delete_feed(id: str, request: Request) -> Response:
 
     async def action() -> Response:
         await feed_deleter.execute(FeedId(id))
-        return Response(status_code=status.HTTP_200_OK)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     return await run_controller(
         action,

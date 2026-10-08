@@ -40,10 +40,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Feed'
-        '302':
-          description: Feed already exists
         '400':
           description: Invalid argument error
+        '409':
+          description: Feed already exists
     get:
       tags:
         - feed
@@ -84,8 +84,8 @@ paths:
             type: string
             format: uuid
       responses:
-        '200':
-          description: Successful operation
+        '204':
+          description: Deleted successfully
         '400':
           description: Invalid argument error
         '404':

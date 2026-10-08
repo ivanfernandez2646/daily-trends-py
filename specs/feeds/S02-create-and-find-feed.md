@@ -27,6 +27,9 @@ Create a CMS feed and retrieve it by id. This spec also defines the domain build
 - `source` is always `CMS`, never read from the body. Missing `description` → `null`.
 - Order: validate id, title, description, author (first failure wins) → check duplicate → create, save, publish `feed.created`.
 - Existing id → "already exists" error (302). Nothing is modified.
+
+  > **Superseded by [I01](../improvements/I01-http-contract-fixes.md):** an existing id answers 409.
+
 - Response 201 with the feed JSON:
 ```json
 { "id": "uuid", "title": "string", "description": "string|null", "author": "string",

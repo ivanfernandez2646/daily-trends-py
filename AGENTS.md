@@ -5,7 +5,7 @@ and keeps its hexagonal architecture with bounded contexts.
 
 ## Required workflow
 
-1. Write or update `specs/<subdomain>/<feature>.md` (bounded context `cms`, subdomain `feeds`: `specs/feeds/S0N-*.md`, read in order from `S00`).
+1. Write or update `specs/<subdomain>/<feature>.md` (bounded context `cms`, subdomain `feeds`: `specs/feeds/S0N-*.md`, read in order from `S00`). Improvements to the ported behavior go in `specs/improvements/I0N-*.md`.
 2. Run `/ai-project-create-plan` to agree public contracts and vertical phases.
 3. After approving the plan, the agent creates a feature branch automatically.
 4. Run `/ai-project-implement-phase`. It implements exactly one phase using TDD, then stops for review.
@@ -16,8 +16,8 @@ are user-invoked. Supporting skills under `.agents/skills/` are selected by the 
 
 ## Reference and scope
 
-- The original Node project is a read-only reference in `reference/daily-trends-node/` (git-ignored). Its `.feature` files are the behavioral source of truth.
-- The port keeps current behavior, defects included. Anything listed in `specs/improvements/` is out of scope: do not implement it.
+- The original Node project is a read-only reference in `reference/daily-trends-node/` (git-ignored). Its `.feature` files were the behavioral source of truth for the port (S00–S07).
+- The port is complete and keeps the original behavior, defects included. A defect listed in `specs/improvements/README.md` is in scope only once an `I0N-*.md` spec covers it; that spec then supersedes the `S0N` behavior it changes. Do not implement items without a spec.
 
 ## Architecture
 
