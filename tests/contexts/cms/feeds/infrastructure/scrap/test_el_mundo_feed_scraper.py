@@ -21,17 +21,16 @@ async def client(transport: FrontPagesTransport) -> AsyncIterator[httpx.AsyncCli
         yield client
 
 
-async def test_requests_the_front_page_as_html(
+async def test_requests_the_front_page(
     client: httpx.AsyncClient, transport: FrontPagesTransport
 ) -> None:
     await ElMundoFeedScraper(client).scrap()
 
     first_request = transport.requests[0]
     assert str(first_request.url) == "https://elmundo.es/"
-    assert first_request.headers["Content-Type"] == "text/html; charset=UTF-8"
 
 
-async def test_scraps_five_feeds_decoding_the_page_as_iso_8859_1(
+async def test_scraps_five_feeds_decoding_the_page_with_its_declared_charset(
     client: httpx.AsyncClient,
 ) -> None:
     feeds = await ElMundoFeedScraper(client).scrap()
@@ -46,7 +45,7 @@ async def test_scraps_five_feeds_decoding_the_page_as_iso_8859_1(
     assert {feed.source for feed in feeds} == {FeedSource.EL_MUNDO}
 
 
-async def test_removes_the_last_character_of_every_description_and_keeps_a_missing_one_null(
+async def test_removes_the_trailing_period_of_every_description_and_keeps_a_missing_one_null(
     client: httpx.AsyncClient,
 ) -> None:
     feeds = await ElMundoFeedScraper(client).scrap()
@@ -58,6 +57,29 @@ async def test_removes_the_last_character_of_every_description_and_keeps_a_missi
         "Urbanismo",
         "Ciencia",
     ]
+
+
+@pytest.mark.parametrize(
+    ("kicker", "description"),
+    [
+        ("¿Qué pasa?", "¿Qué pasa?"),
+        ("Sudoku...", "Sudoku.."),
+        (" Crucigrama. ", "Crucigrama"),
+        (".", None),
+    ],
+)
+async def test_removes_only_one_trailing_period(kicker: str, description: str | None) -> None:
+    page = (
+        "<article><span class='ue-c-cover-content__kicker'>"
+        f"{kicker}</span><h2 class='ue-c-cover-content__headline'>A title</h2>"
+        "<span class='ue-c-cover-content__byline-name'>"
+        "<a class='ue-c-cover-content__link'>Ana</a></span></article>"
+    )
+    transport = httpx.MockTransport(lambda _: httpx.Response(200, text=page))
+    async with httpx.AsyncClient(transport=transport) as client:
+        [feed] = await ElMundoFeedScraper(client).scrap()
+
+    assert feed.description.value == description
 
 
 @pytest.mark.network

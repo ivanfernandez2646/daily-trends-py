@@ -47,6 +47,9 @@ from daily_trends_py.contexts.cms.shared.infrastructure.system_clock import Syst
 
 logger = logging.getLogger(__name__)
 
+SCRAP_TIMEOUT_SECONDS = 10.0
+SCRAP_USER_AGENT = "daily-trends-py"
+
 
 async def _handle_unhandled_error(_request: Request, error: Exception) -> Response:
     logger.error("Unhandled error", exc_info=error)
@@ -68,9 +71,11 @@ def create_app(
         app.state.feed_searcher = FeedSearcher(feed_repository)
         app.state.feed_updater = FeedUpdater(feed_repository)
         app.state.feed_deleter = FeedDeleter(feed_repository)
-        # No timeout on purpose: a known defect kept by the port (specs/improvements, #8).
         http_client = httpx.AsyncClient(
-            transport=http_transport, timeout=None, follow_redirects=True
+            transport=http_transport,
+            timeout=SCRAP_TIMEOUT_SECONDS,
+            headers={"User-Agent": SCRAP_USER_AGENT},
+            follow_redirects=True,
         )
         app.state.feed_scraper = FeedScraper(
             feed_repository,

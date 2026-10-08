@@ -30,6 +30,9 @@ source replacement described in "Deliberate divergences". Depends on S02.
 
 - El Mundo: its description has its **last character removed** (if not `null`).
 - No timeout; no specific headers beyond `Content-Type: text/html; charset=UTF-8` on the request.
+
+> **Superseded by [I02](../improvements/I02-scraper-robustness.md):** every page is decoded with its declared charset (header, then `<meta>`, else UTF-8), so the Encoding column no longer applies; El Mundo removes only one trailing period; requests have a 10 s timeout, send `User-Agent: daily-trends-py` and no `Content-Type`.
+
 - Redirects are followed (`https://elmundo.es/` answers 301 to `https://www.elmundo.es/`).
 - A non-2xx response is not an error: its body is parsed like any other page, so it usually yields no feeds.
 

@@ -21,14 +21,13 @@ async def client(transport: FrontPagesTransport) -> AsyncIterator[httpx.AsyncCli
         yield client
 
 
-async def test_requests_the_front_page_as_html(
+async def test_requests_the_front_page(
     client: httpx.AsyncClient, transport: FrontPagesTransport
 ) -> None:
     await ElEspanolFeedScraper(client).scrap()
 
     [request] = transport.requests
     assert str(request.url) == "https://www.elespanol.com/"
-    assert request.headers["Content-Type"] == "text/html; charset=UTF-8"
 
 
 async def test_scraps_five_feeds_from_the_front_page(client: httpx.AsyncClient) -> None:

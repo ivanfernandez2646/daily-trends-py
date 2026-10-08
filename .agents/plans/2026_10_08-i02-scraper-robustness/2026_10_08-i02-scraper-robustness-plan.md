@@ -7,7 +7,7 @@ created_at: '2026-10-08T11:44:26Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-implemented_at: '2026-10-08T11:45:56Z'
+implemented_at: '2026-10-08T11:59:13Z'
 implemented_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -102,34 +102,35 @@ composition root.
 
 ### Tests first
 
-- [ ] `test_front_page.py`:
+- [x] `test_front_page.py`:
   - header `text/html; charset=iso-8859-15` and bytes encoded in iso-8859-15 decode `€`;
   - no header charset, `<meta charset="iso-8859-15">` decodes `€`;
   - neither → UTF-8 (`ñ` from UTF-8 bytes);
   - header and meta disagree → header wins;
   - unknown header charset → falls back to meta/UTF-8.
-- [ ] `test_el_mundo_feed_scraper.py` / `test_el_espanol_feed_scraper.py`: replace the `Content-Type`
+- [x] `test_el_mundo_feed_scraper.py` / `test_el_espanol_feed_scraper.py`: replace the `Content-Type`
       request assertion with "no `Content-Type` header". The El Mundo fixture test now relies on the
       declared charset. Update `tests/fixtures/scrap/el_mundo.html` and its transport to declare
-      `iso-8859-15` like the live site, if they don't already.
-- [ ] El Mundo trimming: `"Crucigrama."` → `"Crucigrama"`, `"¿Qué pasa?"` kept, `"Sudoku..."` →
+      `iso-8859-15` like the live site, if they don't already. (The fixture already had the
+      `<meta>`; `FrontPagesTransport` now also sends each site's header charset.)
+- [x] El Mundo trimming: `"Crucigrama."` → `"Crucigrama"`, `"¿Qué pasa?"` kept, `"Sudoku..."` →
       `"Sudoku.."`, `"."` → `null`.
-- [ ] A transport that raises `httpx.ReadTimeout` makes `scrap()` raise. The use-case drop is already
+- [x] A transport that raises `httpx.ReadTimeout` makes `scrap_front_page` raise. The use-case drop is already
       covered by `test_drops_a_failing_scraper_...`.
-- [ ] App-level test (in `test_scrap_feeds.py`): requests reaching the transport carry
+- [x] App-level test (in `test_scrap_feeds.py`): requests reaching the transport carry
       `User-Agent: daily-trends-py`. A transport that times out for one source still answers 200
       with the other source's feeds.
 
 ### Implementation
 
-- [ ] Remove `encoding` from `ScrapMapping` and both mappings. Decode by declared charset in
+- [x] Remove `encoding` from `ScrapMapping` and both mappings. Decode by declared charset in
       `scrap_front_page`.
-- [ ] Replace `_without_last_description_character` with `_without_trailing_period`.
-- [ ] Configure the timeout and User-Agent in `main.py`.
-- [ ] S06: "Superseded by I02" notes on the encoding column/row, the trimming rule and
+- [x] Replace `_without_last_description_character` with `_without_trailing_period`.
+- [x] Configure the timeout and User-Agent in `main.py`.
+- [x] S06: "Superseded by I02" notes on the encoding column/row, the trimming rule and
       "No timeout; no specific headers".
-- [ ] Run the quality gate from `AGENTS.md`, including the `network` smoke tests, and fix failures.
-- [ ] STOP for user review. Suggested commits:
+- [x] Run the quality gate from `AGENTS.md`, including the `network` smoke tests, and fix failures.
+- [x] STOP for user review. Suggested commits:
   - `fix(i02): decode front pages with their declared charset`
   - `fix(i02): strip only a trailing period from El Mundo descriptions`
   - `fix(i02): time out scraping requests and identify them with a User-Agent`
@@ -175,4 +176,4 @@ A new port method, its Mongo implementation and the use-case rule, verified end 
 
 ## Next step
 
-Review Phase 1, then run `/ai-project-implement-phase` for Phase 2.
+Review Phase 2, then run `/ai-project-implement-phase` for Phase 3.

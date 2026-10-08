@@ -16,8 +16,6 @@ _MAPPING = ScrapMapping(
     author_selector=".ue-c-cover-content__byline-name .ue-c-cover-content__link",
     title_selector=".ue-c-cover-content__headline",
     description_selector=".ue-c-cover-content__kicker",
-    # Always iso-8859-1, whatever charset the page declares: a known defect kept (#8).
-    encoding="iso-8859-1",
 )
 
 
@@ -27,13 +25,14 @@ class ElMundoFeedScraper:
 
     async def scrap(self) -> list[Feed]:
         feeds = await scrap_front_page(self._client, _MAPPING)
-        return [_without_last_description_character(feed) for feed in feeds]
+        return [_without_trailing_period(feed) for feed in feeds]
 
 
-def _without_last_description_character(feed: Feed) -> Feed:
-    """The kicker usually ends with a period, but the last character is removed even when it
-    is not one: a known defect kept (#8)."""
+def _without_trailing_period(feed: Feed) -> Feed:
+    """Kickers read like `Crucigrama.`, a label rather than a sentence."""
     description = feed.description.value
     if description is None:
         return feed
-    return dataclasses.replace(feed, description=FeedDescription(description[:-1] or None))
+    return dataclasses.replace(
+        feed, description=FeedDescription(description.removesuffix(".") or None)
+    )

@@ -1,8 +1,10 @@
 import asyncio
+import codecs
 from dataclasses import dataclass
 
 import httpx
 from bs4 import BeautifulSoup, Tag
+from bs4.dammit import EncodingDetector
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.feed_author import FeedAuthor
@@ -21,15 +23,33 @@ class ScrapMapping:
     author_selector: str
     title_selector: str
     description_selector: str
-    encoding: str
-    """Used whatever charset the response declares."""
 
 
 async def scrap_front_page(client: httpx.AsyncClient, mapping: ScrapMapping) -> list[Feed]:
     # A non-2xx answer is not an error: its body is parsed like any other page.
-    response = await client.get(mapping.url, headers={"Content-Type": "text/html; charset=UTF-8"})
-    html = response.content.decode(mapping.encoding, errors="replace")
-    return await asyncio.to_thread(extract_feeds, html, mapping)
+    response = await client.get(mapping.url)
+    return await asyncio.to_thread(_extract_feeds_from_response, response, mapping)
+
+
+def _extract_feeds_from_response(response: httpx.Response, mapping: ScrapMapping) -> list[Feed]:
+    return extract_feeds(response.content.decode(_charset(response), errors="replace"), mapping)
+
+
+def _charset(response: httpx.Response) -> str:
+    """The charset of the `Content-Type` header, else the document's `<meta>` one, else UTF-8."""
+    declared = (
+        response.charset_encoding,
+        EncodingDetector.find_declared_encoding(response.content, is_html=True),
+    )
+    return next((charset for charset in declared if charset and _is_known(charset)), "utf-8")
+
+
+def _is_known(charset: str) -> bool:
+    try:
+        codecs.lookup(charset)
+    except LookupError:
+        return False
+    return True
 
 
 def extract_feeds(html: str, mapping: ScrapMapping) -> list[Feed]:
