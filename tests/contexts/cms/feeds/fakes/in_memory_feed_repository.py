@@ -7,6 +7,7 @@ class InMemoryFeedRepository:
     def __init__(self, feeds: list[Feed] | None = None) -> None:
         self._feeds = {feed.id.value: feed for feed in feeds or []}
         self.saved: list[Feed] = []
+        self.deleted: list[Feed] = []
         self.searched_ids: list[FeedId] = []
         self.searched_criteria: list[Criteria | None] = []
 
@@ -17,6 +18,10 @@ class InMemoryFeedRepository:
     async def find(self, id: FeedId) -> Feed | None:
         self.searched_ids.append(id)
         return self._feeds.get(id.value)
+
+    async def delete(self, feed: Feed) -> None:
+        self._feeds.pop(feed.id.value, None)
+        self.deleted.append(feed)
 
     async def search(self, criteria: Criteria | None = None) -> list[Feed]:
         self.searched_criteria.append(criteria)
