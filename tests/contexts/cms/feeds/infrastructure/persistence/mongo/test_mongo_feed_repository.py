@@ -71,6 +71,17 @@ async def test_find_returns_none_when_the_feed_does_not_exist(
     assert await repository.find(FeedIdMother.random()) is None
 
 
+async def test_delete_removes_only_the_given_feed(repository: MongoFeedRepository) -> None:
+    feed, other = FeedMother.random(), FeedMother.random()
+    await repository.save(feed)
+    await repository.save(other)
+
+    await repository.delete(feed)
+
+    assert await repository.find(feed.id) is None
+    assert await repository.find(other.id) is not None
+
+
 @pytest.fixture
 async def stored_feeds(repository: MongoFeedRepository) -> list[Feed]:
     sources = [

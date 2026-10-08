@@ -81,6 +81,11 @@ def send_patch_request_with_body(client: TestClient, path: str, docstring: str) 
     return client.patch(path, json=json.loads(docstring))
 
 
+@when(parsers.parse('I send a DELETE request to "{path}"'), target_fixture="response")
+def send_delete_request(client: TestClient, path: str) -> httpx2.Response:
+    return client.delete(path)
+
+
 @then(parsers.parse("The response status code should be {status_code:d}"))
 def response_status_code_is(response: httpx2.Response, status_code: int) -> None:
     assert response.status_code == status_code
@@ -89,6 +94,11 @@ def response_status_code_is(response: httpx2.Response, status_code: int) -> None
 @then("The response should be:")
 def response_is(response: httpx2.Response, docstring: str) -> None:
     assert response.json() == json.loads(docstring)
+
+
+@then("The response should be empty")
+def response_is_empty(response: httpx2.Response) -> None:
+    assert response.content == b""
 
 
 def _matching_part(actual: object, expected: object) -> object:

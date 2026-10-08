@@ -18,6 +18,7 @@ from daily_trends_py.apps.cms_backend.request_body import (
 from daily_trends_py.apps.cms_backend.routes import register_routes
 from daily_trends_py.apps.cms_backend.settings import Settings
 from daily_trends_py.contexts.cms.feeds.application.create.feed_creator import FeedCreator
+from daily_trends_py.contexts.cms.feeds.application.delete.feed_deleter import FeedDeleter
 from daily_trends_py.contexts.cms.feeds.application.find.feed_finder import FeedFinder
 from daily_trends_py.contexts.cms.feeds.application.search.feed_searcher import FeedSearcher
 from daily_trends_py.contexts.cms.feeds.application.update.feed_updater import FeedUpdater
@@ -52,6 +53,7 @@ def create_app(settings: Settings) -> FastAPI:
         app.state.feed_finder = FeedFinder(feed_repository)
         app.state.feed_searcher = FeedSearcher(feed_repository)
         app.state.feed_updater = FeedUpdater(feed_repository)
+        app.state.feed_deleter = FeedDeleter(feed_repository)
         try:
             yield
         finally:

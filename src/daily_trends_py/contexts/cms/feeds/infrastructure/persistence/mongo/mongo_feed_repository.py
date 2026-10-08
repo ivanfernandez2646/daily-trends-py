@@ -25,6 +25,9 @@ class MongoFeedRepository(MongoRepository):
         # Documents are only written by `save`; the value objects validate them on the way back.
         return Feed.from_primitives(cast(FeedPrimitives, document))
 
+    async def delete(self, feed: Feed) -> None:
+        await self._remove(feed.id.value)
+
     async def search(self, criteria: Criteria | None = None) -> list[Feed]:
         documents = await self._by_criteria(criteria or {})
         return [Feed.from_primitives(cast(FeedPrimitives, document)) for document in documents]
