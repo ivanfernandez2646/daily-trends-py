@@ -6,13 +6,13 @@ Each item is current behavior that the port **keeps**, with the proposed improve
 |---|---|---|---|---|
 | 1 | Per-environment config (`dev.json`/`test.json`) is never loaded | S01 | Load per environment / `.env` | |
 | 2 | Duplicate feed returns 302 without `Location` | S01/S02 | 409 Conflict | [I01](I01-http-contract-fixes.md) |
-| 3 | Every scraping run re-inserts the same headlines | S06 | Deduplicate by source + title + day | |
+| 3 | Every scraping run re-inserts the same headlines | S06 | Deduplicate by source + title + day | [I02](I02-scraper-robustness.md) |
 | 4 | If scrapers fail, the front page retries on every request | S07 | Cooldown or scheduled job | |
 | 5 | Scraping runs inline inside an HTTP request | S07 | Background job | |
-| 6 | "Id already exists, regenerate" loop with no practical effect | S06 | Remove | |
+| 6 | "Id already exists, regenerate" loop with no practical effect | S06 | Remove | [I02](I02-scraper-robustness.md) |
 | 7 | `PATCH` with `title: ""` is ignored, `"  "` gives 400, `description: ""` is accepted | S04 | Unify validation | [I01](I01-http-contract-fixes.md) |
-| 8 | El Mundo always iso-8859-1 and last description character trimmed; no timeout or User-Agent, so a site that never answers also hangs `/feed/home` | S06/S07 | Detect charset, timeout, document trimming | |
-| 9 | Scraper stores description `""` instead of `null` | S06 | Normalize to `null` | |
+| 8 | El Mundo always iso-8859-1 and last description character trimmed; no timeout or User-Agent, so a site that never answers also hangs `/feed/home` | S06/S07 | Detect charset, timeout, document trimming | [I02](I02-scraper-robustness.md) |
+| 9 | Scraper stores description `""` instead of `null` | S06 | Normalize to `null` | [I02](I02-scraper-robustness.md) |
 | 10 | Empty or missing `$or` filter is fragile | S03 | Rewrite criteria | |
 | 11 | `DELETE` and `/feed/scrap` answer 200 empty | S05/S06 | 204 / scraping result | [I01](I01-http-contract-fixes.md) |
 | 12 | Dates ordered as text | S02/S03 | Native date types in Mongo | |

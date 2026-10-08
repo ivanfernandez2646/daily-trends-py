@@ -34,3 +34,24 @@ def test_scraping_answers_an_empty_array_and_stores_nothing_when_every_source_fa
     assert response.status_code == 200
     assert response.json() == []
     assert client.get("/feed/list").json() == []
+
+
+def test_scraping_identifies_itself_with_a_user_agent(
+    client: TestClient, front_pages_transport: FrontPagesTransport
+) -> None:
+    client.get("/feed/scrap")
+
+    assert front_pages_transport.requests
+    assert {request.headers["User-Agent"] for request in front_pages_transport.requests} == {
+        "daily-trends-py"
+    }
+
+
+@pytest.mark.parametrize(
+    "front_pages_transport", [FrontPagesTransport(timing_out_hosts={"www.elmundo.es"})]
+)
+def test_scraping_returns_the_other_source_when_one_times_out(client: TestClient) -> None:
+    response = client.get("/feed/scrap")
+
+    assert response.status_code == 200
+    assert [feed["source"] for feed in response.json()] == ["EL_ESPANOL"] * 5

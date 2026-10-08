@@ -1,10 +1,14 @@
 from datetime import UTC, datetime
 
+import httpx
+import pytest
+
 from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
 from daily_trends_py.contexts.cms.feeds.infrastructure.scrap.front_page import (
     ScrapMapping,
     extract_feeds,
+    scrap_front_page,
 )
 
 MAPPING = ScrapMapping(
@@ -13,7 +17,6 @@ MAPPING = ScrapMapping(
     author_selector=".author",
     title_selector=".title",
     description_selector=".description",
-    encoding="utf-8",
 )
 
 
@@ -72,12 +75,15 @@ def test_stops_at_five_feeds() -> None:
     assert [feed.title.value for feed in feeds] == [f"Title {index}" for index in range(5)]
 
 
-def test_stores_a_missing_description_as_an_empty_string() -> None:
-    html = "<article><span class='author'>Ana</span><h2 class='title'>A title</h2></article>"
+def test_stores_a_missing_or_blank_description_as_null() -> None:
+    html = (
+        "<article><span class='author'>Ana</span><h2 class='title'>No description</h2></article>"
+        + _article(title="Blank description", description="  \n ")
+    )
 
-    [feed] = extract_feeds(html, MAPPING)
+    feeds = extract_feeds(html, MAPPING)
 
-    assert feed.description.value == ""
+    assert [feed.description.value for feed in feeds] == [None, None]
 
 
 def test_joins_the_text_of_every_match() -> None:
@@ -93,3 +99,84 @@ def test_joins_the_text_of_every_match() -> None:
 
 def test_extracts_nothing_from_a_page_without_articles() -> None:
     assert extract_feeds("<html><p>Please enable JS</p></html>", MAPPING) == []
+
+
+def _page(title: str, meta_charset: str | None = None) -> str:
+    meta = f'<meta charset="{meta_charset}">' if meta_charset else ""
+    return f"<html><head>{meta}</head><body>{_article(title=title)}</body></html>"
+
+
+async def _scrap_titles(response: httpx.Response) -> list[str | None]:
+    async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _: response)) as client:
+        feeds = await scrap_front_page(client, MAPPING)
+    return [feed.title.value for feed in feeds]
+
+
+async def test_decodes_the_page_with_the_charset_of_the_content_type_header() -> None:
+    response = httpx.Response(
+        200,
+        headers={"Content-Type": "text/html; charset=iso-8859-15"},
+        content=_page("Cuesta 5 €").encode("iso-8859-15"),
+    )
+
+    assert await _scrap_titles(response) == ["Cuesta 5 €"]
+
+
+async def test_decodes_the_page_with_its_meta_charset_when_the_header_declares_none() -> None:
+    response = httpx.Response(
+        200,
+        headers={"Content-Type": "text/html"},
+        content=_page("Cuesta 5 €", meta_charset="iso-8859-15").encode("iso-8859-15"),
+    )
+
+    assert await _scrap_titles(response) == ["Cuesta 5 €"]
+
+
+async def test_decodes_the_page_as_utf_8_when_nothing_declares_a_charset() -> None:
+    response = httpx.Response(200, content=_page("España").encode())
+
+    assert await _scrap_titles(response) == ["España"]
+
+
+async def test_prefers_the_header_charset_over_the_meta_charset() -> None:
+    response = httpx.Response(
+        200,
+        headers={"Content-Type": "text/html; charset=iso-8859-15"},
+        content=_page("Cuesta 5 €", meta_charset="utf-8").encode("iso-8859-15"),
+    )
+
+    assert await _scrap_titles(response) == ["Cuesta 5 €"]
+
+
+async def test_ignores_an_unknown_header_charset() -> None:
+    response = httpx.Response(
+        200,
+        headers={"Content-Type": "text/html; charset=not-a-charset"},
+        content=_page("Cuesta 5 €", meta_charset="iso-8859-15").encode("iso-8859-15"),
+    )
+
+    assert await _scrap_titles(response) == ["Cuesta 5 €"]
+
+
+async def test_requests_the_page_without_a_content_type_header() -> None:
+    requests: list[httpx.Request] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, content=b"")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as client:
+        await scrap_front_page(client, MAPPING)
+
+    [request] = requests
+    assert str(request.url) == "https://news.example/"
+    assert "Content-Type" not in request.headers
+
+
+async def test_fails_when_the_request_times_out() -> None:
+    def time_out(request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("The site never answered", request=request)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(time_out)) as client:
+        with pytest.raises(httpx.ReadTimeout):
+            await scrap_front_page(client, MAPPING)

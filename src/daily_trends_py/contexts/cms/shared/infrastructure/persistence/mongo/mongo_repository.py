@@ -34,6 +34,9 @@ class MongoRepository:
         cursor = self._collection.find(query, sort=sort or None, limit=criteria.get("limit", 0))
         return [_with_id(document) async for document in cursor]
 
+    async def _exists(self, query: MongoDocument) -> bool:
+        return await self._collection.find_one(query, projection={"_id": 1}) is not None
+
     async def _remove(self, id: str) -> None:
         await self._collection.delete_one({"_id": id})
 

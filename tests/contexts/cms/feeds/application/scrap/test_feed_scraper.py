@@ -1,6 +1,10 @@
 import pytest
 
 from daily_trends_py.contexts.cms.feeds.application.scrap.feed_scraper import FeedScraper
+from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
+from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
+from daily_trends_py.contexts.cms.feeds.domain.feed_title import FeedTitle
+from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
 from tests.contexts.cms.feeds.fakes.failing_feed_repository import FailingFeedRepository
 from tests.contexts.cms.feeds.fakes.in_memory_feed_repository import InMemoryFeedRepository
@@ -50,17 +54,15 @@ async def test_saves_nothing_when_the_scrapers_return_nothing() -> None:
     assert repository.saved == []
 
 
-async def test_regenerates_and_returns_the_id_of_a_feed_whose_id_already_exists() -> None:
-    existing = FeedMother.random()
-    scraped = FeedMother.random(id=existing.id)
-    repository = InMemoryFeedRepository([existing])
+async def test_saves_each_feed_with_its_own_id_without_looking_it_up() -> None:
+    scraped = FeedMother.random()
+    repository = InMemoryFeedRepository()
 
     result = await FeedScraper(repository, [StubFeedScrap([scraped])]).execute()
 
-    [saved] = repository.saved
-    assert result == [saved]
-    assert saved.id != existing.id
-    assert {**saved.to_primitives(), "id": scraped.id.value} == scraped.to_primitives()
+    assert repository.saved == [scraped]
+    assert result == [scraped]
+    assert repository.searched_ids == []
 
 
 async def test_propagates_a_save_error_keeping_the_feeds_already_saved() -> None:
@@ -71,3 +73,45 @@ async def test_propagates_a_save_error_keeping_the_feeds_already_saved() -> None
         await FeedScraper(repository, [StubFeedScrap(feeds)]).execute()
 
     assert repository.saved == feeds[:1]
+
+
+def _headline(source: FeedSource, title: str, created_at: str) -> Feed:
+    return FeedMother.random(
+        source=source,
+        title=FeedTitle(title),
+        created_at=FeedCreatedAtMother.create(created_at),
+    )
+
+
+async def test_skips_a_headline_already_stored_the_same_utc_day() -> None:
+    stored = _headline(FeedSource.EL_MUNDO, "Same headline", "2026-10-08T00:00:00.000Z")
+    repeated = _headline(FeedSource.EL_MUNDO, "Same headline", "2026-10-08T23:59:59.999Z")
+    new = _headline(FeedSource.EL_MUNDO, "Another headline", "2026-10-08T12:00:00.000Z")
+    repository = InMemoryFeedRepository([stored])
+
+    result = await FeedScraper(repository, [StubFeedScrap([repeated, new])]).execute()
+
+    assert repository.saved == [new]
+    assert result == [new]
+
+
+async def test_saves_only_the_first_of_two_equal_headlines_in_the_same_run() -> None:
+    first = _headline(FeedSource.EL_ESPANOL, "Same headline", "2026-10-08T10:00:00.000Z")
+    second = _headline(FeedSource.EL_ESPANOL, "Same headline", "2026-10-08T10:00:00.001Z")
+    repository = InMemoryFeedRepository()
+
+    result = await FeedScraper(repository, [StubFeedScrap([first, second])]).execute()
+
+    assert repository.saved == [first]
+    assert result == [first]
+
+
+async def test_saves_a_headline_stored_on_a_previous_utc_day_or_by_another_source() -> None:
+    yesterday = _headline(FeedSource.EL_MUNDO, "Same headline", "2026-10-07T23:59:59.999Z")
+    other_source = _headline(FeedSource.CMS, "Same headline", "2026-10-08T09:00:00.000Z")
+    scraped = _headline(FeedSource.EL_MUNDO, "Same headline", "2026-10-08T10:00:00.000Z")
+    repository = InMemoryFeedRepository([yesterday, other_source])
+
+    result = await FeedScraper(repository, [StubFeedScrap([scraped])]).execute()
+
+    assert result == [scraped]

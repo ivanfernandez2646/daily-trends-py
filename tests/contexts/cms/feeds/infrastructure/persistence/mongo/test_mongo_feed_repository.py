@@ -1,10 +1,12 @@
 from collections.abc import AsyncIterator
+from datetime import date
 
 import pytest
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.feed_description import FeedDescription
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
+from daily_trends_py.contexts.cms.feeds.domain.feed_title import FeedTitle
 from daily_trends_py.contexts.cms.feeds.domain.feed_updated_at import FeedUpdatedAt
 from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.invalid_stored_feed import (  # noqa: E501
     InvalidStoredFeed,
@@ -16,6 +18,7 @@ from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_
     MongoClient,
     MongoCollection,
 )
+from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_id_mother import FeedIdMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
 
@@ -208,3 +211,46 @@ async def test_search_maps_documents_back_to_feeds(
     found = await repository.search({"filter": [{"source": FeedSource.EL_PAIS}]})
 
     assert [feed.to_primitives() for feed in found] == [stored_feeds[3].to_primitives()]
+
+
+@pytest.mark.parametrize("created_at", ["2026-10-08T00:00:00.000Z", "2026-10-08T23:59:59.999Z"])
+async def test_exists_headline_finds_a_feed_with_the_same_source_and_title_that_day(
+    repository: MongoFeedRepository, created_at: str
+) -> None:
+    await repository.save(
+        FeedMother.random(
+            source=FeedSource.EL_MUNDO,
+            title=FeedTitle("Same headline"),
+            created_at=FeedCreatedAtMother.create(created_at),
+        )
+    )
+
+    assert await repository.exists_headline(
+        FeedSource.EL_MUNDO, FeedTitle("Same headline"), date(2026, 10, 8)
+    )
+
+
+@pytest.mark.parametrize(
+    ("source", "title", "created_at"),
+    [
+        (FeedSource.EL_ESPANOL, "Same headline", "2026-10-08T12:00:00.000Z"),
+        (FeedSource.EL_MUNDO, "Another headline", "2026-10-08T12:00:00.000Z"),
+        (FeedSource.EL_MUNDO, "same headline", "2026-10-08T12:00:00.000Z"),
+        (FeedSource.EL_MUNDO, "Same headline", "2026-10-07T23:59:59.999Z"),
+        (FeedSource.EL_MUNDO, "Same headline", "2026-10-09T00:00:00.000Z"),
+    ],
+)
+async def test_exists_headline_ignores_another_source_title_or_day(
+    repository: MongoFeedRepository, source: FeedSource, title: str, created_at: str
+) -> None:
+    await repository.save(
+        FeedMother.random(
+            source=source,
+            title=FeedTitle(title),
+            created_at=FeedCreatedAtMother.create(created_at),
+        )
+    )
+
+    assert not await repository.exists_headline(
+        FeedSource.EL_MUNDO, FeedTitle("Same headline"), date(2026, 10, 8)
+    )
