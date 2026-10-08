@@ -6,6 +6,7 @@ from daily_trends_py.apps.cms_backend.request_body import parse_body
 from daily_trends_py.contexts.cms.feeds.application.create.feed_creator import FeedCreator
 from daily_trends_py.contexts.cms.feeds.application.find.feed_finder import FeedFinder
 from daily_trends_py.contexts.cms.feeds.application.search.feed_searcher import FeedSearcher
+from daily_trends_py.contexts.cms.feeds.application.update.feed_updater import FeedUpdater
 from daily_trends_py.contexts.cms.feeds.domain.feed_already_exists import FeedAlreadyExists
 from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
 from daily_trends_py.contexts.cms.feeds.domain.feed_not_found import FeedNotFound
@@ -64,6 +65,31 @@ async def find_feed(id: str, request: Request) -> Response:
 
     async def action() -> Response:
         feed = await feed_finder.execute(FeedId(id))
+        return JSONResponse(feed.to_primitives(), status_code=status.HTTP_200_OK)
+
+    return await run_controller(
+        action,
+        [
+            (FeedNotFound, status.HTTP_404_NOT_FOUND),
+            (InvalidArgumentError, status.HTTP_400_BAD_REQUEST),
+        ],
+    )
+
+
+@router.patch("/feed/{id}")
+async def update_feed(id: str, request: Request) -> Response:
+    feed_updater: FeedUpdater = request.app.state.feed_updater
+
+    body = await parse_body(request)
+
+    async def action() -> Response:
+        feed = await feed_updater.execute(
+            {
+                "id": id,
+                "title": body.get("title", MISSING),
+                "description": body.get("description", MISSING),
+            }
+        )
         return JSONResponse(feed.to_primitives(), status_code=status.HTTP_200_OK)
 
     return await run_controller(

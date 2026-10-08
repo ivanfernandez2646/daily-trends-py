@@ -76,6 +76,11 @@ def send_put_request_with_body(client: TestClient, path: str, docstring: str) ->
     return client.put(path, json=json.loads(docstring))
 
 
+@when(parsers.parse('I send a PATCH request to "{path}" with body:'), target_fixture="response")
+def send_patch_request_with_body(client: TestClient, path: str, docstring: str) -> httpx2.Response:
+    return client.patch(path, json=json.loads(docstring))
+
+
 @then(parsers.parse("The response status code should be {status_code:d}"))
 def response_status_code_is(response: httpx2.Response, status_code: int) -> None:
     assert response.status_code == status_code

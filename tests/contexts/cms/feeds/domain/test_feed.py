@@ -10,7 +10,9 @@ from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
 from tests.contexts.cms.feeds.domain.feed_author_mother import FeedAuthorMother
 from tests.contexts.cms.feeds.domain.feed_description_mother import FeedDescriptionMother
 from tests.contexts.cms.feeds.domain.feed_id_mother import FeedIdMother
+from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
 from tests.contexts.cms.feeds.domain.feed_title_mother import FeedTitleMother
+from tests.contexts.cms.shared.domain.date_time_value_object_mother import DateTimeValueObjectMother
 from tests.contexts.cms.shared.domain.mother_creator import MotherCreator
 
 
@@ -55,3 +57,37 @@ def test_create_sets_creation_dates_and_records_feed_created() -> None:
     assert isinstance(event, FeedCreatedDomainEvent)
     assert event.event_name == "feed.created"
     assert (event.aggregate_id, event.title) == (id.value, title.value)
+
+
+def test_update_returns_none_when_nothing_changes() -> None:
+    feed = FeedMother.random()
+
+    assert feed.update() is None
+    assert feed.update(title=feed.title, description=feed.description) is None
+
+
+def test_update_returns_a_new_feed_with_the_new_title_and_update_date() -> None:
+    feed = FeedMother.random(updated_at=DateTimeValueObjectMother.create(None))
+    title = FeedTitleMother.random()
+    before = datetime.now(UTC)
+
+    updated = feed.update(title=title)
+
+    assert updated is not None
+    assert updated.to_primitives() == {
+        **feed.to_primitives(),
+        "title": title.value,
+        "updatedAt": updated.updated_at.value,
+    }
+    assert updated.updated_at.value is not None
+    assert before - timedelta(milliseconds=1) <= datetime.fromisoformat(updated.updated_at.value)
+    assert updated.pull_domain_events() == []
+
+
+def test_update_sets_the_description_to_null() -> None:
+    feed = FeedMother.random(description=FeedDescriptionMother.create("A description"))
+
+    updated = feed.update(description=FeedDescriptionMother.create(None))
+
+    assert updated is not None
+    assert updated.description.value is None

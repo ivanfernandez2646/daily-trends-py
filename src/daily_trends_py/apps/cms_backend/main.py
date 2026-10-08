@@ -20,6 +20,7 @@ from daily_trends_py.apps.cms_backend.settings import Settings
 from daily_trends_py.contexts.cms.feeds.application.create.feed_creator import FeedCreator
 from daily_trends_py.contexts.cms.feeds.application.find.feed_finder import FeedFinder
 from daily_trends_py.contexts.cms.feeds.application.search.feed_searcher import FeedSearcher
+from daily_trends_py.contexts.cms.feeds.application.update.feed_updater import FeedUpdater
 from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
 from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.mongo_feed_repository import (  # noqa: E501
     MongoFeedRepository,
@@ -50,6 +51,7 @@ def create_app(settings: Settings) -> FastAPI:
         app.state.feed_creator = FeedCreator(feed_repository, event_bus)
         app.state.feed_finder = FeedFinder(feed_repository)
         app.state.feed_searcher = FeedSearcher(feed_repository)
+        app.state.feed_updater = FeedUpdater(feed_repository)
         try:
             yield
         finally:
