@@ -7,7 +7,7 @@ created_at: '2026-10-08T11:09:26Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-implemented_at: '2026-10-08T11:20:25Z'
+implemented_at: '2026-10-08T11:22:37Z'
 implemented_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -84,22 +84,22 @@ The two changes that only touch status codes in the routes.
 
 ### Tests first
 
-- [ ] `test_feed_scraper.py`: returns the saved feeds in scraper order; when one scraper fails it
+- [x] `test_feed_scraper.py`: returns the saved feeds in scraper order; when one scraper fails it
       returns only the other's feeds; returns `[]` when every scraper fails; a regenerated id is the
       one in the returned feed.
-- [ ] `features/scrap-feed.feature`: the `/feed/scrap` step expects `The response is an array with
+- [x] `features/scrap-feed.feature`: the `/feed/scrap` step expects `The response is an array with
       length 10` instead of an empty body.
-- [ ] `test_scrap_feeds.py`: one source failing → the response is 5 `EL_ESPANOL` feeds equal to
+- [x] `test_scrap_feeds.py`: one source failing → the response is 5 `EL_ESPANOL` feeds equal to
       `/feed/list`; every source failing → `200` with `[]`.
 
 ### Implementation
 
-- [ ] `FeedScraper.execute` collects and returns the saved feeds.
-- [ ] `routes/feed.py`: `scrap_feeds` returns `JSONResponse([...to_primitives()], 200)`.
-- [ ] Update `docs/openapi.yml`; add a "Superseded by I01" note in S06.
-- [ ] Refactor without changing behavior.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] `FeedScraper.execute` collects and returns the saved feeds.
+- [x] `routes/feed.py`: `scrap_feeds` returns `JSONResponse([...to_primitives()], 200)`.
+- [x] Update `docs/openapi.yml`; add a "Superseded by I01" note in S06.
+- [x] Refactor without changing behavior.
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ## Phase 3: `PATCH` validates a present title like `PUT`
 
@@ -171,4 +171,4 @@ The two changes that only touch status codes in the routes.
 
 ## Next step
 
-Phase 1 is implemented and awaiting review. Then run `/ai-project-implement-phase` to implement Phase 2.
+Phase 2 is implemented and awaiting review. Then run `/ai-project-implement-phase` to implement Phase 3.

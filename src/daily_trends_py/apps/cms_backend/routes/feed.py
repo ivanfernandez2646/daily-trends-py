@@ -42,8 +42,10 @@ async def scrap_feeds(request: Request) -> Response:
     feed_scraper: FeedScraper = request.app.state.feed_scraper
 
     async def action() -> Response:
-        await feed_scraper.execute()
-        return Response(status_code=status.HTTP_200_OK)
+        feeds = await feed_scraper.execute()
+        return JSONResponse(
+            [feed.to_primitives() for feed in feeds], status_code=status.HTTP_200_OK
+        )
 
     return await run_controller(action)
 

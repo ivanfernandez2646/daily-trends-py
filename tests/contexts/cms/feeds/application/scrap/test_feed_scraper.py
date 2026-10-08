@@ -7,44 +7,58 @@ from tests.contexts.cms.feeds.fakes.in_memory_feed_repository import InMemoryFee
 from tests.contexts.cms.feeds.fakes.stub_feed_scrap import StubFeedScrap
 
 
-async def test_saves_every_feed_of_every_scraper_in_scraper_order() -> None:
+async def test_saves_and_returns_every_feed_of_every_scraper_in_scraper_order() -> None:
     first_feeds = [FeedMother.random(), FeedMother.random()]
     second_feeds = [FeedMother.random()]
     scrapers = [StubFeedScrap(first_feeds), StubFeedScrap(second_feeds)]
     repository = InMemoryFeedRepository()
 
-    await FeedScraper(repository, scrapers).execute()
+    result = await FeedScraper(repository, scrapers).execute()
 
     assert repository.saved == [*first_feeds, *second_feeds]
+    assert result == repository.saved
     assert [scraper.calls for scraper in scrapers] == [1, 1]
 
 
-async def test_drops_a_failing_scraper_and_saves_the_others() -> None:
+async def test_drops_a_failing_scraper_and_saves_and_returns_the_others() -> None:
     feeds = [FeedMother.random(), FeedMother.random()]
     scrapers = [StubFeedScrap(error=RuntimeError("blocked")), StubFeedScrap(feeds)]
     repository = InMemoryFeedRepository()
 
-    await FeedScraper(repository, scrapers).execute()
+    result = await FeedScraper(repository, scrapers).execute()
 
     assert repository.saved == feeds
+    assert result == feeds
+
+
+async def test_returns_nothing_when_every_scraper_fails() -> None:
+    scrapers = [StubFeedScrap(error=RuntimeError("blocked")) for _ in range(2)]
+    repository = InMemoryFeedRepository()
+
+    result = await FeedScraper(repository, scrapers).execute()
+
+    assert result == []
+    assert repository.saved == []
 
 
 async def test_saves_nothing_when_the_scrapers_return_nothing() -> None:
     repository = InMemoryFeedRepository()
 
-    await FeedScraper(repository, [StubFeedScrap(), StubFeedScrap()]).execute()
+    result = await FeedScraper(repository, [StubFeedScrap(), StubFeedScrap()]).execute()
 
+    assert result == []
     assert repository.saved == []
 
 
-async def test_regenerates_the_id_of_a_feed_whose_id_already_exists() -> None:
+async def test_regenerates_and_returns_the_id_of_a_feed_whose_id_already_exists() -> None:
     existing = FeedMother.random()
     scraped = FeedMother.random(id=existing.id)
     repository = InMemoryFeedRepository([existing])
 
-    await FeedScraper(repository, [StubFeedScrap([scraped])]).execute()
+    result = await FeedScraper(repository, [StubFeedScrap([scraped])]).execute()
 
     [saved] = repository.saved
+    assert result == [saved]
     assert saved.id != existing.id
     assert {**saved.to_primitives(), "id": scraped.id.value} == scraped.to_primitives()
 
