@@ -15,6 +15,9 @@ Create a CMS feed and retrieve it by id. This spec also defines the domain build
 | Required date-time | Parseable | same as above |
 
 - Date-time messages always say `<Function>`, not the class name: the original reads `this.constructor.name` inside a static method. Kept as is (improvement #16).
+
+> **Superseded by [I01](../improvements/I01-http-contract-fixes.md):** date-time messages are `<{ClassName}> does not allow the value <{value}>`, with `FeedCreatedAt` and `FeedUpdatedAt` as the feed's date value objects.
+
 - Values in messages are rendered as JavaScript's `String()` does: an absent field is `undefined`, `null` is `null`, `true`/`false`, `123`, lists joined with `,`.
 - `FeedId` = UUID; `FeedTitle` and `FeedAuthor` = required string; `FeedDescription` = optional string.
 - Equality by value. The value is **not normalized** (no trim on store).
@@ -27,6 +30,9 @@ Create a CMS feed and retrieve it by id. This spec also defines the domain build
 - `source` is always `CMS`, never read from the body. Missing `description` → `null`.
 - Order: validate id, title, description, author (first failure wins) → check duplicate → create, save, publish `feed.created`.
 - Existing id → "already exists" error (302). Nothing is modified.
+
+  > **Superseded by [I01](../improvements/I01-http-contract-fixes.md):** an existing id answers 409.
+
 - Response 201 with the feed JSON:
 ```json
 { "id": "uuid", "title": "string", "description": "string|null", "author": "string",

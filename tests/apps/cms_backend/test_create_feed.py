@@ -9,7 +9,7 @@ pytestmark = pytest.mark.integration
 scenarios("features/create-feed.feature")
 
 
-def test_creating_the_same_id_twice_answers_302_and_keeps_the_first_feed(
+def test_creating_the_same_id_twice_answers_409_and_keeps_the_first_feed(
     client: TestClient,
 ) -> None:
     id = MotherCreator.uuid()
@@ -18,7 +18,7 @@ def test_creating_the_same_id_twice_answers_302_and_keeps_the_first_feed(
     response = client.put(f"/feed/{id}", json={"title": "Second", "author": "Ivan"})
 
     assert created.status_code == 201
-    assert response.status_code == 302
+    assert response.status_code == 409
     assert "location" not in response.headers
     assert response.json() == {"error": f"Feed with id <{id}> already exists"}
     assert client.get(f"/feed/{id}").json() == created.json()

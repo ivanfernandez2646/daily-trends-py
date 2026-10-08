@@ -54,12 +54,12 @@ def test_maps_declared_not_found_error_to_404_keeping_angle_brackets() -> None:
     assert response.content == b'{"error":"Feed with id <x> not found"}'
 
 
-def test_maps_declared_already_exists_error_to_302_without_location() -> None:
+def test_maps_declared_already_exists_error_to_409_without_location() -> None:
     response = request(
-        AlreadyExistsError("Feed with id <x> already exists"), [(AlreadyExistsError, 302)]
+        AlreadyExistsError("Feed with id <x> already exists"), [(AlreadyExistsError, 409)]
     )
 
-    assert response.status_code == 302
+    assert response.status_code == 409
     assert response.content == b'{"error":"Feed with id <x> already exists"}'
     assert "location" not in response.headers
 

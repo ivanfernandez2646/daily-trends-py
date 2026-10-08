@@ -42,8 +42,10 @@ async def scrap_feeds(request: Request) -> Response:
     feed_scraper: FeedScraper = request.app.state.feed_scraper
 
     async def action() -> Response:
-        await feed_scraper.execute()
-        return Response(status_code=status.HTTP_200_OK)
+        feeds = await feed_scraper.execute()
+        return JSONResponse(
+            [feed.to_primitives() for feed in feeds], status_code=status.HTTP_200_OK
+        )
 
     return await run_controller(action)
 
@@ -58,7 +60,7 @@ async def home_feeds(request: Request) -> Response:
             [feed.to_primitives() for feed in feeds], status_code=status.HTTP_200_OK
         )
 
-    return await run_controller(action, [(InvalidArgumentError, status.HTTP_400_BAD_REQUEST)])
+    return await run_controller(action)
 
 
 @router.put("/feed/{id}")
@@ -82,7 +84,7 @@ async def create_feed(id: str, request: Request) -> Response:
     return await run_controller(
         action,
         [
-            (FeedAlreadyExists, status.HTTP_302_FOUND),
+            (FeedAlreadyExists, status.HTTP_409_CONFLICT),
             (InvalidArgumentError, status.HTTP_400_BAD_REQUEST),
         ],
     )
@@ -111,7 +113,7 @@ async def delete_feed(id: str, request: Request) -> Response:
 
     async def action() -> Response:
         await feed_deleter.execute(FeedId(id))
-        return Response(status_code=status.HTTP_200_OK)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     return await run_controller(
         action,

@@ -11,10 +11,8 @@ from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.mongo_f
     MongoFeedRepository,
 )
 from tests.apps.cms_backend.conftest import run_in_app
+from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
-from tests.contexts.cms.shared.domain.date_time_value_object_mother import (
-    RequiredDateTimeValueObjectMother,
-)
 from tests.scrap_fixtures import FrontPagesTransport
 
 pytestmark = pytest.mark.integration
@@ -25,7 +23,7 @@ scenarios("features/home-feed.feature")
 def _feed_created_at(created_at: datetime, source: FeedSource) -> Feed:
     return FeedMother.random(
         source=source,
-        created_at=RequiredDateTimeValueObjectMother.create(
+        created_at=FeedCreatedAtMother.create(
             created_at.isoformat(timespec="milliseconds").replace("+00:00", "Z")
         ),
     )

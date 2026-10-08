@@ -9,6 +9,9 @@
 4. Response 200 with the array. Never includes `CMS` feeds.
 
 - If scraping fails with a propagated error, the response is 500 (only 400 is mapped for this route).
+
+> **Superseded by [I01](../improvements/I01-http-contract-fixes.md):** no error is mapped to 400 on this route; an invalid stored feed answers 500.
+
 - Ordering is textual over the stored ISO `createdAt` strings (S03).
 - In the acceptance harness, a feed whose `createdAt` cell is empty or missing is created with the current time, as the original harness does. That is why the EL_MUNDO feed with an empty `createdAt` in the `home` `.feature` sorts first, and why that scenario does not trigger scraping.
 

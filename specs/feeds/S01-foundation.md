@@ -22,9 +22,14 @@ Body `{"error": "<message>"}`, mapped by error type:
 | Anything else | 500 | `err.message` |
 
 - Messages contain the literal `<` `>` around the id. The 302 has no `Location` header.
+
+> **Superseded by [I01](../improvements/I01-http-contract-fixes.md):** feed already exists answers 409.
 - A thrown non-Error value is returned as 500 with the value as JSON.
 - A final handler logs unhandled errors and returns 500 with the message.
 - Each route maps only the errors it declares (e.g. `GET /feed/home` maps only 400; everything else is 500).
+
+> **Superseded by [I01](../improvements/I01-http-contract-fixes.md):** `GET /feed/home` maps no error to 400, and an invalid stored feed answers 500 on every route.
+
 
 ## Configuration
 - Variables: `ENV` (`production|dev|test`, default `dev`), `MONGO_URL` (default `mongodb://localhost:27017/daily-trends`), `PORT` (default `5000`).

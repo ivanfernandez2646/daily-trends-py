@@ -8,12 +8,13 @@ from daily_trends_py.contexts.cms.shared.domain.invalid_argument_error import (
 from daily_trends_py.contexts.cms.shared.domain.string_value_object import StringValueObject
 
 
-def _ensure_is_parseable(value: str) -> None:
+def _ensure_is_parseable(value_object: StringValueObject, value: str) -> None:
     try:
         datetime.fromisoformat(value)
     except ValueError:
-        # The message names `Function` instead of the class; clients already depend on it.
-        raise InvalidArgumentError(f"<Function> doesn't allow the value <{value}>") from None
+        raise InvalidArgumentError(
+            f"<{type(value_object).__name__}> does not allow the value <{value}>"
+        ) from None
 
 
 @dataclass(frozen=True)
@@ -22,7 +23,7 @@ class DateTimeValueObject(StringValueObject):
 
     def __post_init__(self) -> None:
         if self.value:
-            _ensure_is_parseable(self.value)
+            _ensure_is_parseable(self, self.value)
 
     @classmethod
     def now(cls) -> Self:
@@ -35,4 +36,4 @@ class RequiredDateTimeValueObject(DateTimeValueObject):
     value: str
 
     def __post_init__(self) -> None:
-        _ensure_is_parseable(self.value)
+        _ensure_is_parseable(self, self.value)

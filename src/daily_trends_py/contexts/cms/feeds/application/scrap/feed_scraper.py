@@ -16,11 +16,14 @@ class FeedScraper:
         self._repository = repository
         self._scrapers = scrapers
 
-    async def execute(self) -> None:
+    async def execute(self) -> list[Feed]:
+        saved: list[Feed] = []
         for feed in await self._scrap_all():
             while await self._repository.find(feed.id) is not None:
                 feed = dataclasses.replace(feed, id=FeedId.random())
             await self._repository.save(feed)
+            saved.append(feed)
+        return saved
 
     async def _scrap_all(self) -> list[Feed]:
         results = await asyncio.gather(

@@ -5,6 +5,9 @@ source replacement described in "Deliberate divergences". Depends on S02.
 
 ## `GET /feed/scrap`
 - Runs **both** scrapers in parallel; if one fails its result is dropped without error and the others are saved. Response 200, empty body.
+
+> **Superseded by [I01](../improvements/I01-http-contract-fixes.md):** the response is 200 with the array of feeds saved by this run.
+
 - Each scraper downloads the front page, walks the `article` elements in order and extracts author, title and description (trimmed text).
   - Skip an article with no author or no title.
   - Maximum **5 per source**.

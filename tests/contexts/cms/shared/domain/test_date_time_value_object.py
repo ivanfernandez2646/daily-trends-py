@@ -37,7 +37,7 @@ def test_date_time_rejects_unparseable_values() -> None:
     with pytest.raises(InvalidArgumentError) as error:
         DummyDateTime(value)
 
-    assert str(error.value) == f"<Function> doesn't allow the value <{value}>"
+    assert str(error.value) == f"<DummyDateTime> does not allow the value <{value}>"
 
 
 @pytest.mark.parametrize("value", ["", "not a date"])
@@ -45,7 +45,7 @@ def test_required_date_time_rejects_empty_or_unparseable_values(value: str) -> N
     with pytest.raises(InvalidArgumentError) as error:
         DummyRequiredDateTime(value)
 
-    assert str(error.value) == f"<Function> doesn't allow the value <{value}>"
+    assert str(error.value) == f"<DummyRequiredDateTime> does not allow the value <{value}>"
 
 
 def test_now_is_the_current_utc_instant_in_iso_format_with_milliseconds() -> None:

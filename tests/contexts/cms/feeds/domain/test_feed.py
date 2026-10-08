@@ -12,7 +12,7 @@ from tests.contexts.cms.feeds.domain.feed_description_mother import FeedDescript
 from tests.contexts.cms.feeds.domain.feed_id_mother import FeedIdMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
 from tests.contexts.cms.feeds.domain.feed_title_mother import FeedTitleMother
-from tests.contexts.cms.shared.domain.date_time_value_object_mother import DateTimeValueObjectMother
+from tests.contexts.cms.feeds.domain.feed_updated_at_mother import FeedUpdatedAtMother
 from tests.contexts.cms.shared.domain.mother_creator import MotherCreator
 
 
@@ -67,7 +67,7 @@ def test_update_returns_none_when_nothing_changes() -> None:
 
 
 def test_update_returns_a_new_feed_with_the_new_title_and_update_date() -> None:
-    feed = FeedMother.random(updated_at=DateTimeValueObjectMother.create(None))
+    feed = FeedMother.random(updated_at=FeedUpdatedAtMother.create(None))
     title = FeedTitleMother.random()
     before = datetime.now(UTC)
 

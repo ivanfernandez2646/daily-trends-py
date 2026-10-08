@@ -74,21 +74,21 @@ async def test_saves_and_returns_the_updated_feed() -> None:
     }
 
 
-@pytest.mark.parametrize("title", ["", None, False, 0, 0.0])
-async def test_ignores_a_falsy_title(title: object) -> None:
-    feed = FeedMother.random()
-    repository = InMemoryFeedRepository([feed])
-
-    result = await FeedUpdater(repository).execute(props_for(feed, title=title))
-
-    assert result is feed
-    assert repository.saved == []
-
-
 @pytest.mark.parametrize(
-    ("title", "rendered"), [("   ", "   "), ([], ""), ({}, "[object Object]"), (5, "5")]
+    ("title", "rendered"),
+    [
+        ("", ""),
+        ("   ", "   "),
+        (None, "null"),
+        (False, "false"),
+        (0, "0"),
+        (0.0, "0"),
+        ([], ""),
+        ({}, "[object Object]"),
+        (5, "5"),
+    ],
 )
-async def test_rejects_a_truthy_title_that_is_blank_or_not_a_string(
+async def test_rejects_a_present_title_that_is_blank_or_not_a_string(
     title: object, rendered: str
 ) -> None:
     feed = FeedMother.random()

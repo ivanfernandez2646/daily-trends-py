@@ -13,7 +13,7 @@ def test_a_deleted_feed_is_no_longer_found(client: TestClient) -> None:
     id = MotherCreator.uuid()
     client.put(f"/feed/{id}", json={"title": "A title", "author": "Ivan"})
 
-    assert client.delete(f"/feed/{id}").status_code == 200
+    assert client.delete(f"/feed/{id}").status_code == 204
 
     response = client.get(f"/feed/{id}")
     assert response.status_code == 404

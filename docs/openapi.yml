@@ -40,10 +40,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Feed'
-        '302':
-          description: Feed already exists
         '400':
           description: Invalid argument error
+        '409':
+          description: Feed already exists
+        '500':
+          description: A stored feed is invalid
     get:
       tags:
         - feed
@@ -69,6 +71,8 @@ paths:
           description: Invalid argument error
         '404':
           description: Feed not found
+        '500':
+          description: A stored feed is invalid
     delete:
       tags:
         - feed
@@ -84,12 +88,14 @@ paths:
             type: string
             format: uuid
       responses:
-        '200':
-          description: Successful operation
+        '204':
+          description: Deleted successfully
         '400':
           description: Invalid argument error
         '404':
           description: Feed not found
+        '500':
+          description: A stored feed is invalid
     patch:
       tags:
         - feed
@@ -122,6 +128,8 @@ paths:
           description: Invalid argument error
         '404':
           description: Feed not found
+        '500':
+          description: A stored feed is invalid
   /feed/scrap:
     get:
       tags:
@@ -131,7 +139,13 @@ paths:
       operationId: scrapFeed
       responses:
         '200':
-          description: Successful operation
+          description: The feeds saved by this run, empty when every source fails
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Feed'
   /feed/home:
     get:
       tags:
@@ -142,6 +156,8 @@ paths:
       responses:
         '200':
           description: Successful operation
+        '500':
+          description: A stored feed is invalid
   /feed/list:
     get:
       tags:
@@ -152,6 +168,8 @@ paths:
       responses:
         '200':
           description: Successful operation
+        '500':
+          description: A stored feed is invalid
 
 components:
   schemas:

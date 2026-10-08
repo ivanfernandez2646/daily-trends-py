@@ -2,6 +2,7 @@ from dataclasses import dataclass, replace
 from typing import TypedDict
 
 from daily_trends_py.contexts.cms.feeds.domain.feed_author import FeedAuthor
+from daily_trends_py.contexts.cms.feeds.domain.feed_created_at import FeedCreatedAt
 from daily_trends_py.contexts.cms.feeds.domain.feed_created_domain_event import (
     FeedCreatedDomainEvent,
 )
@@ -9,11 +10,8 @@ from daily_trends_py.contexts.cms.feeds.domain.feed_description import FeedDescr
 from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
 from daily_trends_py.contexts.cms.feeds.domain.feed_title import FeedTitle
+from daily_trends_py.contexts.cms.feeds.domain.feed_updated_at import FeedUpdatedAt
 from daily_trends_py.contexts.cms.shared.domain.aggregate_root import AggregateRoot
-from daily_trends_py.contexts.cms.shared.domain.date_time_value_object import (
-    DateTimeValueObject,
-    RequiredDateTimeValueObject,
-)
 
 
 class FeedPrimitives(TypedDict):
@@ -33,8 +31,8 @@ class Feed(AggregateRoot):
     description: FeedDescription
     author: FeedAuthor
     source: FeedSource
-    created_at: RequiredDateTimeValueObject
-    updated_at: DateTimeValueObject
+    created_at: FeedCreatedAt
+    updated_at: FeedUpdatedAt
 
     @classmethod
     def create(
@@ -52,8 +50,8 @@ class Feed(AggregateRoot):
             description=description,
             author=author,
             source=source,
-            created_at=RequiredDateTimeValueObject.now(),
-            updated_at=DateTimeValueObject(None),
+            created_at=FeedCreatedAt.now(),
+            updated_at=FeedUpdatedAt(None),
         )
         feed.record(FeedCreatedDomainEvent(aggregate_id=id.value, title=title.value))
         return feed
@@ -66,8 +64,8 @@ class Feed(AggregateRoot):
             description=FeedDescription(primitives["description"]),
             author=FeedAuthor(primitives["author"]),
             source=FeedSource(primitives["source"]),
-            created_at=RequiredDateTimeValueObject(primitives["createdAt"]),
-            updated_at=DateTimeValueObject(primitives["updatedAt"]),
+            created_at=FeedCreatedAt(primitives["createdAt"]),
+            updated_at=FeedUpdatedAt(primitives["updatedAt"]),
         )
 
     def update(
@@ -82,7 +80,7 @@ class Feed(AggregateRoot):
             self,
             title=new_title,
             description=new_description,
-            updated_at=DateTimeValueObject.now(),
+            updated_at=FeedUpdatedAt.now(),
         )
 
     def to_primitives(self) -> FeedPrimitives:
