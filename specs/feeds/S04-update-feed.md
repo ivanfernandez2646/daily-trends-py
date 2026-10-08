@@ -8,6 +8,9 @@
   - `title` falsy (absent or `""`) → **not changed**, no error.
   - `title` present and non-empty → validated as required (whitespace only → 400).
   - `description` absent → not changed; present (including `null` and `""`) → assigned.
+
+> **Superseded by [I01](../improvements/I01-http-contract-fixes.md):** absent `title` → not changed; any present `title` is validated as in `PUT` (`""`, `null`, `0` → 400).
+
 - Feed missing → 404.
 - If the result is identical to the current feed → return it **without saving or touching `updatedAt`**. If something changes → `updatedAt` = now, save and return it.
 - Response 200 with the feed. No event is emitted.

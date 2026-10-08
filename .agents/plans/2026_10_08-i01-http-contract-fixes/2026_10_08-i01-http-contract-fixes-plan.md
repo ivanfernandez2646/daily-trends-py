@@ -7,7 +7,7 @@ created_at: '2026-10-08T11:09:26Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-implemented_at: '2026-10-08T11:22:37Z'
+implemented_at: '2026-10-08T11:28:12Z'
 implemented_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -112,18 +112,18 @@ The two changes that only touch status codes in the routes.
 
 ### Tests first
 
-- [ ] `test_feed_updater.py`: parametrized `""`, `None`, `0` titles raise `InvalidArgumentError`
+- [x] `test_feed_updater.py`: parametrized `""`, `None`, `0` titles raise `InvalidArgumentError`
       with the exact message and save nothing; an absent title keeps the stored one.
-- [ ] `test_update_feed.py`: `{"title": ""}` → `400 <FeedTitle> is mandatory. Current value: <>`;
+- [x] `test_update_feed.py`: `{"title": ""}` → `400 <FeedTitle> is mandatory. Current value: <>`;
       `{"title": null}` → `400 ... <null>`; `{"title": ""}` on a missing feed → `404`.
 
 ### Implementation
 
-- [ ] `FeedUpdater`: replace `_is_falsy` with a `MISSING` check and delete the helper.
-- [ ] Add a "Superseded by I01" note in S04 (absence rule).
-- [ ] Refactor without changing behavior.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] `FeedUpdater`: replace `_is_falsy` with a `MISSING` check and delete the helper.
+- [x] Add a "Superseded by I01" note in S04 (absence rule).
+- [x] Refactor without changing behavior.
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ## Phase 4: Date-time errors name the value object; invalid stored data → 500
 
@@ -171,4 +171,4 @@ The two changes that only touch status codes in the routes.
 
 ## Next step
 
-Phase 2 is implemented and awaiting review. Then run `/ai-project-implement-phase` to implement Phase 3.
+Phase 3 is implemented and awaiting review. Then run `/ai-project-implement-phase` to implement Phase 4.

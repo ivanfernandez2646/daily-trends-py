@@ -39,13 +39,26 @@ def test_a_null_description_is_stored_with_a_new_update_date(client: TestClient)
     assert client.get(f"/feed/{feed['id']}").json() == body
 
 
-def test_a_blank_title_answers_400(client: TestClient) -> None:
+@pytest.mark.parametrize(("title", "rendered"), [("  ", "  "), ("", ""), (None, "null")])
+def test_a_blank_or_null_title_answers_400_and_keeps_the_feed(
+    client: TestClient, title: str | None, rendered: str
+) -> None:
     feed = create_feed(client)
 
-    response = client.patch(f"/feed/{feed['id']}", json={"title": "  "})
+    response = client.patch(f"/feed/{feed['id']}", json={"title": title})
 
     assert response.status_code == 400
-    assert response.json() == {"error": "<FeedTitle> is mandatory. Current value: <  >"}
+    assert response.json() == {"error": f"<FeedTitle> is mandatory. Current value: <{rendered}>"}
+    assert client.get(f"/feed/{feed['id']}").json() == feed
+
+
+def test_an_empty_title_on_a_missing_feed_answers_404(client: TestClient) -> None:
+    id = MotherCreator.uuid()
+
+    response = client.patch(f"/feed/{id}", json={"title": ""})
+
+    assert response.status_code == 404
+    assert response.json() == {"error": f"Feed with id <{id}> not found"}
 
 
 def test_rejects_an_id_that_is_not_a_uuid(client: TestClient) -> None:

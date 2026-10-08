@@ -23,7 +23,7 @@ class FeedUpdater:
 
     async def execute(self, props: FeedUpdaterProps) -> Feed:
         feed = await find_feed(self._repository, FeedId.from_raw(props["id"]))
-        title = None if _is_falsy(props["title"]) else FeedTitle.from_raw(props["title"])
+        title = None if props["title"] is MISSING else FeedTitle.from_raw(props["title"])
         description = (
             None
             if props["description"] is MISSING
@@ -36,8 +36,3 @@ class FeedUpdater:
 
         await self._repository.save(updated)
         return updated
-
-
-def _is_falsy(value: object) -> bool:
-    """Falsy as clients understand it: an empty list or object still counts as a value."""
-    return value is MISSING or value is None or value == "" or value == 0
