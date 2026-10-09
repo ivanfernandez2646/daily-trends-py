@@ -7,7 +7,7 @@ created_at: '2026-10-09T12:38:30Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-implemented_at: '2026-10-09T12:45:48Z'
+implemented_at: '2026-10-09T12:51:18Z'
 implemented_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -103,35 +103,42 @@ logged, it is kept in a strong reference, and shutdown cancels it. There is no c
 
 ### Tests first
 
-- [ ] `test_feed_home_refresher.py`:
+- [x] `test_feed_home_refresher.py`:
   - `request()` starts one scraper run and returns before it finishes;
   - a second `request()` while the run is blocked is ignored (one scraper call);
   - `request()` while a manual `scraper.execute()` is in progress is ignored;
   - a run whose save raises is logged (`caplog`), `join()` does not raise, and a later `request()`
     starts a new run;
   - `aclose()` cancels a blocked run, and nothing is saved after the cancellation;
-  - the task stays referenced while running and is released after it finishes.
-- [ ] `test_feed_home_searcher.py`: rewrite for the refresher:
+  - the task stays referenced while running and is released after it finishes. (Tested through
+    behavior: a request is ignored while the task is alive, and a new one starts after it finishes.
+    No test inspects the private attribute.)
+- [x] `test_feed_home_searcher.py`: rewrite for the refresher:
   - a stale page returns the first search, with one search only, and requests a run;
   - fresh or empty pages request nothing;
   - the local-day parametrized test stays;
   - a failing scrap no longer propagates. This replaces `test_propagates_a_save_error_...` and the
     "retries on every call" test, which Phase 3 covers.
-- [ ] `test_home_feeds.py` (integration): a stale `/feed/home` answers 200 with the stale feed. After
+- [x] `test_home_feeds.py` (integration): a stale `/feed/home` answers 200 with the stale feed. After
       `run_in_app(client, refresher.join)`, `/feed/list` has 11 feeds and `/feed/home` returns the
       10 scraped ones. When every source fails, it keeps answering the stale feed.
-- [ ] `test_scrap_feeds.py` (integration): `/feed/scrap` still answers the saved feeds after a
+- [x] `test_scrap_feeds.py` (integration): `/feed/scrap` still answers the saved feeds after a
       background run has finished (same-day duplicates give `[]`).
-- [ ] `home-feed.feature` passes unchanged.
+- [x] `home-feed.feature` passes unchanged.
 
 ### Implementation
 
-- [ ] Add `FeedHomeRefresher` and switch `FeedHomeSearcher` to it.
-- [ ] Wire it in `main.py` and close it in `lifespan` before the clients.
-- [ ] `docs/openapi.yml`. Add S07 "Superseded by I03" notes on inline scraping, the re-search and
+- [x] Add `FeedHomeRefresher` and switch `FeedHomeSearcher` to it.
+- [x] Wire it in `main.py` and close it in `lifespan` before the clients. (The cancellation is
+      unit-tested through `aclose()`. The shutdown order in `lifespan` has no app-level test,
+      because the mock transport makes a hanging run impractical to observe.)
+- [x] `docs/openapi.yml`. Add S07 "Superseded by I03" notes on inline scraping, the re-search and
       the 500 on a scraping error.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggested commits:
+  - `fix(i03): scrape a stale front page in the background`
+  - `fix(i03): answer /feed/home without waiting for scraping`
+  - `feat(i03): add a background front page refresher cancelled on shutdown`
 
 ## Phase 3: Cooldown between background runs (#4)
 
@@ -164,5 +171,5 @@ whatever its outcome. Manual runs ignore the cooldown and never start it.
 
 ## Next step
 
-Review Phase 1, then run `/ai-project-implement-phase .agents/plans/2026_10_09-i03-background-front-page-scraping/2026_10_09-i03-background-front-page-scraping-plan.md`
-to implement Phase 2.
+Review Phase 2, then run `/ai-project-implement-phase .agents/plans/2026_10_09-i03-background-front-page-scraping/2026_10_09-i03-background-front-page-scraping-plan.md`
+to implement Phase 3.

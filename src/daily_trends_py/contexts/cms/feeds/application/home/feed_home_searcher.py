@@ -1,6 +1,8 @@
 from datetime import datetime
 
-from daily_trends_py.contexts.cms.feeds.application.scrap.feed_scraper import FeedScraper
+from daily_trends_py.contexts.cms.feeds.application.home.feed_home_refresher import (
+    FeedHomeRefresher,
+)
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
@@ -15,16 +17,17 @@ HOME_CRITERIA: Criteria = {
 
 
 class FeedHomeSearcher:
-    def __init__(self, repository: FeedRepository, scraper: FeedScraper, clock: Clock) -> None:
+    def __init__(
+        self, repository: FeedRepository, refresher: FeedHomeRefresher, clock: Clock
+    ) -> None:
         self._repository = repository
-        self._scraper = scraper
+        self._refresher = refresher
         self._clock = clock
 
     async def execute(self) -> list[Feed]:
         feeds = await self._repository.search(HOME_CRITERIA)
         if feeds and self._is_from_a_previous_day(feeds[0]):
-            await self._scraper.execute()
-            feeds = await self._repository.search(HOME_CRITERIA)
+            self._refresher.request()
         return feeds
 
     def _is_from_a_previous_day(self, feed: Feed) -> bool:
