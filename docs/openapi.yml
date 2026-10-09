@@ -138,7 +138,9 @@ paths:
       description: >-
         Scrap feeds from external services. A headline already stored with the
         same source and title on the same UTC day is skipped. A scraped article
-        without a description is stored with a null description.
+        without a description is stored with a null description. Only one
+        scraping runs at a time: a request made while another run is in
+        progress waits for it to finish and then runs.
       operationId: scrapFeed
       responses:
         '200':
@@ -156,7 +158,10 @@ paths:
       tags:
         - feed
       summary: Get 10 home feed from external providers (ONLY EXTERNAL FEEDS)
-      description: Get 10 last feeds.
+      description: >-
+        Get 10 last feeds. When the newest one is from a previous day, a
+        scraping run starts in the background and the stored feeds are
+        returned at once, so they may be stale until that run saves new ones.
       operationId: homeFeeds
       responses:
         '200':

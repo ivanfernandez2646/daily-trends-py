@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from daily_trends_py.contexts.cms.feeds.application.scrap.feed_scraper import FeedScraper
@@ -6,6 +8,7 @@ from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
 from daily_trends_py.contexts.cms.feeds.domain.feed_title import FeedTitle
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
+from tests.contexts.cms.feeds.fakes.blocking_feed_scrap import BlockingFeedScrap
 from tests.contexts.cms.feeds.fakes.failing_feed_repository import FailingFeedRepository
 from tests.contexts.cms.feeds.fakes.in_memory_feed_repository import InMemoryFeedRepository
 from tests.contexts.cms.feeds.fakes.stub_feed_scrap import StubFeedScrap
@@ -115,3 +118,59 @@ async def test_saves_a_headline_stored_on_a_previous_utc_day_or_by_another_sourc
     result = await FeedScraper(repository, [StubFeedScrap([scraped])]).execute()
 
     assert result == [scraped]
+
+
+async def _let_other_tasks_run() -> None:
+    for _ in range(10):
+        await asyncio.sleep(0)
+
+
+async def test_a_concurrent_run_waits_for_the_run_in_progress_and_skips_its_headlines() -> None:
+    feeds = [FeedMother.random(), FeedMother.random()]
+    scrap = BlockingFeedScrap(feeds)
+    repository = InMemoryFeedRepository()
+    scraper = FeedScraper(repository, [scrap])
+    first_run = asyncio.create_task(scraper.execute())
+    await scrap.started.wait()
+
+    second_run = asyncio.create_task(scraper.execute())
+    await _let_other_tasks_run()
+    calls_while_the_first_run_is_blocked = scrap.calls
+    scrap.release()
+    first, second = await asyncio.gather(first_run, second_run)
+
+    assert calls_while_the_first_run_is_blocked == 1
+    assert scrap.calls == 2
+    assert first == feeds
+    assert second == []
+    assert repository.saved == feeds
+
+
+async def test_is_running_only_while_a_run_is_in_progress() -> None:
+    scrap = BlockingFeedScrap([FeedMother.random()])
+    scraper = FeedScraper(InMemoryFeedRepository(), [scrap])
+    running_before = scraper.is_running
+
+    run = asyncio.create_task(scraper.execute())
+    await scrap.started.wait()
+    running_during = scraper.is_running
+    scrap.release()
+    await run
+
+    assert not running_before
+    assert running_during
+    assert not scraper.is_running
+
+
+async def test_is_not_running_after_a_run_whose_save_raised() -> None:
+    scrap = BlockingFeedScrap([FeedMother.random()])
+    repository = FailingFeedRepository(saves_before_failing=0, error=RuntimeError("Mongo is down"))
+    scraper = FeedScraper(repository, [scrap])
+    run = asyncio.create_task(scraper.execute())
+    await scrap.started.wait()
+
+    scrap.release()
+    with pytest.raises(RuntimeError, match="Mongo is down"):
+        await run
+
+    assert not scraper.is_running

@@ -5,6 +5,9 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pytest_bdd import scenarios
 
+from daily_trends_py.contexts.cms.feeds.application.home.feed_home_refresher import (
+    FeedHomeRefresher,
+)
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
 from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.mongo_feed_repository import (  # noqa: E501
@@ -58,30 +61,45 @@ def _save_stale_feed(app: FastAPI, client: TestClient) -> Feed:
     return stale
 
 
-def test_home_scrapes_and_returns_the_new_feeds_when_the_newest_is_stale(
+def _wait_for_the_background_scraping(app: FastAPI, client: TestClient) -> None:
+    refresher: FeedHomeRefresher = app.state.feed_home_refresher
+    run_in_app(client, refresher.join)
+
+
+def test_home_answers_the_stale_feeds_and_shows_the_scraped_ones_after_the_background_run(
     app: FastAPI, client: TestClient
 ) -> None:
     stale = _save_stale_feed(app, client)
 
-    response = client.get("/feed/home")
+    stale_response = client.get("/feed/home")
+    _wait_for_the_background_scraping(app, client)
+    fresh_response = client.get("/feed/home")
 
-    assert response.status_code == 200
-    feeds = response.json()
-    assert len(feeds) == 10
-    assert stale.id.value not in [feed["id"] for feed in feeds]
+    assert stale_response.status_code == 200
+    assert [feed["id"] for feed in stale_response.json()] == [stale.id.value]
     assert len(client.get("/feed/list").json()) == 11
+    assert fresh_response.status_code == 200
+    fresh_ids = [feed["id"] for feed in fresh_response.json()]
+    assert len(fresh_ids) == 10
+    assert stale.id.value not in fresh_ids
 
 
 @pytest.mark.parametrize(
     "front_pages_transport",
     [FrontPagesTransport(failing_hosts={"elmundo.es", "www.elespanol.com"})],
 )
-def test_home_returns_the_stale_feeds_when_every_source_fails(
-    app: FastAPI, client: TestClient
+def test_home_keeps_the_stale_feeds_without_retrying_in_the_cooldown_when_every_source_fails(
+    app: FastAPI, client: TestClient, front_pages_transport: FrontPagesTransport
 ) -> None:
     stale = _save_stale_feed(app, client)
+    client.get("/feed/home")
+    _wait_for_the_background_scraping(app, client)
+    requests_of_the_first_run = len(front_pages_transport.requests)
 
     response = client.get("/feed/home")
+    _wait_for_the_background_scraping(app, client)
 
     assert response.status_code == 200
     assert [feed["id"] for feed in response.json()] == [stale.id.value]
+    assert requests_of_the_first_run > 0
+    assert len(front_pages_transport.requests) == requests_of_the_first_run

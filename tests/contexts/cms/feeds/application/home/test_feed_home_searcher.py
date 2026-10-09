@@ -2,15 +2,21 @@ from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
+from daily_trends_py.contexts.cms.feeds.application.home.feed_home_refresher import (
+    FeedHomeRefresher,
+)
 from daily_trends_py.contexts.cms.feeds.application.home.feed_home_searcher import (
     HOME_CRITERIA,
     FeedHomeSearcher,
 )
 from daily_trends_py.contexts.cms.feeds.application.scrap.feed_scraper import FeedScraper
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
+from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
+from daily_trends_py.contexts.cms.feeds.domain.feed_scrap import FeedScrap
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
+from tests.contexts.cms.feeds.fakes.blocking_feed_scrap import BlockingFeedScrap
 from tests.contexts.cms.feeds.fakes.failing_feed_repository import FailingFeedRepository
 from tests.contexts.cms.feeds.fakes.in_memory_feed_repository import InMemoryFeedRepository
 from tests.contexts.cms.feeds.fakes.stub_feed_scrap import StubFeedScrap
@@ -19,6 +25,7 @@ from tests.contexts.cms.shared.fakes.fixed_clock import FixedClock
 NOW = datetime(2026, 10, 8, 12, 0, tzinfo=UTC)
 TODAY = "2026-10-08T08:00:00.000Z"
 YESTERDAY = "2026-10-07T23:59:59.999Z"
+COOLDOWN = timedelta(minutes=5)
 
 
 def _feed_created_at(created_at: str) -> Feed:
@@ -29,9 +36,11 @@ def _feed_created_at(created_at: str) -> Feed:
 
 
 def _searcher(
-    repository: InMemoryFeedRepository, scrap: StubFeedScrap, now: datetime = NOW
-) -> FeedHomeSearcher:
-    return FeedHomeSearcher(repository, FeedScraper(repository, [scrap]), FixedClock(now))
+    repository: FeedRepository, scrap: FeedScrap, now: datetime = NOW
+) -> tuple[FeedHomeSearcher, FeedHomeRefresher]:
+    clock = FixedClock(now)
+    refresher = FeedHomeRefresher(FeedScraper(repository, [scrap]), clock, COOLDOWN)
+    return FeedHomeSearcher(repository, refresher, clock), refresher
 
 
 def test_home_criteria_searches_the_ten_newest_external_feeds() -> None:
@@ -46,35 +55,40 @@ async def test_returns_the_feeds_without_scraping_when_the_newest_is_from_today(
     feeds = [_feed_created_at(TODAY), _feed_created_at(YESTERDAY)]
     repository = InMemoryFeedRepository(feeds)
     scrap = StubFeedScrap([FeedMother.random()])
-    searcher = _searcher(repository, scrap)
+    searcher, refresher = _searcher(repository, scrap)
 
     result = await searcher.execute()
+    await refresher.join()
 
     assert result == feeds
     assert scrap.calls == 0
     assert repository.searched_criteria == [HOME_CRITERIA]
 
 
-async def test_scrapes_and_searches_again_when_the_newest_is_from_a_previous_day() -> None:
+async def test_returns_the_stale_feeds_at_once_and_scrapes_in_the_background() -> None:
     stale = _feed_created_at(YESTERDAY)
     scraped = FeedMother.random()
     repository = InMemoryFeedRepository([stale])
-    scrap = StubFeedScrap([scraped])
-    searcher = _searcher(repository, scrap)
+    scrap = BlockingFeedScrap([scraped])
+    searcher, refresher = _searcher(repository, scrap)
 
     result = await searcher.execute()
+    await scrap.started.wait()
+    scrap.release()
+    await refresher.join()
 
-    assert result == [stale, scraped]
-    assert scrap.calls == 1
-    assert repository.searched_criteria == [HOME_CRITERIA, HOME_CRITERIA]
+    assert result == [stale]
+    assert repository.searched_criteria == [HOME_CRITERIA]
+    assert repository.saved == [scraped]
 
 
 async def test_returns_nothing_without_scraping_when_there_are_no_feeds() -> None:
     repository = InMemoryFeedRepository()
     scrap = StubFeedScrap([FeedMother.random()])
-    searcher = _searcher(repository, scrap)
+    searcher, refresher = _searcher(repository, scrap)
 
     result = await searcher.execute()
+    await refresher.join()
 
     assert result == []
     assert scrap.calls == 0
@@ -93,34 +107,24 @@ async def test_compares_days_in_the_local_zone_of_the_clock(
     local_now = datetime(2026, 10, 8, 0, 30, tzinfo=timezone(timedelta(hours=2)))
     repository = InMemoryFeedRepository([_feed_created_at(newest_created_at)])
     scrap = StubFeedScrap()
-    searcher = FeedHomeSearcher(repository, FeedScraper(repository, [scrap]), FixedClock(local_now))
+    searcher, refresher = _searcher(repository, scrap, local_now)
 
     await searcher.execute()
+    await refresher.join()
 
     assert scrap.calls == expected_scrap_calls
 
 
-async def test_returns_the_existing_feeds_and_retries_on_every_call_when_scraping_fails() -> None:
+async def test_returns_the_stale_feeds_when_the_background_scraping_fails() -> None:
     stale = _feed_created_at(YESTERDAY)
-    repository = InMemoryFeedRepository([stale])
-    scrap = StubFeedScrap(error=RuntimeError("blocked"))
-    searcher = _searcher(repository, scrap)
-
-    first = await searcher.execute()
-    second = await searcher.execute()
-
-    assert first == second == [stale]
-    assert scrap.calls == 2
-
-
-async def test_propagates_a_save_error_from_scraping() -> None:
     repository = FailingFeedRepository(
-        saves_before_failing=0,
-        error=RuntimeError("Mongo is down"),
-        feeds=[_feed_created_at(YESTERDAY)],
+        saves_before_failing=0, error=RuntimeError("Mongo is down"), feeds=[stale]
     )
     scrap = StubFeedScrap([FeedMother.random()])
-    searcher = _searcher(repository, scrap)
+    searcher, refresher = _searcher(repository, scrap)
 
-    with pytest.raises(RuntimeError, match="Mongo is down"):
-        await searcher.execute()
+    result = await searcher.execute()
+    await refresher.join()
+
+    assert result == [stale]
+    assert scrap.calls == 1

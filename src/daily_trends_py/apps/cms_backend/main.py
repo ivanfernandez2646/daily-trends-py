@@ -2,6 +2,7 @@ import logging
 import sys
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from datetime import timedelta
 from types import TracebackType
 
 import httpx
@@ -21,6 +22,9 @@ from daily_trends_py.apps.cms_backend.settings import Settings
 from daily_trends_py.contexts.cms.feeds.application.create.feed_creator import FeedCreator
 from daily_trends_py.contexts.cms.feeds.application.delete.feed_deleter import FeedDeleter
 from daily_trends_py.contexts.cms.feeds.application.find.feed_finder import FeedFinder
+from daily_trends_py.contexts.cms.feeds.application.home.feed_home_refresher import (
+    FeedHomeRefresher,
+)
 from daily_trends_py.contexts.cms.feeds.application.home.feed_home_searcher import (
     FeedHomeSearcher,
 )
@@ -49,6 +53,7 @@ logger = logging.getLogger(__name__)
 
 SCRAP_TIMEOUT_SECONDS = 10.0
 SCRAP_USER_AGENT = "daily-trends-py"
+SCRAP_COOLDOWN = timedelta(minutes=5)
 
 
 async def _handle_unhandled_error(_request: Request, error: Exception) -> Response:
@@ -81,12 +86,15 @@ def create_app(
             feed_repository,
             [ElMundoFeedScraper(http_client), ElEspanolFeedScraper(http_client)],
         )
-        app.state.feed_home_searcher = FeedHomeSearcher(
-            feed_repository, app.state.feed_scraper, SystemClock()
-        )
+        clock = SystemClock()
+        feed_home_refresher = FeedHomeRefresher(app.state.feed_scraper, clock, SCRAP_COOLDOWN)
+        app.state.feed_home_refresher = feed_home_refresher
+        app.state.feed_home_searcher = FeedHomeSearcher(feed_repository, feed_home_refresher, clock)
         try:
             yield
         finally:
+            # A background run still uses both clients.
+            await feed_home_refresher.aclose()
             await http_client.aclose()
             await mongo_client.close()
 

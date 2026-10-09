@@ -1,7 +1,20 @@
+from datetime import UTC, datetime
+
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pytest_bdd import scenarios
 
+from daily_trends_py.contexts.cms.feeds.application.home.feed_home_refresher import (
+    FeedHomeRefresher,
+)
+from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
+from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.mongo_feed_repository import (  # noqa: E501
+    MongoFeedRepository,
+)
+from tests.apps.cms_backend.conftest import run_in_app
+from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
+from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
 from tests.scrap_fixtures import FrontPagesTransport
 
 pytestmark = pytest.mark.integration
@@ -55,3 +68,27 @@ def test_scraping_returns_the_other_source_when_one_times_out(client: TestClient
 
     assert response.status_code == 200
     assert [feed["source"] for feed in response.json()] == ["EL_ESPANOL"] * 5
+
+
+def test_scraping_after_a_background_run_saves_only_what_that_run_did_not(
+    app: FastAPI, client: TestClient
+) -> None:
+    stale = FeedMother.random(
+        source=FeedSource.EL_MUNDO,
+        created_at=FeedCreatedAtMother.create(
+            datetime(2023, 6, 17, tzinfo=UTC)
+            .isoformat(timespec="milliseconds")
+            .replace("+00:00", "Z")
+        ),
+    )
+    repository = MongoFeedRepository(app.state.mongo_client)
+    run_in_app(client, lambda: repository.save(stale))
+    client.get("/feed/home")
+    refresher: FeedHomeRefresher = app.state.feed_home_refresher
+    run_in_app(client, refresher.join)
+
+    response = client.get("/feed/scrap")
+
+    assert response.status_code == 200
+    assert response.json() == []
+    assert len(client.get("/feed/list").json()) == 11

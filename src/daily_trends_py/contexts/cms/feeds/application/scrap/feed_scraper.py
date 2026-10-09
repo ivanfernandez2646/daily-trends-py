@@ -15,8 +15,18 @@ class FeedScraper:
     def __init__(self, repository: FeedRepository, scrapers: Sequence[FeedScrap]) -> None:
         self._repository = repository
         self._scrapers = scrapers
+        # Overlapping runs would each miss the other's headlines and store them twice.
+        self._lock = asyncio.Lock()
+
+    @property
+    def is_running(self) -> bool:
+        return self._lock.locked()
 
     async def execute(self) -> list[Feed]:
+        async with self._lock:
+            return await self._run()
+
+    async def _run(self) -> list[Feed]:
         saved: list[Feed] = []
         saved_headlines: set[tuple[FeedSource, str | None, date]] = set()
         for feed in await self._scrap_all():
