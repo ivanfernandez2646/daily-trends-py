@@ -7,7 +7,7 @@ created_at: '2026-10-09T12:38:30Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-implemented_at: '2026-10-09T12:51:18Z'
+implemented_at: '2026-10-09T12:56:45Z'
 implemented_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -148,28 +148,31 @@ whatever its outcome. Manual runs ignore the cooldown and never start it.
 ### Public contracts
 
 - `FeedHomeRefresher.request()`: also ignored when the last background run finished less than
-  `cooldown` ago according to `clock.now()`. The end time is recorded in the task's `finally`, so it
-  is set after success, an empty run or an error. A cancelled run does not record it.
+  `cooldown` ago according to `clock.now()`. The end time is recorded after the run's
+  `try/except Exception`, not in a `finally`. It is set after success, an empty run or an error. A
+  cancelled run does not record it, because `CancelledError` skips that line.
 - `FixedClock.advance(delta: timedelta) -> None` (test fake).
 
 ### Tests first
 
-- [ ] `test_feed_home_refresher.py`:
+- [x] `test_feed_home_refresher.py`:
   - after a run ends, a `request()` at `cooldown - 1 µs` is ignored and one at exactly `cooldown`
     starts a run, after both a successful and a failing run;
   - a manual `scraper.execute()` neither starts the cooldown nor is blocked by it.
-- [ ] `test_feed_home_searcher.py` or `test_home_feeds.py`: when every source fails, repeated stale
-      requests within 5 minutes start one run.
+- [x] `test_home_feeds.py`: when every source fails, a second stale request within 5 minutes does
+      not reach the front pages again. (Checked to fail without the cooldown.)
 
 ### Implementation
 
-- [ ] Add `FixedClock.advance`.
-- [ ] Record the last background run's end time and check it in `request()`.
-- [ ] S07 "Superseded by I03" note on the "retry on every request" edge case.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Add `FixedClock.advance`.
+- [x] Record the last background run's end time and check it in `request()`.
+- [x] S07 "Superseded by I03" note on the "retry on every request" edge case.
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggested commits:
+  - `fix(i03): wait 5 minutes between background front page scrapings`
+  - `fix(i03): stop retrying failing front page sources on every request`
+  - `fix(i03): add a cooldown after each background scraping run`
 
 ## Next step
 
-Review Phase 2, then run `/ai-project-implement-phase .agents/plans/2026_10_09-i03-background-front-page-scraping/2026_10_09-i03-background-front-page-scraping-plan.md`
-to implement Phase 3.
+I03 is complete. Review Phase 3, then merge `fix/i03-background-front-page-scraping` into `main`.

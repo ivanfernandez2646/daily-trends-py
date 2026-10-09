@@ -88,14 +88,18 @@ def test_home_answers_the_stale_feeds_and_shows_the_scraped_ones_after_the_backg
     "front_pages_transport",
     [FrontPagesTransport(failing_hosts={"elmundo.es", "www.elespanol.com"})],
 )
-def test_home_returns_the_stale_feeds_when_every_source_fails(
-    app: FastAPI, client: TestClient
+def test_home_keeps_the_stale_feeds_without_retrying_in_the_cooldown_when_every_source_fails(
+    app: FastAPI, client: TestClient, front_pages_transport: FrontPagesTransport
 ) -> None:
     stale = _save_stale_feed(app, client)
-
     client.get("/feed/home")
     _wait_for_the_background_scraping(app, client)
+    requests_of_the_first_run = len(front_pages_transport.requests)
+
     response = client.get("/feed/home")
+    _wait_for_the_background_scraping(app, client)
 
     assert response.status_code == 200
     assert [feed["id"] for feed in response.json()] == [stale.id.value]
+    assert requests_of_the_first_run > 0
+    assert len(front_pages_transport.requests) == requests_of_the_first_run

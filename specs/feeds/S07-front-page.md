@@ -21,6 +21,7 @@
 
 ## Edge cases
 - If both scrapers fail, the retry repeats on every request while the newest feed is from a previous day.
+  > **Superseded by [I03](../improvements/I03-background-front-page-scraping.md):** a background run does not start within 5 minutes of the previous one's end, whatever its outcome.
 - Scrapers return nothing: the front page is still returned with what existed.
 
 ## Acceptance criteria

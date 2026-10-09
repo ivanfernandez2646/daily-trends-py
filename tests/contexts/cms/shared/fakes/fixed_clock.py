@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 class FixedClock:
@@ -7,3 +7,6 @@ class FixedClock:
 
     def now(self) -> datetime:
         return self._now
+
+    def advance(self, delta: timedelta) -> None:
+        self._now += delta
