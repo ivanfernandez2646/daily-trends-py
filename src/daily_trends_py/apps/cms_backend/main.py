@@ -83,6 +83,7 @@ def create_app(
         app.state.feed_scraper = FeedScraper(
             feed_repository,
             [ElMundoFeedScraper(http_client), ElEspanolFeedScraper(http_client)],
+            settings.timezone,
         )
         clock = SystemClock(settings.timezone)
         feed_home_refresher = FeedHomeRefresher(

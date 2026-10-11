@@ -1,5 +1,6 @@
 from collections.abc import AsyncIterator
-from datetime import date
+from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -21,6 +22,9 @@ from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_id_mother import FeedIdMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
+
+DAY_START = datetime(2026, 10, 8, tzinfo=UTC)
+DAY_END = datetime(2026, 10, 9, tzinfo=UTC)
 
 pytestmark = pytest.mark.integration
 
@@ -226,7 +230,7 @@ async def test_exists_headline_finds_a_feed_with_the_same_source_and_title_that_
     )
 
     assert await repository.exists_headline(
-        FeedSource.EL_MUNDO, FeedTitle("Same headline"), date(2026, 10, 8)
+        FeedSource.EL_MUNDO, FeedTitle("Same headline"), DAY_START, DAY_END
     )
 
 
@@ -252,5 +256,36 @@ async def test_exists_headline_ignores_another_source_title_or_day(
     )
 
     assert not await repository.exists_headline(
-        FeedSource.EL_MUNDO, FeedTitle("Same headline"), date(2026, 10, 8)
+        FeedSource.EL_MUNDO, FeedTitle("Same headline"), DAY_START, DAY_END
     )
+
+
+@pytest.mark.parametrize(
+    ("created_at", "exists"),
+    [
+        pytest.param("2026-10-07T22:00:00.000Z", True, id="at since"),
+        pytest.param("2026-10-08T21:59:59.999Z", True, id="just before until"),
+        pytest.param("2026-10-08T22:00:00.000Z", False, id="at until"),
+        pytest.param("2026-10-07T21:59:59.999Z", False, id="just before since"),
+    ],
+)
+async def test_exists_headline_compares_bounds_given_in_another_zone_with_stored_utc_dates(
+    repository: MongoFeedRepository, created_at: str, exists: bool
+) -> None:
+    await repository.save(
+        FeedMother.random(
+            source=FeedSource.EL_MUNDO,
+            title=FeedTitle("Same headline"),
+            created_at=FeedCreatedAtMother.create(created_at),
+        )
+    )
+    madrid = ZoneInfo("Europe/Madrid")
+
+    found = await repository.exists_headline(
+        FeedSource.EL_MUNDO,
+        FeedTitle("Same headline"),
+        datetime(2026, 10, 8, tzinfo=madrid),
+        datetime(2026, 10, 9, tzinfo=madrid),
+    )
+
+    assert found is exists

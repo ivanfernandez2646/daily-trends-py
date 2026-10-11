@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime
 from typing import Protocol
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
@@ -17,6 +17,8 @@ class FeedRepository(Protocol):
 
     async def search(self, criteria: Criteria | None = None) -> list[Feed]: ...
 
-    async def exists_headline(self, source: FeedSource, title: FeedTitle, day: date) -> bool:
-        """Whether a feed with this source and exact title was created on this UTC day."""
+    async def exists_headline(
+        self, source: FeedSource, title: FeedTitle, since: datetime, until: datetime
+    ) -> bool:
+        """Whether a feed with this source and exact title was created in `[since, until)`."""
         ...

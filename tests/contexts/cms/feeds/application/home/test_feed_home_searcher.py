@@ -41,7 +41,7 @@ def _searcher(
     repository: FeedRepository, scrap: FeedScrap, now: datetime = NOW
 ) -> tuple[FeedHomeSearcher, FeedHomeRefresher]:
     clock = FixedClock(now)
-    refresher = FeedHomeRefresher(FeedScraper(repository, [scrap]), clock, COOLDOWN)
+    refresher = FeedHomeRefresher(FeedScraper(repository, [scrap], MADRID), clock, COOLDOWN)
     return FeedHomeSearcher(repository, refresher, clock), refresher
 
 

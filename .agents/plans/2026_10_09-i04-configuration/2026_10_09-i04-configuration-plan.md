@@ -7,7 +7,8 @@ created_at: '2026-10-09T14:00:00Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-11T09:25:47Z'
+updated_at: '2026-10-11T09:28:54Z'
+implemented_at: '2026-10-11T09:28:54Z'
 implemented_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -170,32 +171,34 @@ the day's bounds instead of a UTC date.
 
 ### Tests first
 
-- [ ] `test_feed_scraper.py` with `Europe/Madrid`:
+- [x] `test_feed_scraper.py` with `Europe/Madrid`:
   - the same headline stored at `2026-10-08T21:30:00.000Z` and scraped at
     `2026-10-08T22:30:00.000Z` → saved (two business days);
   - stored at `2026-10-08T22:30:00.000Z` and scraped at `2026-10-09T21:00:00.000Z` → skipped (same
     business day);
   - on 25 October 2026 (clocks go back), stored at `2026-10-24T22:30:00.000Z` (00:30 local) and
     scraped at `2026-10-25T22:30:00.000Z` (23:30 local) → skipped;
-  - the existing UTC-day tests are renamed to business-day tests with their dates adjusted.
-- [ ] `test_mongo_feed_repository.py` (`integration`): a feed exactly at `since` is found, a feed
+  - the existing UTC-day tests are renamed to business-day tests with their dates adjusted;
+  - 00:30 on the 25-hour day and the midnight after it (`2026-10-25T23:00:00.000Z`) → saved.
+- [x] `test_mongo_feed_repository.py` (`integration`): a feed exactly at `since` is found, a feed
       exactly at `until` is not, and bounds given with a `+02:00` offset match the UTC-stored text.
 
 ### Implementation
 
-- [ ] Change the `exists_headline` signature in the port, the Mongo repository and the in-memory
+- [x] Change the `exists_headline` signature in the port, the Mongo repository and the in-memory
       fake.
-- [ ] Add the `timezone` parameter to `FeedScraper` and compute the business day and its bounds.
-- [ ] Pass `settings.timezone` to `FeedScraper` in `create_app`, and update the other places that
-      build `FeedScraper`.
-- [ ] Add a "Superseded by I04" note to the I02 rule "the day is UTC". Link I04 for #1 and #18 in
+- [x] Add the `timezone` parameter to `FeedScraper` and compute the business day and its bounds.
+- [x] Pass `settings.timezone` to `FeedScraper` in `create_app`, and update the other places that
+      build `FeedScraper` (the home searcher tests use `Europe/Madrid`, the refresher tests `UTC`).
+- [x] Add a "Superseded by I04" note to the I02 rule "the day is UTC". Link I04 for #1 and #18 in
       `specs/improvements/README.md` (already done on the branch).
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggested commits:
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggested commits:
   - `fix(i04): deduplicate scraped headlines by business day`
   - `fix(i04): pass day bounds to the headline lookup`
   - `test(i04): cover business-day deduplication across midnight and DST`
 
 ## Next step
 
-Phases 1 and 2 are implemented. Run `/ai-project-implement-phase` to implement Phase 3.
+All phases are implemented. Review Phase 3, commit it, then plan I05 with
+`/ai-project-create-plan specs/improvements/I05-criteria-and-native-dates.md`.
