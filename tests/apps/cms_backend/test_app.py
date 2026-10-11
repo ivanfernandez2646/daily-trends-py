@@ -3,7 +3,8 @@ from fastapi import Response
 from fastapi.testclient import TestClient
 
 from daily_trends_py.apps.cms_backend.main import create_app
-from daily_trends_py.apps.cms_backend.settings import Settings
+from tests.apps.cms_backend.isolated_settings import IsolatedSettings
+from tests.mongo import TEST_MONGO_URL
 
 pytestmark = pytest.mark.integration
 
@@ -11,7 +12,7 @@ pytestmark = pytest.mark.integration
 def test_unhandled_error_returns_500_with_plain_message_and_is_logged(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    app = create_app(Settings())
+    app = create_app(IsolatedSettings(mongo_url=TEST_MONGO_URL))
 
     @app.get("/unhandled")
     async def unhandled() -> Response:  # pyright: ignore[reportUnusedFunction]

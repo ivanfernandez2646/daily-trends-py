@@ -14,8 +14,10 @@ from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.mongo_f
     MongoFeedRepository,
 )
 from tests.apps.cms_backend.conftest import run_in_app
+from tests.apps.cms_backend.isolated_settings import IsolatedSettings
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
+from tests.mongo import TEST_MONGO_URL
 from tests.scrap_fixtures import FrontPagesTransport
 
 pytestmark = pytest.mark.integration
@@ -103,3 +105,27 @@ def test_home_keeps_the_stale_feeds_without_retrying_in_the_cooldown_when_every_
     assert [feed["id"] for feed in response.json()] == [stale.id.value]
     assert requests_of_the_first_run > 0
     assert len(front_pages_transport.requests) == requests_of_the_first_run
+
+
+@pytest.mark.parametrize(
+    ("settings", "front_pages_transport"),
+    [
+        (
+            IsolatedSettings(mongo_url=TEST_MONGO_URL, scrap_cooldown_seconds=0),
+            FrontPagesTransport(failing_hosts={"elmundo.es", "www.elespanol.com"}),
+        )
+    ],
+)
+def test_home_retries_right_after_a_failed_run_when_the_cooldown_is_zero(
+    app: FastAPI, client: TestClient, front_pages_transport: FrontPagesTransport
+) -> None:
+    _save_stale_feed(app, client)
+    client.get("/feed/home")
+    _wait_for_the_background_scraping(app, client)
+    requests_of_the_first_run = len(front_pages_transport.requests)
+
+    client.get("/feed/home")
+    _wait_for_the_background_scraping(app, client)
+
+    assert requests_of_the_first_run > 0
+    assert len(front_pages_transport.requests) == 2 * requests_of_the_first_run

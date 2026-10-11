@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import UTC, datetime
 from typing import cast
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed, FeedPrimitives
@@ -41,16 +41,21 @@ class MongoFeedRepository(MongoRepository):
         documents = await self._by_criteria(criteria or {})
         return [_to_feed(document) for document in documents]
 
-    async def exists_headline(self, source: FeedSource, title: FeedTitle, day: date) -> bool:
-        # `createdAt` is stored as UTC ISO text, so a day is the text range [day, next day).
-        next_day = day + timedelta(days=1)
+    async def exists_headline(
+        self, source: FeedSource, title: FeedTitle, since: datetime, until: datetime
+    ) -> bool:
         return await self._exists(
             {
                 "source": source,
                 "title": title.value,
-                "createdAt": {"$gte": day.isoformat(), "$lt": next_day.isoformat()},
+                "createdAt": {"$gte": _stored_date(since), "$lt": _stored_date(until)},
             }
         )
+
+
+def _stored_date(value: datetime) -> str:
+    # `createdAt` is stored as UTC ISO text with milliseconds, so ranges compare that same text.
+    return value.astimezone(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
 def _to_feed(document: MongoDocument) -> Feed:

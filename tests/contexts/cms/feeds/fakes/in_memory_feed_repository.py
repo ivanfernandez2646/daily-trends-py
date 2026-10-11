@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime
+from datetime import datetime
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
@@ -31,10 +31,12 @@ class InMemoryFeedRepository:
         self.searched_criteria.append(criteria)
         return list(self._feeds.values())
 
-    async def exists_headline(self, source: FeedSource, title: FeedTitle, day: date) -> bool:
+    async def exists_headline(
+        self, source: FeedSource, title: FeedTitle, since: datetime, until: datetime
+    ) -> bool:
         return any(
             feed.source == source
             and feed.title == title
-            and datetime.fromisoformat(feed.created_at.value).astimezone(UTC).date() == day
+            and since <= datetime.fromisoformat(feed.created_at.value) < until
             for feed in self._feeds.values()
         )

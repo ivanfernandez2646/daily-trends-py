@@ -26,7 +26,7 @@ def _refresher(scraper: FeedScraper, clock: FixedClock | None = None) -> FeedHom
 
 
 def _scraper(scrap: FeedScrap, repository: FeedRepository | None = None) -> FeedScraper:
-    return FeedScraper(repository or InMemoryFeedRepository(), [scrap])
+    return FeedScraper(repository or InMemoryFeedRepository(), [scrap], UTC)
 
 
 async def test_request_starts_a_run_without_waiting_for_it() -> None:

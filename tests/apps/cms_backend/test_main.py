@@ -2,6 +2,8 @@ import os
 import socket
 import subprocess
 import sys
+from collections.abc import Mapping
+from pathlib import Path
 
 import pytest
 
@@ -14,10 +16,14 @@ def free_port() -> int:
         return probe.getsockname()[1]
 
 
-def run_main(**environment: str) -> subprocess.CompletedProcess[str]:
+def run_main(
+    cwd: Path, base_environment: Mapping[str, str] = os.environ, **environment: str
+) -> subprocess.CompletedProcess[str]:
+    # Runs outside the repository so a local `.env` is never read.
     return subprocess.run(
         [sys.executable, "-c", RUN_MAIN],
-        env={**os.environ, "PORT": str(free_port()), **environment},
+        cwd=cwd,
+        env={**base_environment, "PORT": str(free_port()), **environment},
         capture_output=True,
         text=True,
         timeout=10,
@@ -25,26 +31,45 @@ def run_main(**environment: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-def test_exits_with_code_1_when_configuration_is_invalid() -> None:
-    result = run_main(ENV="staging")
+def test_exits_with_code_1_when_configuration_is_invalid(tmp_path: Path) -> None:
+    result = run_main(tmp_path, ENV="staging")
 
     assert result.returncode == 1
     assert "Startup failed" in result.stderr
 
 
-def test_exits_with_code_1_when_mongo_is_unreachable() -> None:
-    result = run_main(MONGO_URL="mongodb://localhost:1/daily-trends?serverSelectionTimeoutMS=100")
+def test_exits_with_code_1_when_the_timezone_is_unknown(tmp_path: Path) -> None:
+    result = run_main(tmp_path, TIMEZONE="Mars/Olympus")
+
+    assert result.returncode == 1
+    assert "Startup failed" in result.stderr
+
+
+def test_exits_with_code_1_without_mongo_url_in_production(tmp_path: Path) -> None:
+    without_mongo_url = {name: value for name, value in os.environ.items() if name != "MONGO_URL"}
+
+    result = run_main(tmp_path, without_mongo_url, ENV="production")
+
+    assert result.returncode == 1
+    assert "Startup failed" in result.stderr
+    assert "MONGO_URL" in result.stderr
+
+
+def test_exits_with_code_1_when_mongo_is_unreachable(tmp_path: Path) -> None:
+    result = run_main(
+        tmp_path, MONGO_URL="mongodb://localhost:1/daily-trends?serverSelectionTimeoutMS=100"
+    )
 
     assert result.returncode == 1
 
 
 @pytest.mark.integration
-def test_exits_with_code_1_when_port_is_already_in_use() -> None:
+def test_exits_with_code_1_when_port_is_already_in_use(tmp_path: Path) -> None:
     with socket.socket() as busy_socket:
         busy_socket.bind(("0.0.0.0", 0))
         busy_socket.listen()
         busy_port = busy_socket.getsockname()[1]
 
-        result = run_main(PORT=str(busy_port))
+        result = run_main(tmp_path, PORT=str(busy_port))
 
     assert result.returncode == 1

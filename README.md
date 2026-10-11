@@ -49,16 +49,22 @@ uv run daily-trends-py            # run the API on PORT (default 5000)
 ```
 
 On macOS, port 5000 is used by AirPlay Receiver. Either turn the receiver off or put `PORT=5123` in a
-local `.env` (git-ignored): `docker compose` reads it automatically, and `uv run --env-file .env
-daily-trends-py` uses it for a local run.
+local `.env` (git-ignored): both the API and `docker compose` read it.
 
 ### Configuration
 
+Settings are read from environment variables, then from a `.env` file in the working directory
+(see `.env.example`), then from the defaults below. The test suite never reads `.env`. Invalid
+settings stop the API at startup with exit code 1.
+
 | Variable | Default | Description |
 |---|---|---|
-| `ENV` | `dev` | `production`, `dev` or `test` |
-| `MONGO_URL` | `mongodb://localhost:27017/daily-trends` | MongoDB connection string |
+| `ENV` | `dev` | `production`, `dev` or `test`; selects the default `MONGO_URL` |
+| `MONGO_URL` | `dev`: `mongodb://localhost:27017/daily-trends-dev`, `test`: `mongodb://localhost:27017/daily-trends-test`, `production`: required | MongoDB connection string |
 | `PORT` | `5000` | HTTP port |
+| `TIMEZONE` | `Europe/Madrid` | IANA zone that decides when a business day starts; the server's `TZ` is ignored |
+| `SCRAP_TIMEOUT_SECONDS` | `10` | Timeout of each request to a scraped site, > 0 |
+| `SCRAP_COOLDOWN_SECONDS` | `300` | Minimum time between background front page refreshes, ≥ 0 (0 disables it) |
 
 ## Development
 

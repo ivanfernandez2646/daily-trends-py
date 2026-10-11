@@ -17,6 +17,7 @@ from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.mongo_f
 from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_client_factory import (  # noqa: E501
     MongoClient,
 )
+from tests.apps.cms_backend.isolated_settings import IsolatedSettings
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
 from tests.contexts.cms.feeds.domain.feed_updated_at_mother import FeedUpdatedAtMother
@@ -36,8 +37,13 @@ def front_pages_transport() -> FrontPagesTransport:
 
 
 @pytest.fixture
-def app(front_pages_transport: FrontPagesTransport) -> FastAPI:
-    return create_app(Settings(mongo_url=TEST_MONGO_URL), http_transport=front_pages_transport)
+def settings() -> Settings:
+    return IsolatedSettings(mongo_url=TEST_MONGO_URL)
+
+
+@pytest.fixture
+def app(settings: Settings, front_pages_transport: FrontPagesTransport) -> FastAPI:
+    return create_app(settings, http_transport=front_pages_transport)
 
 
 @pytest.fixture

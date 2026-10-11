@@ -51,6 +51,8 @@ stored twice on the same day.
   the same day may save fewer than 5 feeds per source, or none.
 - The day is UTC because `createdAt` is stored as `…Z`; a business timezone is #18.
 
+  > **Superseded by [I04](I04-configuration.md):** the day is the calendar day in the business timezone (`TIMEZONE`, default `Europe/Madrid`), from local midnight to the next local midnight.
+
 ## Unchanged
 - Selectors, the `article` walk, skipping articles without author or title, the 5-per-source limit,
   parallel scrapers, a failing scraper being dropped, save errors propagating as 500 without rollback.
