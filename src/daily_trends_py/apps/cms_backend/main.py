@@ -51,9 +51,7 @@ from daily_trends_py.contexts.cms.shared.infrastructure.system_clock import Syst
 
 logger = logging.getLogger(__name__)
 
-SCRAP_TIMEOUT_SECONDS = 10.0
 SCRAP_USER_AGENT = "daily-trends-py"
-SCRAP_COOLDOWN = timedelta(minutes=5)
 
 
 async def _handle_unhandled_error(_request: Request, error: Exception) -> Response:
@@ -78,7 +76,7 @@ def create_app(
         app.state.feed_deleter = FeedDeleter(feed_repository)
         http_client = httpx.AsyncClient(
             transport=http_transport,
-            timeout=SCRAP_TIMEOUT_SECONDS,
+            timeout=settings.scrap_timeout_seconds,
             headers={"User-Agent": SCRAP_USER_AGENT},
             follow_redirects=True,
         )
@@ -87,7 +85,9 @@ def create_app(
             [ElMundoFeedScraper(http_client), ElEspanolFeedScraper(http_client)],
         )
         clock = SystemClock()
-        feed_home_refresher = FeedHomeRefresher(app.state.feed_scraper, clock, SCRAP_COOLDOWN)
+        feed_home_refresher = FeedHomeRefresher(
+            app.state.feed_scraper, clock, timedelta(seconds=settings.scrap_cooldown_seconds)
+        )
         app.state.feed_home_refresher = feed_home_refresher
         app.state.feed_home_searcher = FeedHomeSearcher(feed_repository, feed_home_refresher, clock)
         try:

@@ -35,6 +35,8 @@ Body `{"error": "<message>"}`, mapped by error type:
 - Variables: `ENV` (`production|dev|test`, default `dev`), `MONGO_URL` (default `mongodb://localhost:27017/daily-trends`), `PORT` (default `5000`).
 - `dev.json` / `test.json` exist in the original but are **never loaded** (defect, see `improvements/`). The port uses the defaults and environment variables.
 
+> **Superseded by [I04](../improvements/I04-configuration.md):** settings are also read from `.env`, `MONGO_URL` defaults depend on `ENV` (required in production), and the scraping timeout and cooldown are settings.
+
 ## Persistence foundation (Mongo)
 - One shared client, opened before accepting traffic.
 - Collection `feeds`; `_id` = the feed UUID as a string; the `id` field is not stored. Undefined fields are ignored on write.
