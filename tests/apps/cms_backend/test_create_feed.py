@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from fastapi.testclient import TestClient
 from pytest_bdd import scenarios
@@ -42,6 +44,7 @@ def test_creates_a_cms_feed_with_null_description_and_update_date(client: TestCl
         "createdAt",
         "updatedAt",
     ]
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z", body["createdAt"])
     assert body | {"createdAt": None} == {
         "id": id,
         "title": "A title",

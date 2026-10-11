@@ -1,10 +1,17 @@
+from collections.abc import Mapping
 from datetime import datetime
+from typing import TYPE_CHECKING, cast
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
+from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
 from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
 from daily_trends_py.contexts.cms.feeds.domain.feed_title import FeedTitle
-from daily_trends_py.contexts.cms.shared.domain.criteria import Criteria
+
+if TYPE_CHECKING:
+    from _typeshed import SupportsRichComparison
+
+_PRIMITIVE_NAMES = {"created_at": "createdAt", "updated_at": "updatedAt"}
 
 
 class InMemoryFeedRepository:
@@ -13,7 +20,6 @@ class InMemoryFeedRepository:
         self.saved: list[Feed] = []
         self.deleted: list[Feed] = []
         self.searched_ids: list[FeedId] = []
-        self.searched_criteria: list[Criteria | None] = []
 
     async def save(self, feed: Feed) -> None:
         self._feeds[feed.id.value] = feed
@@ -27,16 +33,36 @@ class InMemoryFeedRepository:
         self._feeds.pop(feed.id.value, None)
         self.deleted.append(feed)
 
-    async def search(self, criteria: Criteria | None = None) -> list[Feed]:
-        self.searched_criteria.append(criteria)
-        return list(self._feeds.values())
+    async def search(self, criteria: FeedCriteria) -> list[Feed]:
+        feeds = [
+            feed
+            for feed in self._feeds.values()
+            if not criteria.filters
+            or any(_value(feed, f.field) == f.value for f in criteria.filters)
+        ]
+        if criteria.order is not None:
+            field = criteria.order.field
+            # Like Mongo, a null value sorts before any other value in ascending order.
+            feeds.sort(
+                key=lambda feed: (_value(feed, field) is not None, _sortable(feed, field)),
+                reverse=criteria.order.direction == "desc",
+            )
+        return feeds if criteria.limit is None else feeds[: criteria.limit]
 
     async def exists_headline(
         self, source: FeedSource, title: FeedTitle, since: datetime, until: datetime
     ) -> bool:
         return any(
-            feed.source == source
-            and feed.title == title
-            and since <= datetime.fromisoformat(feed.created_at.value) < until
+            feed.source == source and feed.title == title and since <= feed.created_at.value < until
             for feed in self._feeds.values()
         )
+
+
+def _value(feed: Feed, field: str) -> object:
+    primitives = cast(Mapping[str, object], feed.to_primitives())
+    return primitives[_PRIMITIVE_NAMES.get(field, field)]
+
+
+def _sortable(feed: Feed, field: str) -> SupportsRichComparison:
+    value = _value(feed, field)
+    return cast("SupportsRichComparison", "" if value is None else value)

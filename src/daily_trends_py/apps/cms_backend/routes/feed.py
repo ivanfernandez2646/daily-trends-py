@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Request, Response, status
 from fastapi.responses import JSONResponse
 
@@ -12,10 +14,13 @@ from daily_trends_py.contexts.cms.feeds.application.home.feed_home_searcher impo
 from daily_trends_py.contexts.cms.feeds.application.scrap.feed_scraper import FeedScraper
 from daily_trends_py.contexts.cms.feeds.application.search.feed_searcher import FeedSearcher
 from daily_trends_py.contexts.cms.feeds.application.update.feed_updater import FeedUpdater
+from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.feed_already_exists import FeedAlreadyExists
+from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
 from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
 from daily_trends_py.contexts.cms.feeds.domain.feed_not_found import FeedNotFound
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
+from daily_trends_py.contexts.cms.shared.domain.criteria import Order
 from daily_trends_py.contexts.cms.shared.domain.invalid_argument_error import (
     InvalidArgumentError,
 )
@@ -23,16 +28,31 @@ from daily_trends_py.contexts.cms.shared.domain.raw_value import MISSING
 
 router = APIRouter()
 
+LIST_CRITERIA = FeedCriteria(order=Order("created_at", "desc"))
+
+
+def _json_date(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    return value.astimezone(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+def _feed_json(feed: Feed) -> dict[str, object]:
+    primitives = feed.to_primitives()
+    return {
+        **primitives,
+        "createdAt": _json_date(primitives["createdAt"]),
+        "updatedAt": _json_date(primitives["updatedAt"]),
+    }
+
 
 @router.get("/feed/list")
 async def list_feeds(request: Request) -> Response:
     feed_searcher: FeedSearcher = request.app.state.feed_searcher
 
     async def action() -> Response:
-        feeds = await feed_searcher.execute({"sort": {"createdAt": "desc"}})
-        return JSONResponse(
-            [feed.to_primitives() for feed in feeds], status_code=status.HTTP_200_OK
-        )
+        feeds = await feed_searcher.execute(LIST_CRITERIA)
+        return JSONResponse([_feed_json(feed) for feed in feeds], status_code=status.HTTP_200_OK)
 
     return await run_controller(action)
 
@@ -43,9 +63,7 @@ async def scrap_feeds(request: Request) -> Response:
 
     async def action() -> Response:
         feeds = await feed_scraper.execute()
-        return JSONResponse(
-            [feed.to_primitives() for feed in feeds], status_code=status.HTTP_200_OK
-        )
+        return JSONResponse([_feed_json(feed) for feed in feeds], status_code=status.HTTP_200_OK)
 
     return await run_controller(action)
 
@@ -56,9 +74,7 @@ async def home_feeds(request: Request) -> Response:
 
     async def action() -> Response:
         feeds = await feed_home_searcher.execute()
-        return JSONResponse(
-            [feed.to_primitives() for feed in feeds], status_code=status.HTTP_200_OK
-        )
+        return JSONResponse([_feed_json(feed) for feed in feeds], status_code=status.HTTP_200_OK)
 
     return await run_controller(action)
 
@@ -79,7 +95,7 @@ async def create_feed(id: str, request: Request) -> Response:
                 "source": FeedSource.CMS,
             }
         )
-        return JSONResponse(feed.to_primitives(), status_code=status.HTTP_201_CREATED)
+        return JSONResponse(_feed_json(feed), status_code=status.HTTP_201_CREATED)
 
     return await run_controller(
         action,
@@ -96,7 +112,7 @@ async def find_feed(id: str, request: Request) -> Response:
 
     async def action() -> Response:
         feed = await feed_finder.execute(FeedId(id))
-        return JSONResponse(feed.to_primitives(), status_code=status.HTTP_200_OK)
+        return JSONResponse(_feed_json(feed), status_code=status.HTTP_200_OK)
 
     return await run_controller(
         action,
@@ -138,7 +154,7 @@ async def update_feed(id: str, request: Request) -> Response:
                 "description": body.get("description", MISSING),
             }
         )
-        return JSONResponse(feed.to_primitives(), status_code=status.HTTP_200_OK)
+        return JSONResponse(_feed_json(feed), status_code=status.HTTP_200_OK)
 
     return await run_controller(
         action,

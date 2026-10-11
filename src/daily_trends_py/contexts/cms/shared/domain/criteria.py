@@ -1,14 +1,48 @@
-from collections.abc import Mapping
-from typing import Literal, TypedDict
+from dataclasses import dataclass
+from typing import ClassVar, Literal
+
+from daily_trends_py.contexts.cms.shared.domain.invalid_argument_error import (
+    InvalidArgumentError,
+)
 
 type SortDirection = Literal["asc", "desc"]
 
 
-class Criteria(TypedDict, total=False):
-    """Search criteria; an absent key means no filter, no sort or no limit."""
+@dataclass(frozen=True)
+class Filter:
+    """The condition `field` equals `value`."""
 
-    filter: list[Mapping[str, object]]
-    """Field → value conditions combined with OR."""
-    sort: Mapping[str, SortDirection]
-    limit: int
-    """0 means no limit."""
+    field: str
+    value: object
+
+
+@dataclass(frozen=True)
+class Order:
+    field: str
+    direction: SortDirection
+
+
+@dataclass(frozen=True)
+class Criteria:
+    """Filters combined with OR; no filters means every item, and no limit means all of them."""
+
+    FIELDS: ClassVar[frozenset[str]] = frozenset()
+    """The domain field names that subclasses can filter and order by."""
+
+    filters: tuple[Filter, ...] = ()
+    order: Order | None = None
+    limit: int | None = None
+
+    def __post_init__(self) -> None:
+        if self.limit is not None and (isinstance(self.limit, bool) or self.limit < 1):
+            raise InvalidArgumentError(
+                f"<{type(self).__name__}> does not allow the limit <{self.limit}>"
+            )
+        fields = [condition.field for condition in self.filters]
+        if self.order is not None:
+            fields.append(self.order.field)
+        for field in fields:
+            if field not in self.FIELDS:
+                raise InvalidArgumentError(
+                    f"<{type(self).__name__}> does not allow the field <{field}>"
+                )

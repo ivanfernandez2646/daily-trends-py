@@ -1,19 +1,18 @@
-from datetime import datetime
-
 from daily_trends_py.contexts.cms.feeds.application.home.feed_home_refresher import (
     FeedHomeRefresher,
 )
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
+from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
 from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
 from daily_trends_py.contexts.cms.shared.domain.clock import Clock
-from daily_trends_py.contexts.cms.shared.domain.criteria import Criteria
+from daily_trends_py.contexts.cms.shared.domain.criteria import Filter, Order
 
-HOME_CRITERIA: Criteria = {
-    "filter": [{"source": FeedSource.EL_MUNDO}, {"source": FeedSource.EL_ESPANOL}],
-    "sort": {"createdAt": "desc"},
-    "limit": 10,
-}
+HOME_CRITERIA = FeedCriteria(
+    filters=(Filter("source", FeedSource.EL_MUNDO), Filter("source", FeedSource.EL_ESPANOL)),
+    order=Order("created_at", "desc"),
+    limit=10,
+)
 
 
 class FeedHomeSearcher:
@@ -32,6 +31,4 @@ class FeedHomeSearcher:
 
     def _is_from_a_previous_day(self, feed: Feed) -> bool:
         now = self._clock.now()
-        # A date stored without an offset is read as local time.
-        created_at = datetime.fromisoformat(feed.created_at.value).astimezone(now.tzinfo)
-        return created_at.date() < now.date()
+        return feed.created_at.value.astimezone(now.tzinfo).date() < now.date()

@@ -28,9 +28,7 @@ scenarios("features/home-feed.feature")
 def _feed_created_at(created_at: datetime, source: FeedSource) -> Feed:
     return FeedMother.random(
         source=source,
-        created_at=FeedCreatedAtMother.create(
-            created_at.isoformat(timespec="milliseconds").replace("+00:00", "Z")
-        ),
+        created_at=FeedCreatedAtMother.create(created_at),
     )
 
 

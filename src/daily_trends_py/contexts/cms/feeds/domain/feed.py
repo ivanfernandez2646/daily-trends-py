@@ -1,4 +1,5 @@
 from dataclasses import dataclass, replace
+from datetime import datetime
 from typing import TypedDict
 
 from daily_trends_py.contexts.cms.feeds.domain.feed_author import FeedAuthor
@@ -20,8 +21,8 @@ class FeedPrimitives(TypedDict):
     description: str | None
     author: str
     source: FeedSource
-    createdAt: str
-    updatedAt: str | None
+    createdAt: datetime
+    updatedAt: datetime | None
 
 
 @dataclass(eq=False)

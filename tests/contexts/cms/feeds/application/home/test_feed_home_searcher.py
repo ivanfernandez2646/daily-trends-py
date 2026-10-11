@@ -7,7 +7,6 @@ from daily_trends_py.contexts.cms.feeds.application.home.feed_home_refresher imp
     FeedHomeRefresher,
 )
 from daily_trends_py.contexts.cms.feeds.application.home.feed_home_searcher import (
-    HOME_CRITERIA,
     FeedHomeSearcher,
 )
 from daily_trends_py.contexts.cms.feeds.application.scrap.feed_scraper import FeedScraper
@@ -45,12 +44,27 @@ def _searcher(
     return FeedHomeSearcher(repository, refresher, clock), refresher
 
 
-def test_home_criteria_searches_the_ten_newest_external_feeds() -> None:
-    assert HOME_CRITERIA == {
-        "filter": [{"source": FeedSource.EL_MUNDO}, {"source": FeedSource.EL_ESPANOL}],
-        "sort": {"createdAt": "desc"},
-        "limit": 10,
-    }
+async def test_returns_the_ten_newest_external_feeds_without_cms_or_other_sources() -> None:
+    external = [
+        FeedMother.random(
+            source=FeedSource.EL_MUNDO if hour % 2 else FeedSource.EL_ESPANOL,
+            created_at=FeedCreatedAtMother.create(f"2026-10-08T{hour:02}:00:00.000Z"),
+        )
+        for hour in range(11)
+    ]
+    excluded = [
+        FeedMother.random(
+            source=source, created_at=FeedCreatedAtMother.create("2026-10-08T11:00:00.000Z")
+        )
+        for source in (FeedSource.CMS, FeedSource.EL_PAIS)
+    ]
+    repository = InMemoryFeedRepository([*excluded, *external])
+    searcher, refresher = _searcher(repository, StubFeedScrap())
+
+    result = await searcher.execute()
+    await refresher.join()
+
+    assert result == external[:0:-1]
 
 
 async def test_returns_the_feeds_without_scraping_when_the_newest_is_from_today() -> None:
@@ -64,7 +78,6 @@ async def test_returns_the_feeds_without_scraping_when_the_newest_is_from_today(
 
     assert result == feeds
     assert scrap.calls == 0
-    assert repository.searched_criteria == [HOME_CRITERIA]
 
 
 async def test_returns_the_stale_feeds_at_once_and_scrapes_in_the_background() -> None:
@@ -80,7 +93,6 @@ async def test_returns_the_stale_feeds_at_once_and_scrapes_in_the_background() -
     await refresher.join()
 
     assert result == [stale]
-    assert repository.searched_criteria == [HOME_CRITERIA]
     assert repository.saved == [scraped]
 
 

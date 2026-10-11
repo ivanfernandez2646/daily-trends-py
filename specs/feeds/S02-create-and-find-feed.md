@@ -22,6 +22,9 @@ Create a CMS feed and retrieve it by id. This spec also defines the domain build
 - `FeedId` = UUID; `FeedTitle` and `FeedAuthor` = required string; `FeedDescription` = optional string.
 - Equality by value. The value is **not normalized** (no trim on store).
 - Dates are stored as ISO-8601 strings (UTC, milliseconds, `Z`).
+
+  > **Superseded by [I05](../improvements/I05-criteria-and-native-dates.md):** feed dates are timezone-aware UTC instants with millisecond precision in the domain and BSON dates in Mongo. Responses still return them as ISO-8601 strings in UTC with milliseconds and `Z`.
+
 - `Feed` fields as in S00. `createdAt` = now on creation; `updatedAt` = `null` until the first effective modification.
 - Domain events: base fields `eventId` (UUID), `eventName`, `aggregateId`, `occurredOn`. The aggregate accumulates events; pulling returns and clears them. Only event today: `feed.created` (attribute `title`). An event deserializer exists in the original but is unused: omit it.
 

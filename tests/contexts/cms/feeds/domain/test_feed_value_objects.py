@@ -44,13 +44,13 @@ def test_feed_dates_name_themselves_when_the_value_is_not_a_date(
     date_time: type[FeedCreatedAt | FeedUpdatedAt],
 ) -> None:
     with pytest.raises(InvalidArgumentError) as error:
-        date_time("not-a-date")
+        date_time("not-a-date")  # pyright: ignore[reportArgumentType]
 
     assert str(error.value) == f"<{date_time.__name__}> does not allow the value <not-a-date>"
 
 
 def test_feed_created_at_is_mandatory_and_feed_updated_at_is_optional() -> None:
     with pytest.raises(InvalidArgumentError):
-        FeedCreatedAt("")
+        FeedCreatedAt(None)  # pyright: ignore[reportArgumentType]
 
     assert FeedUpdatedAt(None).value is None
