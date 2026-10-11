@@ -61,6 +61,7 @@ def there_are_feeds(app: FastAPI, client: TestClient, datatable: list[list[str]]
     repository = MongoFeedRepository(app.state.mongo_client)
     for row in rows:
         values = dict(zip(header, row, strict=True))
+        created_at = values.get("createdAt")
         feed = FeedMother.from_primitives(
             {
                 "id": values["id"],
@@ -68,7 +69,11 @@ def there_are_feeds(app: FastAPI, client: TestClient, datatable: list[list[str]]
                 "description": values["description"],
                 "author": values["author"],
                 "source": FeedSource(values["source"]),
-                "createdAt": values.get("createdAt") or FeedCreatedAtMother.now().value,
+                "createdAt": (
+                    FeedCreatedAtMother.create(created_at)
+                    if created_at
+                    else FeedCreatedAtMother.now()
+                ).value,
                 "updatedAt": FeedUpdatedAtMother.random().value,
             }
         )

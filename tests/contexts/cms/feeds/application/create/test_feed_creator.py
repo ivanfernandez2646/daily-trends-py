@@ -44,7 +44,7 @@ async def test_saves_and_returns_a_new_feed_without_update_date() -> None:
     primitives = feed.to_primitives()
     assert {key: primitives[key] for key in props} == props
     assert primitives["updatedAt"] is None
-    assert before - timedelta(milliseconds=1) <= datetime.fromisoformat(primitives["createdAt"])
+    assert before - timedelta(milliseconds=1) <= primitives["createdAt"]
 
 
 async def test_publishes_feed_created() -> None:

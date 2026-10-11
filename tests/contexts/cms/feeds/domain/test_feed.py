@@ -18,10 +18,10 @@ from tests.contexts.cms.shared.domain.mother_creator import MotherCreator
 
 @pytest.mark.parametrize(
     ("description", "updated_at"),
-    [(None, None), ("A description", "2026-10-07T12:00:00.000Z")],
+    [(None, None), ("A description", datetime(2026, 10, 7, 12, 0, tzinfo=UTC))],
 )
 def test_primitives_round_trip_keeps_every_field_in_order(
-    description: str | None, updated_at: str | None
+    description: str | None, updated_at: datetime | None
 ) -> None:
     primitives: FeedPrimitives = {
         "id": MotherCreator.uuid(),
@@ -29,7 +29,7 @@ def test_primitives_round_trip_keeps_every_field_in_order(
         "description": description,
         "author": "An author",
         "source": FeedSource.CMS,
-        "createdAt": MotherCreator.iso_date_time(),
+        "createdAt": MotherCreator.date_time(),
         "updatedAt": updated_at,
     }
 
@@ -52,7 +52,7 @@ def test_create_sets_creation_dates_and_records_feed_created() -> None:
     )
 
     assert feed.updated_at.value is None
-    assert before - timedelta(milliseconds=1) <= datetime.fromisoformat(feed.created_at.value)
+    assert before - timedelta(milliseconds=1) <= feed.created_at.value <= datetime.now(UTC)
     [event] = feed.pull_domain_events()
     assert isinstance(event, FeedCreatedDomainEvent)
     assert event.event_name == "feed.created"
@@ -80,7 +80,7 @@ def test_update_returns_a_new_feed_with_the_new_title_and_update_date() -> None:
         "updatedAt": updated.updated_at.value,
     }
     assert updated.updated_at.value is not None
-    assert before - timedelta(milliseconds=1) <= datetime.fromisoformat(updated.updated_at.value)
+    assert before - timedelta(milliseconds=1) <= updated.updated_at.value <= datetime.now(UTC)
     assert updated.pull_domain_events() == []
 
 

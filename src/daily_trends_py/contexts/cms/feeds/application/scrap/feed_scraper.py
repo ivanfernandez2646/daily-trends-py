@@ -33,7 +33,7 @@ class FeedScraper:
         saved: list[Feed] = []
         saved_headlines: set[tuple[FeedSource, str | None, date]] = set()
         for feed in await self._scrap_all():
-            day = datetime.fromisoformat(feed.created_at.value).astimezone(self._timezone).date()
+            day = feed.created_at.value.astimezone(self._timezone).date()
             headline = (feed.source, feed.title.value, day)
             if headline in saved_headlines or await self._repository.exists_headline(
                 feed.source, feed.title, *self._day_bounds(day)

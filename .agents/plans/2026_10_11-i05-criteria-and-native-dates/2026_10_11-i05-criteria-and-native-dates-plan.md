@@ -7,7 +7,8 @@ created_at: '2026-10-11T10:00:00Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-11T10:40:00Z'
+updated_at: '2026-10-11T11:30:00Z'
+implemented_at: '2026-10-11T11:30:00Z'
 implemented_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -159,8 +160,11 @@ Responses keep the `…000Z` strings.
   - `DateTimeValueObject.value: datetime | None`; `RequiredDateTimeValueObject.value: datetime`.
   - `__post_init__` accepts only an aware `datetime` (and `None` for the optional one), stores it
     converted to UTC and truncated to milliseconds, and otherwise raises
-    `<FeedCreatedAt> does not allow the value <{value}>`. The value is rendered with `str()` for
-    strings, so a stored `"not-a-date"` keeps the I01 message. A naive `datetime` is rejected.
+    `<FeedCreatedAt> does not allow the value <{value}>`. The value is rendered like other raw
+    values (`render_value`: a string as is, `None` as `null`), and a naive `datetime` with `str()`,
+    so a stored `"not-a-date"` keeps the I01 message. A naive `datetime` is rejected.
+  - A document without `createdAt` is read as `createdAt: null`, so it fails with
+    `<FeedCreatedAt> does not allow the value <null>` instead of a `KeyError`.
   - `now()` returns `datetime.now(UTC)` truncated to milliseconds.
   - It no longer inherits from `StringValueObject`.
 - `FeedPrimitives.createdAt: datetime`, `updatedAt: datetime | None`.
@@ -173,22 +177,24 @@ Responses keep the `…000Z` strings.
   `{"$gte": since, "$lt": until}` as datetimes. `_stored_date` is removed.
 - `FeedScraper` and `FeedHomeSearcher` read `feed.created_at.value` as a datetime
   (`.astimezone(tz).date()`) without parsing.
-- Test helpers: `FeedCreatedAtMother.create(value: datetime)`, `FeedUpdatedAtMother.create(value:
-  datetime | None)`, `MotherCreator.date_time() -> datetime` (aware UTC, milliseconds). The feature
+- Test helpers: `FeedCreatedAtMother.create(value: datetime | str)`,
+  `FeedUpdatedAtMother.create(value: datetime | str | None)` (an ISO string is parsed, so fixed
+  dates stay readable), `MotherCreator.date_time() -> datetime` (aware UTC, milliseconds; replaces
+  `iso_date_time()`). The feature
   step converts the table's ISO strings with `datetime.fromisoformat`.
 
 ### Tests first
 
-- [ ] `test_date_time_value_object.py`:
+- [x] `test_date_time_value_object.py`:
   - an aware datetime in another offset is stored in UTC;
   - microseconds are truncated to milliseconds;
   - `None` accepted only by the optional one;
   - a string, a number and a naive datetime → `<Dummy…> does not allow the value <…>`;
   - `now()` is aware UTC with milliseconds;
   - equality.
-- [ ] `test_feed.py`, `test_feed_creator.py`, `test_front_page.py`: compare datetimes instead of
+- [x] `test_feed.py`, `test_feed_creator.py`, `test_front_page.py`: compare datetimes instead of
   parsing strings.
-- [ ] `test_mongo_feed_repository.py`:
+- [x] `test_mongo_feed_repository.py`:
   - the stored document holds `datetime` values for `createdAt` (and `updatedAt` when set) and
     `None` when it is null;
   - save then find gives equal primitives;
@@ -196,29 +202,31 @@ Responses keep the `…000Z` strings.
     → the second is first with `desc`;
   - the business-day range tests use datetimes;
   - a document inserted with `createdAt` as a string (`"not-a-date"` and a valid ISO string) →
-    `InvalidStoredFeed` with `<FeedCreatedAt> does not allow the value <…>`.
-- [ ] `test_mongo_client_factory.py`: a stored datetime is read back aware in UTC.
-- [ ] `test_feed_scraper.py` / `test_feed_home_searcher.py`: same business-day cases with datetime
+    `InvalidStoredFeed` with `<FeedCreatedAt> does not allow the value <…>`; also a number and a
+    missing `createdAt` (`<null>`).
+- [x] `test_mongo_client_factory.py`: a stored datetime is read back aware in UTC.
+- [x] `test_feed_scraper.py` / `test_feed_home_searcher.py`: same business-day cases with datetime
   values.
-- [ ] `tests/apps/cms_backend`: `test_create_feed.py`, `test_find_feed.py`, `test_update_feed.py`
-  and `test_scrap_feeds.py` assert `createdAt`/`updatedAt` as `…000Z` strings in responses;
+- [x] `tests/apps/cms_backend`: `test_list_feeds.py` lists two feeds saved with different offsets
+  chronologically with `…Z` dates and a `null` `updatedAt`; `test_create_feed.py` checks the
+  `createdAt` format; the other route tests keep comparing response bodies;
   `test_invalid_stored_feed.py` stays green; the `list-feed` and `home-feed` features pass
   unchanged.
 
 ### Implementation
 
-- [ ] Change the date value objects, `FeedPrimitives`, `Feed.from_primitives`/`to_primitives`, the
+- [x] Change the date value objects, `FeedPrimitives`, `Feed.from_primitives`/`to_primitives`, the
   mothers and `MotherCreator`.
-- [ ] Add the JSON helper in the routes and use it in every feed response.
-- [ ] Create the Mongo client with `tz_aware=True, tzinfo=UTC`. Remove `_stored_date`. Update
+- [x] Add the JSON helper in the routes and use it in every feed response.
+- [x] Create the Mongo client with `tz_aware=True, tzinfo=UTC`. Remove `_stored_date`. Update
   `exists_headline`, `FeedScraper`, `FeedHomeSearcher` and the fake's `exists_headline`.
-- [ ] Update the feature seeding step to parse table dates.
-- [ ] Add "Superseded by I05" to `S02-create-and-find-feed.md` ("Dates are stored as ISO-8601
+- [x] Update the feature seeding step to parse table dates.
+- [x] Add "Superseded by I05" to `S02-create-and-find-feed.md` ("Dates are stored as ISO-8601
   strings") and `S03-list-feeds.md` ("Ordering is textual"). Check that `README.md` links I05 for
   #12.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ## Next step
 
-Phase 1 is implemented and waits for review. Then run `/ai-project-implement-phase` for Phase 2.
+Every phase is implemented. Review Phase 2, then commit it with `/ai-project-conventional-commit`.

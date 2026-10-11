@@ -1,4 +1,4 @@
-from datetime import UTC
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from faker import Faker
@@ -28,6 +28,7 @@ class MotherCreator:
         return _faker.boolean()
 
     @staticmethod
-    def iso_date_time() -> str:
+    def date_time() -> datetime:
+        """An aware UTC date-time with millisecond precision, as feeds store them."""
         date_time = _faker.date_time(tzinfo=UTC)
-        return date_time.isoformat(timespec="milliseconds").replace("+00:00", "Z")
+        return date_time.replace(microsecond=date_time.microsecond // 1000 * 1000)

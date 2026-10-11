@@ -1,3 +1,5 @@
+from datetime import UTC
+
 from pymongo import AsyncMongoClient
 from pymongo.asynchronous.collection import AsyncCollection
 
@@ -7,7 +9,8 @@ type MongoCollection = AsyncCollection[MongoDocument]
 
 
 async def create_mongo_client(url: str) -> MongoClient:
-    client: MongoClient = AsyncMongoClient(url)
+    # Dates come back as aware UTC datetimes, as the domain requires.
+    client: MongoClient = AsyncMongoClient(url, tz_aware=True, tzinfo=UTC)
     # Connecting is lazy; a ping makes an unreachable server fail before the app takes traffic.
     try:
         await client.admin.command("ping")

@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import cast
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed, FeedPrimitives
@@ -50,18 +50,14 @@ class MongoFeedRepository(MongoRepository):
             {
                 "source": source,
                 "title": title.value,
-                "createdAt": {"$gte": _stored_date(since), "$lt": _stored_date(until)},
+                "createdAt": {"$gte": since, "$lt": until},
             }
         )
 
 
-def _stored_date(value: datetime) -> str:
-    # `createdAt` is stored as UTC ISO text with milliseconds, so ranges compare that same text.
-    return value.astimezone(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
-
-
 def _to_feed(document: MongoDocument) -> Feed:
     try:
-        return Feed.from_primitives(cast(FeedPrimitives, document))
+        # A missing `createdAt` is rejected like any other value that is not a date.
+        return Feed.from_primitives(cast(FeedPrimitives, {"createdAt": None, **document}))
     except InvalidArgumentError as error:
         raise InvalidStoredFeed(document["id"], error) from error

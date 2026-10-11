@@ -1,10 +1,10 @@
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
-from daily_trends_py.contexts.cms.feeds.domain.feed_updated_at import FeedUpdatedAt
 from daily_trends_py.contexts.cms.shared.domain.criteria import Filter, Order
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
+from tests.contexts.cms.feeds.domain.feed_updated_at_mother import FeedUpdatedAtMother
 from tests.contexts.cms.feeds.fakes.in_memory_feed_repository import InMemoryFeedRepository
 
 
@@ -55,8 +55,8 @@ async def test_search_orders_by_a_field_in_both_directions() -> None:
 
 
 async def test_search_orders_null_values_first_when_ascending() -> None:
-    updated = FeedMother.random(updated_at=FeedUpdatedAt("2026-10-05T10:00:00.000Z"))
-    not_updated = FeedMother.random(updated_at=FeedUpdatedAt(None))
+    updated = FeedMother.random(updated_at=FeedUpdatedAtMother.create("2026-10-05T10:00:00.000Z"))
+    not_updated = FeedMother.random(updated_at=FeedUpdatedAtMother.create(None))
     repository = InMemoryFeedRepository([updated, not_updated])
 
     found = await repository.search(FeedCriteria(order=Order("updated_at", "asc")))

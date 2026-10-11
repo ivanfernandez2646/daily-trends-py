@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from daily_trends_py.contexts.cms.feeds.application.home.feed_home_refresher import (
     FeedHomeRefresher,
 )
@@ -33,6 +31,4 @@ class FeedHomeSearcher:
 
     def _is_from_a_previous_day(self, feed: Feed) -> bool:
         now = self._clock.now()
-        # A date stored without an offset is read as local time.
-        created_at = datetime.fromisoformat(feed.created_at.value).astimezone(now.tzinfo)
-        return created_at.date() < now.date()
+        return feed.created_at.value.astimezone(now.tzinfo).date() < now.date()

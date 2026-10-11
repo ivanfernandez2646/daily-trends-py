@@ -53,9 +53,7 @@ class InMemoryFeedRepository:
         self, source: FeedSource, title: FeedTitle, since: datetime, until: datetime
     ) -> bool:
         return any(
-            feed.source == source
-            and feed.title == title
-            and since <= datetime.fromisoformat(feed.created_at.value) < until
+            feed.source == source and feed.title == title and since <= feed.created_at.value < until
             for feed in self._feeds.values()
         )
 

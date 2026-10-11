@@ -75,11 +75,7 @@ def test_scraping_after_a_background_run_saves_only_what_that_run_did_not(
 ) -> None:
     stale = FeedMother.random(
         source=FeedSource.EL_MUNDO,
-        created_at=FeedCreatedAtMother.create(
-            datetime(2023, 6, 17, tzinfo=UTC)
-            .isoformat(timespec="milliseconds")
-            .replace("+00:00", "Z")
-        ),
+        created_at=FeedCreatedAtMother.create(datetime(2023, 6, 17, tzinfo=UTC)),
     )
     repository = MongoFeedRepository(app.state.mongo_client)
     run_in_app(client, lambda: repository.save(stale))

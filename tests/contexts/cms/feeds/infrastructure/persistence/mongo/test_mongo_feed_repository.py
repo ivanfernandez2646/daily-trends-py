@@ -1,5 +1,5 @@
 from collections.abc import AsyncIterator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -24,6 +24,7 @@ from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_id_mother import FeedIdMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
+from tests.contexts.cms.feeds.domain.feed_updated_at_mother import FeedUpdatedAtMother
 
 DAY_START = datetime(2026, 10, 8, tzinfo=UTC)
 DAY_END = datetime(2026, 10, 9, tzinfo=UTC)
@@ -73,23 +74,49 @@ async def test_stores_the_feed_document_under_its_id_keeping_nulls(
     }
 
 
+async def test_stores_dates_as_native_utc_dates(
+    repository: MongoFeedRepository, collection: MongoCollection
+) -> None:
+    created_at = datetime(2026, 10, 9, 10, 0, 0, 123_000, tzinfo=timezone(timedelta(hours=2)))
+    updated_at = datetime(2026, 10, 10, 8, 30, tzinfo=UTC)
+    feed = FeedMother.random(
+        created_at=FeedCreatedAtMother.create(created_at),
+        updated_at=FeedUpdatedAtMother.create(updated_at),
+    )
+
+    await repository.save(feed)
+
+    document = await collection.find_one({"_id": feed.id.value})
+    assert document is not None
+    assert document["createdAt"] == datetime(2026, 10, 9, 8, 0, 0, 123_000, tzinfo=UTC)
+    assert document["updatedAt"] == updated_at
+    assert await collection.count_documents({"createdAt": {"$type": "date"}}) == 1
+
+
 async def test_find_returns_none_when_the_feed_does_not_exist(
     repository: MongoFeedRepository,
 ) -> None:
     assert await repository.find(FeedIdMother.random()) is None
 
 
+async def _insert_with_created_at(collection: MongoCollection, created_at: object) -> str:
+    primitives = FeedMother.random().to_primitives()
+    document: dict[str, object] = {k: v for k, v in primitives.items() if k != "id"}
+    document["_id"] = primitives["id"]
+    if created_at is _MISSING:
+        del document["createdAt"]
+    else:
+        document["createdAt"] = created_at
+    await collection.insert_one(document)
+    return primitives["id"]
+
+
+_MISSING = object()
+
+
 @pytest.fixture
 async def malformed_feed_id(collection: MongoCollection) -> str:
-    primitives = FeedMother.random().to_primitives()
-    await collection.insert_one(
-        {
-            **{k: v for k, v in primitives.items() if k != "id"},
-            "_id": primitives["id"],
-            "createdAt": "not-a-date",
-        }
-    )
-    return primitives["id"]
+    return await _insert_with_created_at(collection, "not-a-date")
 
 
 async def test_find_raises_when_the_stored_feed_is_invalid(
@@ -101,6 +128,27 @@ async def test_find_raises_when_the_stored_feed_is_invalid(
     assert str(error.value) == (
         f"Stored feed <{malformed_feed_id}> is invalid: "
         "<FeedCreatedAt> does not allow the value <not-a-date>"
+    )
+
+
+@pytest.mark.parametrize(
+    ("created_at", "rendered"),
+    [
+        pytest.param("2026-10-09T08:00:00.000Z", "2026-10-09T08:00:00.000Z", id="ISO string"),
+        pytest.param(1_760_000_000_000, "1760000000000", id="number"),
+        pytest.param(_MISSING, "null", id="missing"),
+    ],
+)
+async def test_find_raises_when_the_stored_created_at_is_not_a_date(
+    repository: MongoFeedRepository, collection: MongoCollection, created_at: object, rendered: str
+) -> None:
+    id = await _insert_with_created_at(collection, created_at)
+
+    with pytest.raises(InvalidStoredFeed) as error:
+        await repository.find(FeedIdMother.create(id))
+
+    assert str(error.value) == (
+        f"Stored feed <{id}> is invalid: <FeedCreatedAt> does not allow the value <{rendered}>"
     )
 
 
@@ -203,6 +251,22 @@ async def test_search_limits_the_number_of_feeds(
     found = await repository.search(FeedCriteria(order=Order("created_at", "desc"), limit=2))
 
     assert _ids(found) == _ids(_newest_first(stored_feeds)[:2])
+
+
+async def test_search_sorts_creation_dates_chronologically_across_offsets(
+    repository: MongoFeedRepository,
+) -> None:
+    # 08:00 UTC: as text it sorted after 09:30Z.
+    earlier = FeedMother.random(
+        created_at=FeedCreatedAtMother.create("2026-10-09T10:00:00.000+02:00")
+    )
+    later = FeedMother.random(created_at=FeedCreatedAtMother.create("2026-10-09T09:30:00.000Z"))
+    await repository.save(earlier)
+    await repository.save(later)
+
+    found = await repository.search(FeedCriteria(order=Order("created_at", "desc")))
+
+    assert _ids(found) == [later.id.value, earlier.id.value]
 
 
 async def test_search_does_not_limit_feeds_without_a_limit(

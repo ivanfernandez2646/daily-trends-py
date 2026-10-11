@@ -49,7 +49,7 @@ def test_extracts_trimmed_new_feeds_in_document_order() -> None:
     for primitives in (first, second):
         FeedId(primitives["id"])
         assert primitives["source"] == FeedSource.EL_ESPANOL
-        assert _to_millis(before) <= datetime.fromisoformat(primitives["createdAt"]) <= after
+        assert _to_millis(before) <= primitives["createdAt"] <= after
         assert primitives["updatedAt"] is None
     assert first["id"] != second["id"]
 
