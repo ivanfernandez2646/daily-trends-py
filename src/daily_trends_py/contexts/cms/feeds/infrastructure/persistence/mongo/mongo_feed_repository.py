@@ -2,13 +2,13 @@ from datetime import UTC, datetime
 from typing import cast
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed, FeedPrimitives
+from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
 from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
 from daily_trends_py.contexts.cms.feeds.domain.feed_title import FeedTitle
 from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.invalid_stored_feed import (  # noqa: E501
     InvalidStoredFeed,
 )
-from daily_trends_py.contexts.cms.shared.domain.criteria import Criteria
 from daily_trends_py.contexts.cms.shared.domain.invalid_argument_error import (
     InvalidArgumentError,
 )
@@ -19,6 +19,8 @@ from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_
 from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_repository import (
     MongoRepository,
 )
+
+_STORAGE_FIELDS = {"id": "_id", "created_at": "createdAt", "updated_at": "updatedAt"}
 
 
 class MongoFeedRepository(MongoRepository):
@@ -37,8 +39,8 @@ class MongoFeedRepository(MongoRepository):
     async def delete(self, feed: Feed) -> None:
         await self._remove(feed.id.value)
 
-    async def search(self, criteria: Criteria | None = None) -> list[Feed]:
-        documents = await self._by_criteria(criteria or {})
+    async def search(self, criteria: FeedCriteria) -> list[Feed]:
+        documents = await self._by_criteria(criteria, _STORAGE_FIELDS)
         return [_to_feed(document) for document in documents]
 
     async def exists_headline(

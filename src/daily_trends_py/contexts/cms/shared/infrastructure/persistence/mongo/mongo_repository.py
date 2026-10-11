@@ -23,15 +23,24 @@ class MongoRepository:
             return None
         return _with_id(document)
 
-    async def _by_criteria(self, criteria: Criteria) -> list[MongoDocument]:
-        conditions = criteria.get("filter")
-        # Mongo rejects an empty `$or`, so no conditions means no query at all.
-        query: MongoDocument = {"$or": conditions} if conditions else {}
-        sort = [
-            (field, 1 if direction == "asc" else -1)
-            for field, direction in criteria.get("sort", {}).items()
-        ]
-        cursor = self._collection.find(query, sort=sort or None, limit=criteria.get("limit", 0))
+    async def _by_criteria(
+        self, criteria: Criteria, storage_fields: Mapping[str, str]
+    ) -> list[MongoDocument]:
+        """Search by `criteria`; `storage_fields` renames domain fields that are stored apart."""
+
+        def stored(field: str) -> str:
+            return storage_fields.get(field, field)
+
+        query: MongoDocument = {}
+        if criteria.filters:
+            query["$or"] = [{stored(f.field): f.value} for f in criteria.filters]
+        sort = (
+            None
+            if criteria.order is None
+            else [(stored(criteria.order.field), 1 if criteria.order.direction == "asc" else -1)]
+        )
+        # pymongo reads a limit of 0 as no limit.
+        cursor = self._collection.find(query, sort=sort, limit=criteria.limit or 0)
         return [_with_id(document) async for document in cursor]
 
     async def _exists(self, query: MongoDocument) -> bool:

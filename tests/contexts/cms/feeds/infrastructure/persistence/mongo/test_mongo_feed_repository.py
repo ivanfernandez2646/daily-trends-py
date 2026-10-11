@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
+from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
 from daily_trends_py.contexts.cms.feeds.domain.feed_description import FeedDescription
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
 from daily_trends_py.contexts.cms.feeds.domain.feed_title import FeedTitle
@@ -15,6 +16,7 @@ from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.invalid
 from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.mongo_feed_repository import (  # noqa: E501
     MongoFeedRepository,
 )
+from daily_trends_py.contexts.cms.shared.domain.criteria import Filter, Order
 from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_client_factory import (  # noqa: E501
     MongoClient,
     MongoCollection,
@@ -108,7 +110,7 @@ async def test_search_raises_when_a_stored_feed_is_invalid(
     await repository.save(FeedMother.random())
 
     with pytest.raises(InvalidStoredFeed, match=f"Stored feed <{malformed_feed_id}> is invalid"):
-        await repository.search()
+        await repository.search(FeedCriteria())
 
 
 async def test_delete_removes_only_the_given_feed(repository: MongoFeedRepository) -> None:
@@ -145,10 +147,10 @@ def _newest_first(feeds: list[Feed]) -> list[Feed]:
     return sorted(feeds, key=lambda feed: feed.created_at.value, reverse=True)
 
 
-async def test_search_returns_every_feed_without_criteria(
+async def test_search_returns_every_feed_without_filters(
     repository: MongoFeedRepository, stored_feeds: list[Feed]
 ) -> None:
-    found = await repository.search()
+    found = await repository.search(FeedCriteria())
 
     assert sorted(_ids(found)) == sorted(_ids(stored_feeds))
 
@@ -156,13 +158,13 @@ async def test_search_returns_every_feed_without_criteria(
 async def test_search_returns_an_empty_list_when_there_are_no_feeds(
     repository: MongoFeedRepository,
 ) -> None:
-    assert await repository.search({}) == []
+    assert await repository.search(FeedCriteria()) == []
 
 
 async def test_search_filters_feeds_by_a_condition(
     repository: MongoFeedRepository, stored_feeds: list[Feed]
 ) -> None:
-    found = await repository.search({"filter": [{"source": FeedSource.CMS}]})
+    found = await repository.search(FeedCriteria(filters=(Filter("source", FeedSource.CMS),)))
 
     assert sorted(_ids(found)) == sorted(_ids(stored_feeds[:3]))
 
@@ -171,7 +173,9 @@ async def test_search_combines_filter_conditions_with_or(
     repository: MongoFeedRepository, stored_feeds: list[Feed]
 ) -> None:
     found = await repository.search(
-        {"filter": [{"source": FeedSource.EL_PAIS}, {"source": FeedSource.EL_MUNDO}]}
+        FeedCriteria(
+            filters=(Filter("source", FeedSource.EL_PAIS), Filter("source", FeedSource.EL_MUNDO))
+        )
     )
 
     assert sorted(_ids(found)) == sorted(_ids(stored_feeds[3:]))
@@ -180,7 +184,7 @@ async def test_search_combines_filter_conditions_with_or(
 async def test_search_sorts_feeds_by_creation_date_descending(
     repository: MongoFeedRepository, stored_feeds: list[Feed]
 ) -> None:
-    found = await repository.search({"sort": {"createdAt": "desc"}})
+    found = await repository.search(FeedCriteria(order=Order("created_at", "desc")))
 
     assert _ids(found) == _ids(_newest_first(stored_feeds))
 
@@ -188,7 +192,7 @@ async def test_search_sorts_feeds_by_creation_date_descending(
 async def test_search_sorts_feeds_by_creation_date_ascending(
     repository: MongoFeedRepository, stored_feeds: list[Feed]
 ) -> None:
-    found = await repository.search({"sort": {"createdAt": "asc"}})
+    found = await repository.search(FeedCriteria(order=Order("created_at", "asc")))
 
     assert _ids(found) == _ids(_newest_first(stored_feeds)[::-1])
 
@@ -196,23 +200,31 @@ async def test_search_sorts_feeds_by_creation_date_ascending(
 async def test_search_limits_the_number_of_feeds(
     repository: MongoFeedRepository, stored_feeds: list[Feed]
 ) -> None:
-    found = await repository.search({"sort": {"createdAt": "desc"}, "limit": 2})
+    found = await repository.search(FeedCriteria(order=Order("created_at", "desc"), limit=2))
 
     assert _ids(found) == _ids(_newest_first(stored_feeds)[:2])
 
 
-async def test_search_does_not_limit_feeds_when_the_limit_is_zero(
+async def test_search_does_not_limit_feeds_without_a_limit(
     repository: MongoFeedRepository, stored_feeds: list[Feed]
 ) -> None:
-    found = await repository.search({"limit": 0})
+    found = await repository.search(FeedCriteria(order=Order("created_at", "desc")))
 
     assert len(found) == len(stored_feeds)
+
+
+async def test_search_filters_by_id_stored_as_the_mongo_id(
+    repository: MongoFeedRepository, stored_feeds: list[Feed]
+) -> None:
+    found = await repository.search(FeedCriteria(filters=(Filter("id", stored_feeds[1].id.value),)))
+
+    assert _ids(found) == [stored_feeds[1].id.value]
 
 
 async def test_search_maps_documents_back_to_feeds(
     repository: MongoFeedRepository, stored_feeds: list[Feed]
 ) -> None:
-    found = await repository.search({"filter": [{"source": FeedSource.EL_PAIS}]})
+    found = await repository.search(FeedCriteria(filters=(Filter("source", FeedSource.EL_PAIS),)))
 
     assert [feed.to_primitives() for feed in found] == [stored_feeds[3].to_primitives()]
 

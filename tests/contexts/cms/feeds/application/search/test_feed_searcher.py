@@ -1,26 +1,46 @@
 from daily_trends_py.contexts.cms.feeds.application.search.feed_searcher import FeedSearcher
-from daily_trends_py.contexts.cms.shared.domain.criteria import Criteria
+from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
+from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
+from daily_trends_py.contexts.cms.shared.domain.criteria import Filter, Order
+from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
 from tests.contexts.cms.feeds.fakes.in_memory_feed_repository import InMemoryFeedRepository
 
 
-async def test_returns_the_feeds_found_with_the_given_criteria() -> None:
-    feeds = [FeedMother.random(), FeedMother.random()]
-    repository = InMemoryFeedRepository(feeds)
-    searcher = FeedSearcher(repository)
-    criteria: Criteria = {"filter": [{"source": "CMS"}], "sort": {"createdAt": "desc"}, "limit": 2}
+async def test_returns_the_feeds_that_match_the_criteria_in_order_and_limited() -> None:
+    older = FeedMother.random(
+        source=FeedSource.CMS, created_at=FeedCreatedAtMother.create("2026-10-01T10:00:00.000Z")
+    )
+    newer = FeedMother.random(
+        source=FeedSource.CMS, created_at=FeedCreatedAtMother.create("2026-10-02T10:00:00.000Z")
+    )
+    newest = FeedMother.random(
+        source=FeedSource.CMS, created_at=FeedCreatedAtMother.create("2026-10-03T10:00:00.000Z")
+    )
+    other_source = FeedMother.random(source=FeedSource.EL_PAIS)
+    searcher = FeedSearcher(InMemoryFeedRepository([older, other_source, newest, newer]))
 
-    result = await searcher.execute(criteria)
+    result = await searcher.execute(
+        FeedCriteria(
+            filters=(Filter("source", FeedSource.CMS),),
+            order=Order("created_at", "desc"),
+            limit=2,
+        )
+    )
+
+    assert result == [newest, newer]
+
+
+async def test_returns_every_feed_without_filters() -> None:
+    feeds = [FeedMother.random(), FeedMother.random()]
+    searcher = FeedSearcher(InMemoryFeedRepository(feeds))
+
+    result = await searcher.execute(FeedCriteria())
 
     assert result == feeds
-    assert repository.searched_criteria == [criteria]
 
 
-async def test_searches_without_criteria_when_none_is_given() -> None:
-    repository = InMemoryFeedRepository()
-    searcher = FeedSearcher(repository)
+async def test_returns_nothing_when_there_are_no_feeds() -> None:
+    searcher = FeedSearcher(InMemoryFeedRepository())
 
-    result = await searcher.execute()
-
-    assert result == []
-    assert repository.searched_criteria == [None]
+    assert await searcher.execute(FeedCriteria()) == []

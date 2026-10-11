@@ -9,6 +9,8 @@ Return all feeds, most recent first. This spec also defines the search criteria 
 `filter`: list of conditions combined with OR (each field=value); `sort`: field → `asc|desc`; `limit`: integer (0 or absent = no limit). Without criteria everything is returned.
 - In Mongo: filter → `$or`, sort and limit as given. Ordering is **textual** over the ISO strings.
 
+> **Superseded by [I05](../improvements/I05-criteria-and-native-dates.md):** criteria are a domain value object with `filters` (OR), an optional `order` and an optional positive `limit` (absent = no limit), using domain field names (`created_at`). No filters is the only way to search every feed. A limit of 0 or less, or an unknown field, raises `InvalidArgumentError` when the criteria are built.
+
 ## `GET /feed/list`
 - 200 with an array of all feeds (any source), sorted by `createdAt` descending. No filter. Empty → `[]`.
 
