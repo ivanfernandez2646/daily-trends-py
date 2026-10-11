@@ -38,6 +38,13 @@ def test_exits_with_code_1_when_configuration_is_invalid(tmp_path: Path) -> None
     assert "Startup failed" in result.stderr
 
 
+def test_exits_with_code_1_when_the_timezone_is_unknown(tmp_path: Path) -> None:
+    result = run_main(tmp_path, TIMEZONE="Mars/Olympus")
+
+    assert result.returncode == 1
+    assert "Startup failed" in result.stderr
+
+
 def test_exits_with_code_1_without_mongo_url_in_production(tmp_path: Path) -> None:
     without_mongo_url = {name: value for name, value in os.environ.items() if name != "MONGO_URL"}
 

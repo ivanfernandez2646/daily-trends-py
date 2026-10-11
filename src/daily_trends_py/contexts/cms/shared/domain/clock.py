@@ -4,5 +4,5 @@ from typing import Protocol
 
 class Clock(Protocol):
     def now(self) -> datetime:
-        """The current time, timezone-aware, in the server's local zone."""
+        """The current time, timezone-aware, in the business timezone."""
         ...

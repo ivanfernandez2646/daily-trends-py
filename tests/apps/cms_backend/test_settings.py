@@ -1,4 +1,5 @@
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pytest
 from pydantic import ValidationError
@@ -9,6 +10,7 @@ _VARIABLES = (
     "ENV",
     "MONGO_URL",
     "PORT",
+    "TIMEZONE",
     "SCRAP_TIMEOUT_SECONDS",
     "SCRAP_COOLDOWN_SECONDS",
 )
@@ -33,6 +35,7 @@ def test_uses_dev_defaults_when_environment_and_env_file_are_empty() -> None:
     assert settings.env == "dev"
     assert settings.mongo_url == "mongodb://localhost:27017/daily-trends-dev"
     assert settings.port == 5000
+    assert settings.timezone == ZoneInfo("Europe/Madrid")
     assert settings.scrap_timeout_seconds == 10
     assert settings.scrap_cooldown_seconds == 300
 
@@ -51,6 +54,7 @@ def test_reads_values_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ENV", "production")
     monkeypatch.setenv("MONGO_URL", "mongodb://mongo:27017/other")
     monkeypatch.setenv("PORT", "8080")
+    monkeypatch.setenv("TIMEZONE", "America/New_York")
     monkeypatch.setenv("SCRAP_TIMEOUT_SECONDS", "2.5")
     monkeypatch.setenv("SCRAP_COOLDOWN_SECONDS", "60")
 
@@ -59,6 +63,7 @@ def test_reads_values_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.env == "production"
     assert settings.mongo_url == "mongodb://mongo:27017/other"
     assert settings.port == 8080
+    assert settings.timezone == ZoneInfo("America/New_York")
     assert settings.scrap_timeout_seconds == 2.5
     assert settings.scrap_cooldown_seconds == 60
 
@@ -136,6 +141,7 @@ def test_errors_never_show_the_mongo_url(monkeypatch: pytest.MonkeyPatch) -> Non
     [
         ("ENV", "staging"),
         ("PORT", "abc"),
+        ("TIMEZONE", "Mars/Olympus"),
         ("SCRAP_TIMEOUT_SECONDS", "0"),
         ("SCRAP_COOLDOWN_SECONDS", "-1"),
     ],
@@ -153,3 +159,10 @@ def test_accepts_a_zero_cooldown(monkeypatch: pytest.MonkeyPatch) -> None:
     settings = Settings()
 
     assert settings.scrap_cooldown_seconds == 0
+
+
+def test_names_the_timezone_variable_when_it_is_unknown(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TIMEZONE", "Mars/Olympus")
+
+    with pytest.raises(ValidationError, match="timezone"):
+        Settings()

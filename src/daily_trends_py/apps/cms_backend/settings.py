@@ -1,4 +1,5 @@
 from typing import Literal, cast
+from zoneinfo import ZoneInfo
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -16,6 +17,7 @@ class Settings(BaseSettings):
     env: Literal["production", "dev", "test"] = "dev"
     mongo_url: str = _MONGO_URL_BY_ENV["dev"]
     port: int = 5000
+    timezone: ZoneInfo = ZoneInfo("Europe/Madrid")
     scrap_timeout_seconds: float = Field(default=10, gt=0)
     scrap_cooldown_seconds: float = Field(default=300, ge=0)
 

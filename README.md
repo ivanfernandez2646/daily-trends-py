@@ -62,6 +62,7 @@ settings stop the API at startup with exit code 1.
 | `ENV` | `dev` | `production`, `dev` or `test`; selects the default `MONGO_URL` |
 | `MONGO_URL` | `dev`: `mongodb://localhost:27017/daily-trends-dev`, `test`: `mongodb://localhost:27017/daily-trends-test`, `production`: required | MongoDB connection string |
 | `PORT` | `5000` | HTTP port |
+| `TIMEZONE` | `Europe/Madrid` | IANA zone that decides when a business day starts; the server's `TZ` is ignored |
 | `SCRAP_TIMEOUT_SECONDS` | `10` | Timeout of each request to a scraped site, > 0 |
 | `SCRAP_COOLDOWN_SECONDS` | `300` | Minimum time between background front page refreshes, ≥ 0 (0 disables it) |
 

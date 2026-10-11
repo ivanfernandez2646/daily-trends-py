@@ -128,24 +128,24 @@ settings. Tests never read `.env`.
 
 ### Tests first
 
-- [ ] `test_settings.py`: the default is `Europe/Madrid`; `TIMEZONE=America/New_York` is read;
+- [x] `test_settings.py`: the default is `Europe/Madrid`; `TIMEZONE=America/New_York` is read;
       `TIMEZONE=Mars/Olympus` → `ValidationError`.
-- [ ] `test_main.py`: `TIMEZONE=Mars/Olympus` exits 1.
-- [ ] `test_system_clock.py`: `now()` is aware, its offset matches the configured zone, and it does
+- [x] `test_main.py`: `TIMEZONE=Mars/Olympus` exits 1.
+- [x] `test_system_clock.py`: `now()` is aware, its offset matches the configured zone, and it does
       not depend on `TZ`.
-- [ ] `test_feed_home_searcher.py`: newest feed at `2026-10-08T22:30:00.000Z`, clock fixed at
+- [x] `test_feed_home_searcher.py`: newest feed at `2026-10-08T22:30:00.000Z`, clock fixed at
       `2026-10-09T08:00:00Z` in `Europe/Madrid` → fresh, no refresh requested. The same feed with
       the clock at `2026-10-10T08:00:00` Madrid → stale.
 
 ### Implementation
 
-- [ ] Add `timezone` with a field validator to `Settings`, and `TIMEZONE` to `.env.example` and the
+- [x] Add `timezone` to `Settings` (pydantic validates `ZoneInfo` natively, no custom validator), and `TIMEZONE` to `.env.example` and the
       README.
-- [ ] Give `SystemClock` its timezone and update the `Clock` docstring.
-- [ ] Wire `SystemClock(settings.timezone)` in `create_app`.
-- [ ] Add a "Superseded by I04" note next to "server local time" in S07.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggested commits:
+- [x] Give `SystemClock` its timezone and update the `Clock` docstring.
+- [x] Wire `SystemClock(settings.timezone)` in `create_app`.
+- [x] Add a "Superseded by I04" note next to "server local time" in S07.
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggested commits:
   - `fix(i04): use an explicit business timezone for the front page`
   - `fix(i04): read the business timezone from settings`
   - `test(i04): cover front page staleness around local midnight`
@@ -198,4 +198,4 @@ the day's bounds instead of a UTC date.
 
 ## Next step
 
-Phase 1 is implemented. Run `/ai-project-implement-phase` to implement Phase 2.
+Phases 1 and 2 are implemented. Run `/ai-project-implement-phase` to implement Phase 3.

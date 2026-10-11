@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -26,6 +27,7 @@ NOW = datetime(2026, 10, 8, 12, 0, tzinfo=UTC)
 TODAY = "2026-10-08T08:00:00.000Z"
 YESTERDAY = "2026-10-07T23:59:59.999Z"
 COOLDOWN = timedelta(minutes=5)
+MADRID = ZoneInfo("Europe/Madrid")
 
 
 def _feed_created_at(created_at: str) -> Feed:
@@ -106,6 +108,27 @@ async def test_compares_days_in_the_local_zone_of_the_clock(
 ) -> None:
     local_now = datetime(2026, 10, 8, 0, 30, tzinfo=timezone(timedelta(hours=2)))
     repository = InMemoryFeedRepository([_feed_created_at(newest_created_at)])
+    scrap = StubFeedScrap()
+    searcher, refresher = _searcher(repository, scrap, local_now)
+
+    await searcher.execute()
+    await refresher.join()
+
+    assert scrap.calls == expected_scrap_calls
+
+
+@pytest.mark.parametrize(
+    ("local_now", "expected_scrap_calls"),
+    [
+        pytest.param(datetime(2026, 10, 9, 10, 0, tzinfo=MADRID), 0, id="same business day"),
+        pytest.param(datetime(2026, 10, 10, 10, 0, tzinfo=MADRID), 1, id="next business day"),
+    ],
+)
+async def test_compares_days_in_the_business_timezone_across_utc_midnight(
+    local_now: datetime, expected_scrap_calls: int
+) -> None:
+    # 00:30 on 9 October in Madrid, still 8 October in UTC.
+    repository = InMemoryFeedRepository([_feed_created_at("2026-10-08T22:30:00.000Z")])
     scrap = StubFeedScrap()
     searcher, refresher = _searcher(repository, scrap, local_now)
 

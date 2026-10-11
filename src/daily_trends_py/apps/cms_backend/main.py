@@ -84,7 +84,7 @@ def create_app(
             feed_repository,
             [ElMundoFeedScraper(http_client), ElEspanolFeedScraper(http_client)],
         )
-        clock = SystemClock()
+        clock = SystemClock(settings.timezone)
         feed_home_refresher = FeedHomeRefresher(
             app.state.feed_scraper, clock, timedelta(seconds=settings.scrap_cooldown_seconds)
         )
