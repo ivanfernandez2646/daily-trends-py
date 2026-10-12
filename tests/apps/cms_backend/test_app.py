@@ -82,7 +82,7 @@ def test_accepts_preflight_requesting_any_header(client: TestClient) -> None:
 
 
 def test_compresses_large_responses(client: TestClient) -> None:
-    response = client.get("/openapi.yml", headers={"Accept-Encoding": "gzip"})
+    response = client.get("/openapi.json", headers={"Accept-Encoding": "gzip"})
 
     assert response.headers["content-encoding"] == "gzip"
 
@@ -93,23 +93,24 @@ def test_does_not_compress_small_responses(client: TestClient) -> None:
     assert "content-encoding" not in response.headers
 
 
-def test_serves_swagger_ui_at_root_loading_the_openapi_document(client: TestClient) -> None:
-    response = client.get("/")
+@pytest.mark.parametrize("path", ["/docs", "/redoc"])
+def test_serves_the_generated_docs(client: TestClient, path: str) -> None:
+    response = client.get(path)
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
-    assert "/openapi.yml" in response.text
+    assert "/openapi.json" in response.text
 
 
-def test_serves_the_openapi_document(client: TestClient) -> None:
-    response = client.get("/openapi.yml")
+def test_serves_the_generated_openapi_document(client: TestClient) -> None:
+    response = client.get("/openapi.json")
 
     assert response.status_code == 200
-    assert response.text.startswith("openapi:")
+    assert response.json()["openapi"].startswith("3.")
 
 
-@pytest.mark.parametrize("path", ["/docs", "/redoc", "/openapi.json"])
-def test_does_not_expose_fastapi_generated_docs(client: TestClient, path: str) -> None:
+@pytest.mark.parametrize("path", ["/", "/openapi.yml"])
+def test_no_longer_serves_the_hand_written_document(client: TestClient, path: str) -> None:
     response = client.get(path)
 
     assert response.status_code == 404

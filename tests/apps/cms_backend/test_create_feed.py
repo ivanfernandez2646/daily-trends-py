@@ -1,4 +1,3 @@
-import re
 from collections.abc import Callable
 
 import httpx2
@@ -40,24 +39,14 @@ def test_creates_a_cms_feed_with_null_description_and_update_date(client: TestCl
 
     assert response.status_code == 201
     body = response.json()
-    assert list(body) == [
-        "id",
-        "title",
-        "description",
-        "author",
-        "source",
-        "createdAt",
-        "updatedAt",
-    ]
-    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z", body["createdAt"])
-    assert body | {"createdAt": None} == {
+    assert body | {"created_at": None} == {
         "id": id,
         "title": "A title",
         "description": None,
         "author": "Ivan",
         "source": "CMS",
-        "createdAt": None,
-        "updatedAt": None,
+        "created_at": None,
+        "updated_at": None,
     }
 
 

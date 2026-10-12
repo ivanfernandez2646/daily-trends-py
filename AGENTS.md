@@ -21,9 +21,9 @@ are user-invoked. Supporting skills under `.agents/skills/` are selected by the 
 
 ## Architecture
 
-- `src/<package>/apps/<app>`: entry points (FastAPI app, jobs), the composition root (DI container)
-  and the exception handlers.
-- `src/<package>/contexts/<context>/<subdomain>/api`: transport and validation (routers, Pydantic schemas).
+- `src/<package>/apps/<app>`: entry points (FastAPI app, jobs), the composition root (DI container),
+  transport and validation (routers, Pydantic request and response schemas) and the exception
+  handlers. Bounded contexts have no HTTP layer.
 - `src/<package>/contexts/<context>/<subdomain>/application`: use-case orchestration.
 - `src/<package>/contexts/<context>/<subdomain>/domain`: framework-free business types and rules.
 - `src/<package>/contexts/<context>/<subdomain>/infrastructure`: external SDK, database and network adapters.

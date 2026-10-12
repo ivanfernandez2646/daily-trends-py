@@ -4,7 +4,11 @@ description: 'The HTTP layer uses Pydantic models, a DI container, global except
 spec: 'specs/improvements/I06-idiomatic-fastapi-layer.md'
 branch: 'fix/i06-idiomatic-fastapi-layer'
 created_at: '2026-10-12T10:42:14Z'
-updated_at: '2026-10-12T11:08:37Z'
+updated_at: '2026-10-12T11:13:54Z'
+implemented_at: '2026-10-12T11:13:54Z'
+implemented_by:
+  tool: 'Claude Code'
+  model: 'claude-opus-5-5'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -314,7 +318,7 @@ disappear.
       covered `render_value` and `from_raw`. A smoke run against Mongo answers a body-less `PUT`,
       a form body and malformed JSON as the spec says, and `PATCH` without a body leaves the feed
       unchanged.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ## Phase 3: Response models and generated OpenAPI
 
@@ -351,48 +355,64 @@ goes away.
     (`/feed/list`, `/feed/home`, `/feed/scrap`), and none for `DELETE` 204;
   - `responses={...: {"model": ErrorResponse}}`: 400 on every route with a body or id; 404 on
     `GET`/`PATCH`/`DELETE /feed/{id}`; 409 on `PUT`; 500 on every feed route.
-- `create_app` sets `FastAPI(title="Daily trends", version=<package version>, description=...)` with
-  the default `/docs`, `/redoc` and `/openapi.json`. The document does not advertise FastAPI's 422.
+- `create_app` builds `CmsBackendApi(title="Daily trends", version=<package version>,
+  description=...)` with the default `/docs`, `/redoc` and `/openapi.json`. `CmsBackendApi`
+  (`apps/cms_backend/api.py`) subclasses `FastAPI`, and its `openapi()` drops the 422 response and
+  the `HTTPValidationError`/`ValidationError` schemas FastAPI always adds; FastAPI has no option for
+  this.
+- The response model comes from each route's return annotation (`-> FeedResponse`,
+  `-> list[FeedResponse]`); `DELETE` declares `response_class=Response` and returns `None`. Each
+  error response carries a description, and the feed routes are tagged `feeds`.
 - Removed: `routes/swagger.py`, `docs/openapi.yml`, and `COPY docs ./docs` in the Dockerfile.
   `GET /` and `GET /openapi.yml` answer 404.
 
 ### Tests first
 
-- [ ] Success JSON has snake_case keys in the order `id, title, description, author, source,
-      created_at, updated_at`, for `PUT`, `GET`, `PATCH`, `/feed/list`, `/feed/home` and
-      `/feed/scrap`. Use the existing app tests, and the feature files' expected bodies where they
-      list keys.
-- [ ] Both date shapes appear: a seeded feed at a whole second gives no fraction, and a feed with
-      milliseconds gives `.mmm000Z`.
-- [ ] `tests/apps/cms_backend/test_app.py`:
-  - `/docs` and `/redoc` → 200 HTML;
+- [x] `tests/apps/cms_backend/test_feed_json.py`: success JSON has snake_case keys in the order
+      `id, title, description, author, source, created_at, updated_at`, and UTC dates in Pydantic's
+      format, for `PUT`, `GET`, `PATCH`, `/feed/list`, `/feed/home` and `/feed/scrap`. The
+      `test_create_feed.py` and `test_update_feed.py` bodies use the new keys. No feature file
+      asserts on response keys; their `createdAt` column is seed data in domain primitives.
+- [x] `tests/apps/cms_backend/test_list_feeds.py`: both date shapes appear. A feed at a whole second
+      gives `2026-10-09T09:30:00Z`, and one with milliseconds gives `2026-10-10T07:15:30.250000Z`.
+- [x] `tests/apps/cms_backend/test_app.py`:
+  - `/docs` and `/redoc` → 200 HTML that loads `/openapi.json`;
+  - `/openapi.json` → 200;
   - `/` and `/openapi.yml` → 404;
   - the gzip test uses `/openapi.json`.
-- [ ] `tests/apps/cms_backend/test_openapi.py`:
-  - title, version and description are set;
-  - every route is listed;
+- [x] `tests/apps/cms_backend/test_openapi.py`, built from `app.openapi()` with no database:
+  - title, version (the package's) and description are set;
+  - every route is listed with its methods;
   - `PUT`/`PATCH` reference `CreateFeedRequest`/`UpdateFeedRequest`;
-  - success responses reference `FeedResponse`;
-  - declared error responses reference `ErrorResponse`;
-  - no 422 appears.
+  - success responses reference `FeedResponse` (lists as arrays of it); `DELETE` 204 has no content;
+  - `FeedResponse` lists its fields in order, with `date-time` dates;
+  - each feed route declares exactly its error statuses, all referencing `ErrorResponse`;
+  - no 422, `HTTPValidationError` or `ValidationError` appears.
 
 ### Implementation
 
-- [ ] Add `FeedResponse` and `ErrorResponse`, and declare `response_model` and `responses` on each
+- [x] Add `FeedResponse` and `ErrorResponse`, and declare the response model and `responses` on each
       route.
-- [ ] Enable the generated docs with metadata and drop the 422 entries. Delete `swagger.py`,
+- [x] Enable the generated docs with metadata and drop the 422 entries. Delete `swagger.py`,
       `docs/openapi.yml` and the Dockerfile `COPY docs`.
-- [ ] Docs:
+- [x] Docs:
   - `AGENTS.md`: drop the `contexts/<context>/<subdomain>/api` layer; routers, schemas, the container
     and exception handlers live in `apps/<app>`.
   - `README.md`: the error contract (kinds → status, `{"error": ...}`, the validation message
-    format), the generated OpenAPI (`/docs`, `/redoc`, `/openapi.json`), and the docker comment.
-    Drop `feeds/api/` from the project layout.
-- [ ] Add "Superseded by I06" to `S01` (Swagger from YAML) and `S02` (feed JSON keys and date format).
-      Check that the `specs/improvements/README.md` row #20 links I06 (it does already).
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+    format), the generated OpenAPI (`/docs`, `/redoc`, `/openapi.json`), the feed JSON format, and
+    the docker comment. Drop `feeds/api/` from the project layout.
+- [x] Add "Superseded by I06" to `S01` (Swagger from YAML) and `S02` (feed JSON keys and date format).
+      Check that the `specs/improvements/README.md` row #20 links I06 (it does).
+- [x] Run the quality gate from `AGENTS.md` and fix failures. 381 tests pass. A smoke run against
+      Mongo serves `/docs`, `/redoc` and `/openapi.json` (no 422), answers 404 at `/` and
+      `/openapi.yml`, and returns the snake_case feed JSON.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
+
+> **Open point, out of this spec:** a 404 for an unknown route (or a 405) still answers FastAPI's
+> `{"detail": "Not Found"}`, not the `{"error": ...}` envelope. I06 maps domain and validation
+> errors only. It needs a spec before it changes.
 
 ## Next step
 
-Review Phase 2, commit it with `/ai-project-conventional-commit`, then run `/ai-project-implement-phase` for Phase 3.
+Every phase of I06 is implemented and committed. Open a pull request from
+`fix/i06-idiomatic-fastapi-layer` when ready.

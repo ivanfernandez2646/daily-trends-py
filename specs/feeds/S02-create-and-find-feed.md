@@ -45,6 +45,8 @@ Create a CMS feed and retrieve it by id. This spec also defines the domain build
 { "id": "uuid", "title": "string", "description": "string|null", "author": "string",
   "source": "CMS|EL_PAIS|EL_MUNDO|EL_ESPANOL", "createdAt": "ISO-8601", "updatedAt": "ISO-8601|null" }
 ```
+
+> **Superseded by [I06](../improvements/I06-idiomatic-fastapi-layer.md):** the feed JSON is `FeedResponse`, with snake_case keys in the order `id, title, description, author, source, created_at, updated_at`. Dates use Pydantic's format: UTC with `Z`, and six fractional digits only when the fraction is not zero (`2026-10-12T08:00:00Z`, `2026-10-12T08:00:00.123000Z`). Mongo documents keep `createdAt` and `updatedAt`.
 - *Given* a new id and valid title/author, *when* PUT, *then* 201 and the feed is stored with `updatedAt: null`.
 
 ## Find — `GET /feed/:id`

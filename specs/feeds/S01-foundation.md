@@ -11,6 +11,8 @@ A running app that starts, reads configuration, connects to Mongo, answers `GET 
 - Global middleware: JSON and urlencoded bodies, open CORS, response compression. Swagger UI served from `docs/openapi.yml`.
 
   > **Superseded by [I06](../improvements/I06-idiomatic-fastapi-layer.md):** only JSON bodies are accepted, validated by Pydantic models; an urlencoded body answers 400.
+
+  > **Superseded by [I06](../improvements/I06-idiomatic-fastapi-layer.md):** FastAPI generates the OpenAPI document from the code at `GET /openapi.json`, with Swagger UI at `GET /docs` and ReDoc at `GET /redoc`. `docs/openapi.yml` is removed, and `GET /` and `GET /openapi.yml` answer 404.
 - Startup: explicit dependency wiring (no DI container). A startup error is logged and the process exits with code 1; uncaught exceptions behave the same.
 - Route order rule: fixed routes (`/feed/list`, `/feed/home`, `/feed/scrap`) are registered **before** `/feed/:id`, so a fixed route is never read as an id.
 

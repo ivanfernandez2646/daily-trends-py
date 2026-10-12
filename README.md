@@ -26,7 +26,31 @@ The port keeps the current behavior of the Node project (same routes, status cod
 | `GET /feed/scrap` | Scrape El Mundo and El Español and store the results |
 | `GET /status` | Health check |
 
-Full contract and error format: [`specs/feeds/S01-foundation.md`](specs/feeds/S01-foundation.md).
+FastAPI generates the OpenAPI document from the code: Swagger UI at `/docs`, ReDoc at `/redoc` and
+the document at `/openapi.json`. Feed JSON uses snake_case keys (`created_at`, `updated_at`), with
+dates in UTC with `Z` and a fractional part only when it is not zero
+(`2026-10-12T08:00:00Z`, `2026-10-12T08:00:00.123000Z`).
+
+### Errors
+
+Every error answers JSON `{"error": "<message>"}`. The status depends on the kind of error, for
+every route:
+
+| Error | Status |
+|---|---|
+| Request that fails schema validation | 400 |
+| `InvalidArgumentError` (a blank title, an id that is not a UUID) | 400 |
+| `NotFoundError` (`FeedNotFound`) | 404 |
+| `ConflictError` (`FeedAlreadyExists`) | 409 |
+| Anything else | 500 |
+
+A validation message lists each problem as `<field>: <reason>`, joined with `; `, for example
+`title: Field required; author: Field required`. A body that is not a JSON object (another content
+type, malformed JSON, an array) is reported at `body`. Domain messages keep the value between
+angle brackets: `<FeedTitle> is mandatory. Current value: <  >`.
+
+Full contract: [`specs/feeds/`](specs/feeds/) from S01, with the changes of
+[I06](specs/improvements/I06-idiomatic-fastapi-layer.md).
 
 ## Getting started
 
@@ -35,7 +59,7 @@ Requirements: [uv](https://docs.astral.sh/uv/), Docker (for MongoDB).
 Run everything in Docker (API and MongoDB):
 
 ```bash
-docker compose up --build -d  # API on http://localhost:5000, Swagger UI at /
+docker compose up --build -d  # API on http://localhost:5000, Swagger UI at /docs
 docker compose down           # stop (add -v to delete the MongoDB volume)
 ```
 
@@ -93,10 +117,9 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ```text
 src/daily_trends_py/
-  apps/cms_backend/           entry points and composition root
+  apps/cms_backend/           entry points, DI container, routers, schemas, exception handlers
   contexts/cms/               bounded context
     feeds/                    subdomain
-      api/                    routers and schemas
       application/            use cases
       domain/                 entities, value objects, ports
       infrastructure/         MongoDB and scraper adapters

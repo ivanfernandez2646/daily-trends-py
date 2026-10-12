@@ -14,7 +14,7 @@ pytestmark = pytest.mark.integration
 scenarios("features/list-feed.feature")
 
 
-def test_lists_feeds_chronologically_with_utc_dates_in_milliseconds(
+def test_lists_feeds_chronologically_with_utc_dates_and_a_fraction_only_when_not_zero(
     container: AsyncContainer, client: TestClient
 ) -> None:
     earlier = FeedMother.random(
@@ -32,7 +32,7 @@ def test_lists_feeds_chronologically_with_utc_dates_in_milliseconds(
     response = client.get("/feed/list")
 
     assert response.status_code == 200
-    assert [(feed["id"], feed["createdAt"], feed["updatedAt"]) for feed in response.json()] == [
-        (later.id.value, "2026-10-09T09:30:00.000Z", "2026-10-10T07:15:30.250Z"),
-        (earlier.id.value, "2026-10-09T08:00:00.000Z", None),
+    assert [(feed["id"], feed["created_at"], feed["updated_at"]) for feed in response.json()] == [
+        (later.id.value, "2026-10-09T09:30:00Z", "2026-10-10T07:15:30.250000Z"),
+        (earlier.id.value, "2026-10-09T08:00:00Z", None),
     ]

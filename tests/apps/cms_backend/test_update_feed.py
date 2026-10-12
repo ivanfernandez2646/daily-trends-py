@@ -43,8 +43,8 @@ def test_a_null_description_is_stored_with_a_new_update_date(client: TestClient)
 
     assert response.status_code == 200
     body = response.json()
-    assert body == {**feed, "description": None, "updatedAt": body["updatedAt"]}
-    assert body["updatedAt"] is not None
+    assert body == {**feed, "description": None, "updated_at": body["updated_at"]}
+    assert body["updated_at"] is not None
     assert client.get(f"/feed/{feed['id']}").json() == body
 
 

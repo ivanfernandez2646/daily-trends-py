@@ -2,6 +2,7 @@ import logging
 import sys
 from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
+from importlib.metadata import version
 from types import TracebackType
 
 import uvicorn
@@ -12,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from uvicorn.config import STARTUP_FAILURE
 
+from daily_trends_py.apps.cms_backend.api import CmsBackendApi
 from daily_trends_py.apps.cms_backend.container import FEED_USE_CASES, create_container
 from daily_trends_py.apps.cms_backend.errors import register_exception_handlers
 from daily_trends_py.apps.cms_backend.routes import register_routes
@@ -24,6 +26,12 @@ from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.migrat
 )
 
 logger = logging.getLogger(__name__)
+
+DESCRIPTION = (
+    "Front-page news feeds: CMS feeds managed through this API and headlines scraped from"
+    ' El Mundo and El Español. Every error answers `{"error": "<message>"}`: 400 for an invalid'
+    " request, 404 for a missing feed, 409 for an existing id and 500 for anything else."
+)
 
 
 def create_app(container: AsyncContainer) -> FastAPI:
@@ -38,7 +46,12 @@ def create_app(container: AsyncContainer) -> FastAPI:
         finally:
             await container.close()
 
-    app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
+    app = CmsBackendApi(
+        title="Daily trends",
+        version=version("daily-trends-py"),
+        description=DESCRIPTION,
+        lifespan=lifespan,
+    )
     app.add_middleware(GZipMiddleware, minimum_size=1024)
     app.add_middleware(
         CORSMiddleware,
