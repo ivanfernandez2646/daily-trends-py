@@ -7,7 +7,11 @@ created_at: '2026-10-12T10:00:00Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-12T12:00:00Z'
+updated_at: '2026-10-12T13:00:00Z'
+implemented_at: '2026-10-12T13:00:00Z'
+implemented_by:
+  tool: 'Claude Code'
+  model: 'claude-opus-5-5'
 ---
 
 # I07 · Mongo migrations
@@ -50,7 +54,7 @@ repository stays green after each phase.
     and asserts exit code 1.
   - Integration tests are marked `integration`.
 - `specs/improvements/README.md` already links I07 for #25, so that acceptance criterion is met.
-- Agent skills are mirrored: `.agents/skills/` and `.claude/skills/` hold identical copies.
+- Agent skills live in `.agents/skills/`; `.claude/skills` is a symlink to it.
 - **Agreed change to the spec:** "AGENTS.md explains how to add a migration" becomes a supporting
   skill, `ai-project-mongo-migrations`, which the agent loads only when it adds a migration.
   `AGENTS.md` gets a one-line pointer to it, so the instructions are not loaded in every session.
@@ -157,7 +161,7 @@ A skill explains how to add a migration, and `AGENTS.md` points to it.
   parameter lets the startup test inject a failing migration without patching imports.
   `[project.scripts]` keeps calling `main()`.
 - New skill `ai-project-mongo-migrations` (`user-invocable: false`, selected by the agent when it
-  adds or changes a MongoDB migration), mirrored in `.agents/skills/` and `.claude/skills/`. It
+  adds or changes a MongoDB migration), in `.agents/skills/` (`.claude/skills` links to it). It
   covers:
   - creating `versions/m<NNNN>_<slug>.py` with `async def up(db: MongoDatabase) -> None`;
   - appending `Migration.from_module(...)` to `MIGRATIONS`;
@@ -172,33 +176,36 @@ A skill explains how to add a migration, and `AGENTS.md` points to it.
 
 ### Tests first
 
-- [ ] `tests/apps/cms_backend/test_main.py` (`integration`):
+- [x] `tests/apps/cms_backend/test_main.py` (`integration`):
   - `run_main` runs `main(migrations=[failing])` against a fresh database
-    (`MONGO_URL=<server>/daily-trends-test-startup-<uuid>`) and exits with code 1. stderr names
-    the migration id. The database is dropped afterwards.
-  - The failing migration lives in a test fixture module that the subprocess script imports.
-- [ ] `tests/apps/cms_backend/test_app.py` (`integration`): starting the app with a recording
+    (`MONGO_URL=<server>/daily-trends-test-startup-<uuid hex>`) and exits with code 1. stderr has
+    the runner's `Migration m_test_fails failed` log line. The database is dropped afterwards.
+  - The failing migration is defined inline in the subprocess script; the subprocess runs outside
+    the repository, where the `tests` package is not importable. Asserting only the id gave a
+    false positive before the change: the traceback of the old `main()` quoted the script line.
+- [x] `tests/apps/cms_backend/test_app.py` (`integration`): starting the app with a recording
       migration on a fresh database applies it before the first request is served, and records it
-      in `migrations`.
-- [ ] The existing app tests keep passing with `MIGRATIONS` empty on the shared test database.
+      in `migrations`. `tests/mongo.py` gains `fresh_database_name` and `mongo_url_for`.
+- [x] The existing app tests keep passing with `MIGRATIONS` empty on the shared test database,
+      which gets no `migrations` collection (the empty run only reads).
 
 ### Implementation
 
-- [ ] Add the `migrations` parameter to `create_app` and `main`, and call `run_migrations` in the
+- [x] Add the `migrations` parameter to `create_app` and `main`, and call `run_migrations` in the
       lifespan after the ping, closing the client on failure.
-- [ ] Add the `ai-project-mongo-migrations` skill in both skill folders, and the pointer in
-      `AGENTS.md`.
+- [x] Add the `ai-project-mongo-migrations` skill in `.agents/skills/` (one copy, through the
+      symlink), and the pointer in `AGENTS.md` after the composition root paragraph.
 - [x] Update `specs/improvements/I07-mongo-migrations.md` (done while planning):
   - "Documentation" and the acceptance criterion now say that the skill documents migrations and
     `AGENTS.md` references it;
   - note that I07 ships an empty list and that `m0001_feeds_indexes` belongs to I08.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggested commits:
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggested commits:
   - `feat(i07): apply mongo migrations at startup`
   - `docs(i07): add a skill explaining how to add a mongo migration`
   - `test(i07): fail startup with exit code 1 when a migration fails`
 
 ## Next step
 
-Phase 1 is implemented and awaits review. Then run `/ai-project-implement-phase` from
-`.claude/worktrees/i07-mongo-migrations` to implement Phase 2.
+Every phase is implemented. After review, commit Phase 2, then merge `feat/i07-mongo-migrations`.
+I08 adds `m0001_feeds_indexes` as the first migration.

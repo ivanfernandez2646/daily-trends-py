@@ -56,8 +56,8 @@ young to depend on, and the runner needed here is small.
 - With no pending migrations, startup costs one read of the `migrations` collection.
 
 ### Documentation
-- A supporting agent skill, `ai-project-mongo-migrations` (in `.agents/skills/`, mirrored in
-  `.claude/skills/`), explains how to add a migration: create the module, append it to the list,
+- A supporting agent skill, `ai-project-mongo-migrations` (in `.agents/skills/`, which
+  `.claude/skills` links to), explains how to add a migration: create the module, append it to the list,
   keep it idempotent, never edit an applied one, test it by running it twice, and clear a stale
   claim. The agent loads it only when it adds or changes a migration.
 - `AGENTS.md` only references the skill in one line, so the instructions are not loaded in every

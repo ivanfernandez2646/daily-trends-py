@@ -34,6 +34,9 @@ Application code depends on ports (`typing.Protocol`). Infrastructure adapters c
 technology details. Domain and application code never import FastAPI, Pydantic or database drivers.
 Wiring lives in one composition root; there is no DI container.
 
+MongoDB schema changes (indexes, data reshapes) are versioned migrations applied at startup;
+the `ai-project-mongo-migrations` skill explains how to add one.
+
 ## Quality rules
 
 - Python 3.14 managed with `uv`. Never use `pip` or install into the global Python.

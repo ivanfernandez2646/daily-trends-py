@@ -6,8 +6,23 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
+from pymongo import MongoClient
+
+from tests.mongo import TEST_MONGO_URL, fresh_database_name, mongo_url_for
 
 RUN_MAIN = "from daily_trends_py.apps.cms_backend.main import main; main()"
+
+RUN_MAIN_WITH_FAILING_MIGRATION = """
+from daily_trends_py.apps.cms_backend.main import main
+from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.migrations import (
+    migration,
+)
+
+async def up(db):
+    raise RuntimeError("boom")
+
+main([migration.Migration("m_test_fails", up)])
+"""
 
 
 def free_port() -> int:
@@ -17,11 +32,14 @@ def free_port() -> int:
 
 
 def run_main(
-    cwd: Path, base_environment: Mapping[str, str] = os.environ, **environment: str
+    cwd: Path,
+    base_environment: Mapping[str, str] = os.environ,
+    script: str = RUN_MAIN,
+    **environment: str,
 ) -> subprocess.CompletedProcess[str]:
     # Runs outside the repository so a local `.env` is never read.
     return subprocess.run(
-        [sys.executable, "-c", RUN_MAIN],
+        [sys.executable, "-c", script],
         cwd=cwd,
         env={**base_environment, "PORT": str(free_port()), **environment},
         capture_output=True,
@@ -73,3 +91,20 @@ def test_exits_with_code_1_when_port_is_already_in_use(tmp_path: Path) -> None:
         result = run_main(tmp_path, PORT=str(busy_port))
 
     assert result.returncode == 1
+
+
+@pytest.mark.integration
+def test_exits_with_code_1_when_a_migration_fails(tmp_path: Path) -> None:
+    database = fresh_database_name("daily-trends-test-startup")
+    try:
+        result = run_main(
+            tmp_path,
+            script=RUN_MAIN_WITH_FAILING_MIGRATION,
+            MONGO_URL=mongo_url_for(database),
+        )
+    finally:
+        with MongoClient[dict[str, object]](TEST_MONGO_URL) as client:
+            client.drop_database(database)
+
+    assert result.returncode == 1
+    assert "Migration m_test_fails failed" in result.stderr
