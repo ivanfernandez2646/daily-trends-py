@@ -1,7 +1,7 @@
 from dishka.integrations.fastapi import FromDishka
 from fastapi import APIRouter, Response, status
 
-from daily_trends_py.apps.cms_backend.routes.feed_route import FeedRoute
+from daily_trends_py.apps.cms_backend.http.json_body_route import JsonBodyRoute
 from daily_trends_py.apps.cms_backend.routes.feed_schemas import (
     CreateFeedRequest,
     ErrorResponse,
@@ -22,7 +22,7 @@ from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
 from daily_trends_py.contexts.cms.shared.domain.criteria import Order
 
-router = APIRouter(route_class=FeedRoute, tags=["feeds"])
+router = APIRouter(route_class=JsonBodyRoute, tags=["feeds"])
 
 LIST_CRITERIA = FeedCriteria(order=Order("created_at", "desc"))
 

@@ -11,13 +11,14 @@ from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_
     MongoDatabase,
 )
 from tests.apps.cms_backend.conftest import resolve_mongo_client, run_in_app
+from tests.apps.cms_backend.fakes_provider import FakesProvider
 from tests.apps.cms_backend.isolated_settings import IsolatedSettings
 from tests.mongo import TEST_MONGO_URL, fresh_database_name, mongo_url_for
 
 pytestmark = pytest.mark.integration
 
 
-def test_unhandled_error_returns_500_as_json_and_is_logged(
+def test_unhandled_error_returns_500_as_json_with_cors_headers_and_is_logged_once(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     app = create_app(create_container(IsolatedSettings(mongo_url=TEST_MONGO_URL)))
@@ -26,13 +27,37 @@ def test_unhandled_error_returns_500_as_json_and_is_logged(
     async def unhandled() -> Response:  # pyright: ignore[reportUnusedFunction]
         raise RuntimeError("boom")
 
-    with TestClient(app, raise_server_exceptions=False) as client:
-        response = client.get("/unhandled")
+    # Not told to ignore server errors: the app answers the 500 instead of raising it again.
+    with TestClient(app) as client:
+        response = client.get("/unhandled", headers={"Origin": "https://example.com"})
 
     assert response.status_code == 500
     assert response.json() == {"error": "boom"}
     assert response.headers["content-type"] == "application/json"
-    assert any(record.exc_info and record.exc_info[1] is not None for record in caplog.records)
+    assert response.headers["access-control-allow-origin"] == "*"
+    assert len([record for record in caplog.records if record.exc_info]) == 1
+
+
+def test_migrations_run_at_startup_even_when_the_repository_is_a_fake() -> None:
+    database = fresh_database_name("daily-trends-test-startup")
+    applied: list[str] = []
+
+    async def up(db: MongoDatabase) -> None:
+        applied.append(db.name)
+
+    container = create_container(
+        IsolatedSettings(mongo_url=mongo_url_for(database)),
+        FakesProvider(),
+        migrations=[Migration("m_test_records", up)],
+    )
+
+    with TestClient(create_app(container)) as client:
+        # Checked before anything asks for the Mongo client: only the startup can have built it.
+        applied_at_startup = list(applied)
+        mongo_client = resolve_mongo_client(client, container)
+        run_in_app(client, lambda: mongo_client.drop_database(database))
+
+    assert applied_at_startup == [database]
 
 
 def test_applies_migrations_before_taking_traffic() -> None:

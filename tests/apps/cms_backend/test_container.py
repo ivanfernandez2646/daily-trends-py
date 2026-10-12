@@ -5,7 +5,8 @@ import pytest
 from dishka import AsyncContainer
 from pymongo.errors import InvalidOperation
 
-from daily_trends_py.apps.cms_backend.container import FEED_USE_CASES, create_container
+from daily_trends_py.apps.cms_backend.container import create_container
+from daily_trends_py.apps.cms_backend.providers.feeds import FEED_USE_CASES
 from daily_trends_py.apps.cms_backend.settings import Settings
 from daily_trends_py.contexts.cms.feeds.application.home.feed_home_refresher import (
     FeedHomeRefresher,

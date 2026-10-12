@@ -59,7 +59,7 @@ Create a CMS feed and retrieve it by id. This spec also defines the domain build
 - Missing `title` → 400 `<FeedTitle> is mandatory. Current value: <undefined>`; `"title": null` → `<null>`.
 - A JSON array body has no fields (same as a missing body). An urlencoded key sent twice becomes a list (`title=a&title=b` → `<a,b>`, a 400).
 
-> **Superseded by [I06](../improvements/I06-idiomatic-fastapi-layer.md):** a missing body or `{}` → 400 `title: Field required; author: Field required`; `"title": null` or `0` → 400 `title: Input should be a valid string`; a JSON array or an urlencoded body → 400 `body: Input should be a valid dictionary or object to extract fields from`.
+> **Superseded by [I06](../improvements/I06-idiomatic-fastapi-layer.md):** a missing body or `{}` → 400 `title: Field required; author: Field required`; `"title": null` or `0` → 400 `title: Input should be a valid string`; a JSON array → 400 `body: Input should be a valid dictionary or object to extract fields from`; an urlencoded body → 400 `body: Content type should be application/json`.
 
 ### Deliberate divergences from the original
 - **Non-string values** → 400. A non-string `title`/`author` gives `<FeedX> is mandatory. Current value: <{value}>`; a non-string `description` gives `<FeedDescription> does not allow the value <{value}>`. The original answered 500 `value.trim is not a function` for truthy non-strings and stored non-string descriptions as they came.

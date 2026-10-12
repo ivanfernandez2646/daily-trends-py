@@ -42,12 +42,14 @@ every route:
 | `InvalidArgumentError` (a blank title, an id that is not a UUID) | 400 |
 | `NotFoundError` (`FeedNotFound`) | 404 |
 | `ConflictError` (`FeedAlreadyExists`) | 409 |
-| Anything else | 500 |
+| Framework errors: unknown route, method not allowed, unreadable body | their status (404, 405, 400) |
+| Anything else | 500, with the CORS headers, logged once |
 
 A validation message lists each problem as `<field>: <reason>`, joined with `; `, for example
-`title: Field required; author: Field required`. A body that is not a JSON object (another content
-type, malformed JSON, an array) is reported at `body`. Domain messages keep the value between
-angle brackets: `<FeedTitle> is mandatory. Current value: <  >`.
+`title: Field required; author: Field required`. Bodies must be `application/json`: any other
+content type answers `body: Content type should be application/json`, and malformed JSON or an
+array is also reported at `body`. A missing body reads as `{}`. Domain messages keep the value
+between angle brackets: `<FeedTitle> is mandatory. Current value: <  >`.
 
 Full contract: [`specs/feeds/`](specs/feeds/) from S01, with the changes of
 [I06](specs/improvements/I06-idiomatic-fastapi-layer.md).
@@ -117,7 +119,7 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/).
 
 ```text
 src/daily_trends_py/
-  apps/cms_backend/           entry points, DI container, routers, schemas, exception handlers
+  apps/cms_backend/           entry points, DI container and providers, routers, schemas, errors
   contexts/cms/               bounded context
     feeds/                    subdomain
       application/            use cases

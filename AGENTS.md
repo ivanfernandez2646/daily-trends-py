@@ -34,8 +34,11 @@ In this project: `src/daily_trends_py/apps/cms_backend` and `src/daily_trends_py
 Application code depends on ports (`typing.Protocol`). Infrastructure adapters contain only
 technology details. Domain and application code never import FastAPI, Pydantic or database drivers.
 Wiring lives in one composition root per app: a [dishka](https://dishka.readthedocs.io) container
-(`apps/<app>/container.py`). Only `apps/<app>` and its tests import dishka; tests swap in fakes with
-override providers.
+(`apps/<app>/container.py`) composed from `apps/<app>/providers/`: one provider for the shared
+infrastructure and one per subdomain, so a new bounded context adds its provider, its router and
+its `STARTUP_DEPENDENCIES`. Only `apps/<app>` and its tests import dishka; tests swap in fakes with
+override providers. Every router uses `JsonBodyRoute`, and every error goes through
+`apps/<app>/errors.py`: a new domain error picks its status by inheriting from an error kind.
 
 MongoDB schema changes (indexes, data reshapes) are versioned migrations applied at startup;
 the `ai-project-mongo-migrations` skill explains how to add one.

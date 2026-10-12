@@ -14,6 +14,8 @@ from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
 from tests.contexts.cms.feeds.fakes.in_memory_feed_repository import InMemoryFeedRepository
 from tests.mongo import TEST_MONGO_URL
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.fixture
 def existing_feed() -> Feed:
@@ -27,7 +29,7 @@ def repository(existing_feed: Feed) -> InMemoryFeedRepository:
 
 @pytest.fixture
 def client(repository: InMemoryFeedRepository) -> Iterator[TestClient]:
-    # The fakes replace Mongo, so these tests need no database.
+    # The feeds live in the fakes; Mongo is only reached at startup, to check it and migrate.
     container = create_container(
         IsolatedSettings(mongo_url=TEST_MONGO_URL), FakesProvider(repository=repository)
     )

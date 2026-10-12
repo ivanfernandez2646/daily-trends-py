@@ -14,8 +14,8 @@ from fastapi.middleware.gzip import GZipMiddleware
 from uvicorn.config import STARTUP_FAILURE
 
 from daily_trends_py.apps.cms_backend.api import CmsBackendApi
-from daily_trends_py.apps.cms_backend.container import FEED_USE_CASES, create_container
-from daily_trends_py.apps.cms_backend.errors import register_exception_handlers
+from daily_trends_py.apps.cms_backend.container import STARTUP_DEPENDENCIES, create_container
+from daily_trends_py.apps.cms_backend.errors import register_error_handling
 from daily_trends_py.apps.cms_backend.routes import register_routes
 from daily_trends_py.apps.cms_backend.settings import Settings
 from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.migrations.migration import (  # noqa: E501
@@ -38,10 +38,10 @@ def create_app(container: AsyncContainer) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
         try:
-            # Built at startup, not on the first request, so an unreachable Mongo or a failing
-            # migration stops startup before the app takes traffic.
-            for use_case in FEED_USE_CASES:
-                await container.get(use_case)
+            # An unreachable Mongo or a failing migration stops startup before the app takes
+            # traffic.
+            for dependency in STARTUP_DEPENDENCIES:
+                await container.get(dependency)
             yield
         finally:
             await container.close()
@@ -52,6 +52,8 @@ def create_app(container: AsyncContainer) -> FastAPI:
         description=DESCRIPTION,
         lifespan=lifespan,
     )
+    # The last middleware added runs first: errors are answered inside compression and CORS.
+    register_error_handling(app)
     app.add_middleware(GZipMiddleware, minimum_size=1024)
     app.add_middleware(
         CORSMiddleware,
@@ -59,7 +61,6 @@ def create_app(container: AsyncContainer) -> FastAPI:
         allow_methods=["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
         allow_headers=["*"],
     )
-    register_exception_handlers(app)
     register_routes(app)
     setup_dishka(container, app)
     return app

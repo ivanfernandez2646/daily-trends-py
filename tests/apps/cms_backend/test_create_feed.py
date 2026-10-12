@@ -114,7 +114,7 @@ def test_rejects_an_urlencoded_body(client: TestClient) -> None:
     )
 
     assert response.status_code == 400
-    assert response.json() == {"error": NOT_A_JSON_OBJECT}
+    assert response.json() == {"error": "body: Content type should be application/json"}
 
 
 def test_rejects_malformed_json_as_json(client: TestClient) -> None:

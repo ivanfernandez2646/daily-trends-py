@@ -4,8 +4,8 @@ description: 'The HTTP layer uses Pydantic models, a DI container, global except
 spec: 'specs/improvements/I06-idiomatic-fastapi-layer.md'
 branch: 'fix/i06-idiomatic-fastapi-layer'
 created_at: '2026-10-12T10:42:14Z'
-updated_at: '2026-10-12T11:13:54Z'
-implemented_at: '2026-10-12T11:13:54Z'
+updated_at: '2026-10-12T11:33:45Z'
+implemented_at: '2026-10-12T11:33:45Z'
 implemented_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -408,11 +408,76 @@ goes away.
       `/openapi.yml`, and returns the snake_case feed JSON.
 - [x] STOP for user review. Suggest three Conventional Commit messages.
 
-> **Open point, out of this spec:** a 404 for an unknown route (or a 405) still answers FastAPI's
-> `{"detail": "Not Found"}`, not the `{"error": ...}` envelope. I06 maps domain and validation
-> errors only. It needs a spec before it changes.
+> **Resolved in Phase 4:** a 404 for an unknown route (or a 405) now answers the `{"error": ...}`
+> envelope.
+
+## Phase 4: Review fixes, generic for new bounded contexts
+
+The code review of PR #15 found gaps between the spec and the code. They are fixed at the app
+level so a new bounded context reuses them without changes. The spec, the README, `AGENTS.md` and
+the migrations skill are updated first. The runner findings of I07 (cancellation, cleanup errors)
+are left out on purpose: rare corner cases outside I06.
+
+### Public contracts
+
+- `apps/cms_backend/errors.py`:
+  - `error_response(status_code, message, headers=None)` builds the single error body
+    `{"error": "<message>"}`;
+  - `register_error_handling(app)` (was `register_exception_handlers`) registers the handlers and
+    adds `UnhandledErrorMiddleware`. It is called before GZip and CORS, so the 500 is answered
+    inside them;
+  - `UnhandledErrorMiddleware` answers an unmapped error with a 500 that carries the CORS headers.
+    It logs it once and does not raise it again (FastAPI's `Exception` handler runs outside CORS
+    and re-raises);
+  - Starlette's `HTTPException` (unknown route 404, 405 with `Allow`, unreadable body 400) uses
+    the same body.
+- `apps/cms_backend/http/json_body_route.py`: `JsonBodyRoute(DishkaRoute)`, which replaces
+  `routes/feed_route.py` (`FeedRoute`). It acts only on routes with a body (`body_field`): an empty
+  body reads as `{}`, and any content type other than `application/json` (urlencoded,
+  `application/*+json`, none) → 400 `body: Content type should be application/json`.
+- `apps/cms_backend/providers/`:
+  - `infrastructure.py`, `InfrastructureProvider(http_transport, migrations)`: settings, Mongo
+    client with migrations, HTTP client, clock, event bus;
+  - `feeds.py`, `FeedsProvider` and `FEED_USE_CASES`.
+- `apps/cms_backend/container.py`: `create_container` composes them, and
+  `STARTUP_DEPENDENCIES = (MongoClient, *FEED_USE_CASES)` is what the lifespan resolves. Mongo is
+  named explicitly, so migrations and the connection check do not depend on a use case reaching it.
+
+### Tests first
+
+- [x] `tests/apps/cms_backend/test_errors.py`:
+  - a 500 is answered without being raised again (default `TestClient`) and is logged once;
+  - framework errors use the same body: 404 `Not Found`, 405 `Method Not Allowed` with `Allow`.
+- [x] `tests/apps/cms_backend/http/test_json_body_route.py`, on a throwaway app:
+  - a JSON body is accepted, also with a charset;
+  - a missing or empty body reads as `{}`;
+  - urlencoded, `application/merge-patch+json`, `text/plain` or no content type → 400;
+  - a route without a body sees the request untouched.
+- [x] `tests/apps/cms_backend/test_app.py`:
+  - the 500 carries `Access-Control-Allow-Origin` and is logged once;
+  - migrations run at startup even when `FakesProvider` replaces the repository (checked before
+    anything asks for the client).
+- [x] `tests/apps/cms_backend/test_create_feed.py`: an urlencoded body answers the content-type
+      message.
+- [x] `tests/apps/cms_backend/test_feed_router.py` is marked `integration`: its feeds live in fakes,
+      but startup now reaches Mongo to check it and migrate.
+
+### Implementation
+
+- [x] Update the I06 spec (content type, providers per concern, `STARTUP_DEPENDENCIES`, framework
+      errors, CORS on the 500), the S01/S02 notes, `README.md`, `AGENTS.md` and the
+      `ai-project-mongo-migrations` skill.
+- [x] `errors.py`: `error_response`, `UnhandledErrorMiddleware`, the `HTTPException` handler, and
+      `register_error_handling`, called first in `create_app`.
+- [x] Move `FeedRoute` to `http/json_body_route.py` as `JsonBodyRoute`, limited to routes with a
+      body, with the content-type check.
+- [x] Split the container into `providers/infrastructure.py` and `providers/feeds.py`, and add
+      `STARTUP_DEPENDENCIES`.
+- [x] Run the quality gate from `AGENTS.md` and fix failures. 405 tests pass. A smoke run answers
+      `GET /` → 404 and `POST /feed/list` → 405 with the envelope, rejects
+      `application/merge-patch+json` and urlencoded bodies, and reads a missing body as `{}`.
+- [x] STOP for user review. The user asked to commit it directly.
 
 ## Next step
 
-Every phase of I06 is implemented and committed. Open a pull request from
-`fix/i06-idiomatic-fastapi-layer` when ready.
+Every phase of I06 is implemented and committed. Update PR #15 with the fourth commit.
