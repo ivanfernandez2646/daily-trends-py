@@ -1,10 +1,6 @@
 from dataclasses import dataclass
 from typing import ClassVar, Literal
 
-from daily_trends_py.contexts.cms.shared.domain.invalid_argument_error import (
-    InvalidArgumentError,
-)
-
 type SortDirection = Literal["asc", "desc"]
 
 
@@ -34,15 +30,12 @@ class Criteria:
     limit: int | None = None
 
     def __post_init__(self) -> None:
+        # Criteria are built by code, not from client input: an invalid one is a bug, not a 400.
         if self.limit is not None and (isinstance(self.limit, bool) or self.limit < 1):
-            raise InvalidArgumentError(
-                f"<{type(self).__name__}> does not allow the limit <{self.limit}>"
-            )
+            raise ValueError(f"<{type(self).__name__}> does not allow the limit <{self.limit}>")
         fields = [condition.field for condition in self.filters]
         if self.order is not None:
             fields.append(self.order.field)
         for field in fields:
             if field not in self.FIELDS:
-                raise InvalidArgumentError(
-                    f"<{type(self).__name__}> does not allow the field <{field}>"
-                )
+                raise ValueError(f"<{type(self).__name__}> does not allow the field <{field}>")

@@ -27,6 +27,15 @@ def test_an_empty_body_answers_the_unchanged_feed(client: TestClient) -> None:
     assert response.json() == feed
 
 
+def test_no_body_answers_the_unchanged_feed(client: TestClient) -> None:
+    feed = create_feed(client)
+
+    response = client.patch(f"/feed/{feed['id']}")
+
+    assert response.status_code == 200
+    assert response.json() == feed
+
+
 def test_a_null_description_is_stored_with_a_new_update_date(client: TestClient) -> None:
     feed = create_feed(client)
 
@@ -34,22 +43,40 @@ def test_a_null_description_is_stored_with_a_new_update_date(client: TestClient)
 
     assert response.status_code == 200
     body = response.json()
-    assert body == {**feed, "description": None, "updatedAt": body["updatedAt"]}
-    assert body["updatedAt"] is not None
+    assert body == {**feed, "description": None, "updated_at": body["updated_at"]}
+    assert body["updated_at"] is not None
     assert client.get(f"/feed/{feed['id']}").json() == body
 
 
-@pytest.mark.parametrize(("title", "rendered"), [("  ", "  "), ("", ""), (None, "null")])
-def test_a_blank_or_null_title_answers_400_and_keeps_the_feed(
-    client: TestClient, title: str | None, rendered: str
+@pytest.mark.parametrize("title", ["  ", ""])
+def test_a_blank_title_answers_400_and_keeps_the_feed(client: TestClient, title: str) -> None:
+    feed = create_feed(client)
+
+    response = client.patch(f"/feed/{feed['id']}", json={"title": title})
+
+    assert response.status_code == 400
+    assert response.json() == {"error": f"<FeedTitle> is mandatory. Current value: <{title}>"}
+    assert client.get(f"/feed/{feed['id']}").json() == feed
+
+
+@pytest.mark.parametrize("title", [None, 0])
+def test_a_title_that_is_not_a_string_answers_400_and_keeps_the_feed(
+    client: TestClient, title: object
 ) -> None:
     feed = create_feed(client)
 
     response = client.patch(f"/feed/{feed['id']}", json={"title": title})
 
     assert response.status_code == 400
-    assert response.json() == {"error": f"<FeedTitle> is mandatory. Current value: <{rendered}>"}
+    assert response.json() == {"error": "title: Input should be a valid string"}
     assert client.get(f"/feed/{feed['id']}").json() == feed
+
+
+def test_the_body_is_validated_before_the_feed_is_looked_up(client: TestClient) -> None:
+    response = client.patch(f"/feed/{MotherCreator.uuid()}", json={"title": 0})
+
+    assert response.status_code == 400
+    assert response.json() == {"error": "title: Input should be a valid string"}
 
 
 def test_an_empty_title_on_a_missing_feed_answers_404(client: TestClient) -> None:

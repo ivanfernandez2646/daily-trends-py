@@ -1,5 +1,6 @@
-import re
+from collections.abc import Callable
 
+import httpx2
 import pytest
 from fastapi.testclient import TestClient
 from pytest_bdd import scenarios
@@ -9,6 +10,9 @@ from tests.contexts.cms.shared.domain.mother_creator import MotherCreator
 pytestmark = pytest.mark.integration
 
 scenarios("features/create-feed.feature")
+
+REQUIRED_FIELDS = "title: Field required; author: Field required"
+NOT_A_JSON_OBJECT = "body: Input should be a valid dictionary or object to extract fields from"
 
 
 def test_creating_the_same_id_twice_answers_409_and_keeps_the_first_feed(
@@ -35,24 +39,14 @@ def test_creates_a_cms_feed_with_null_description_and_update_date(client: TestCl
 
     assert response.status_code == 201
     body = response.json()
-    assert list(body) == [
-        "id",
-        "title",
-        "description",
-        "author",
-        "source",
-        "createdAt",
-        "updatedAt",
-    ]
-    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z", body["createdAt"])
-    assert body | {"createdAt": None} == {
+    assert body | {"created_at": None} == {
         "id": id,
         "title": "A title",
         "description": None,
         "author": "Ivan",
         "source": "CMS",
-        "createdAt": None,
-        "updatedAt": None,
+        "created_at": None,
+        "updated_at": None,
     }
 
 
@@ -70,26 +64,42 @@ def test_rejects_a_blank_title(client: TestClient) -> None:
     assert response.json() == {"error": "<FeedTitle> is mandatory. Current value: <  >"}
 
 
-def test_without_body_the_title_is_undefined(client: TestClient) -> None:
-    response = client.put(f"/feed/{MotherCreator.uuid()}")
+def _without_body(client: TestClient, url: str) -> httpx2.Response:
+    return client.put(url)
+
+
+def _with_an_empty_json_body(client: TestClient, url: str) -> httpx2.Response:
+    return client.put(url, content="", headers={"content-type": "application/json"})
+
+
+def _with_an_empty_object(client: TestClient, url: str) -> httpx2.Response:
+    return client.put(url, json={})
+
+
+@pytest.mark.parametrize("send", [_without_body, _with_an_empty_json_body, _with_an_empty_object])
+def test_without_title_and_author_lists_both_as_required(
+    client: TestClient, send: Callable[[TestClient, str], httpx2.Response]
+) -> None:
+    response = send(client, f"/feed/{MotherCreator.uuid()}")
 
     assert response.status_code == 400
-    assert response.json() == {"error": "<FeedTitle> is mandatory. Current value: <undefined>"}
+    assert response.json() == {"error": REQUIRED_FIELDS}
 
 
 @pytest.mark.parametrize(
     ("body", "message"),
     [
-        ({"title": None, "author": "Ivan"}, "<FeedTitle> is mandatory. Current value: <null>"),
-        ({"title": 123, "author": "Ivan"}, "<FeedTitle> is mandatory. Current value: <123>"),
+        ({"title": 0, "author": "Ivan"}, "title: Input should be a valid string"),
+        ({"title": None, "author": "Ivan"}, "title: Input should be a valid string"),
         (
             {"title": "A title", "author": "Ivan", "description": True},
-            "<FeedDescription> does not allow the value <true>",
+            "description: Input should be a valid string",
         ),
-        (["a title"], "<FeedTitle> is mandatory. Current value: <undefined>"),
+        (["a title"], NOT_A_JSON_OBJECT),
+        ("a title", NOT_A_JSON_OBJECT),
     ],
 )
-def test_rejects_null_non_string_or_non_object_values(
+def test_rejects_values_that_are_not_strings_or_a_body_that_is_not_an_object(
     client: TestClient, body: object, message: str
 ) -> None:
     response = client.put(f"/feed/{MotherCreator.uuid()}", json=body)
@@ -98,36 +108,31 @@ def test_rejects_null_non_string_or_non_object_values(
     assert response.json() == {"error": message}
 
 
-def test_creates_a_feed_from_an_urlencoded_body(client: TestClient) -> None:
-    id = MotherCreator.uuid()
-
-    response = client.put(f"/feed/{id}", data={"title": "A title", "author": "Ivan"})
-
-    assert response.status_code == 201
-    assert response.json()["title"] == "A title"
-
-
-def test_rejects_an_urlencoded_body_with_a_repeated_title(client: TestClient) -> None:
+def test_rejects_an_urlencoded_body(client: TestClient) -> None:
     response = client.put(
-        f"/feed/{MotherCreator.uuid()}",
-        content="title=a&title=b&author=Ivan",
-        headers={"content-type": "application/x-www-form-urlencoded"},
+        f"/feed/{MotherCreator.uuid()}", data={"title": "A title", "author": "Ivan"}
     )
 
     assert response.status_code == 400
-    assert response.json() == {"error": "<FeedTitle> is mandatory. Current value: <a,b>"}
+    assert response.json() == {"error": "body: Content type should be application/json"}
 
 
-@pytest.mark.parametrize("content", ['{"title": ', '"a title"', "123"])
-def test_rejects_malformed_or_non_object_json_with_a_plain_bad_request(
-    client: TestClient, content: str
-) -> None:
+def test_rejects_malformed_json_as_json(client: TestClient) -> None:
     response = client.put(
         f"/feed/{MotherCreator.uuid()}",
-        content=content,
+        content='{"title": ',
         headers={"content-type": "application/json"},
     )
 
     assert response.status_code == 400
-    assert response.headers["content-type"].startswith("text/plain")
-    assert response.text == "Bad Request"
+    assert response.json() == {"error": "body: JSON decode error"}
+
+
+def test_ignores_unknown_fields(client: TestClient) -> None:
+    response = client.put(
+        f"/feed/{MotherCreator.uuid()}",
+        json={"title": "A title", "author": "Ivan", "source": "EL_PAIS", "extra": 1},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["source"] == "CMS"

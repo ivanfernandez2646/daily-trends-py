@@ -9,6 +9,10 @@ A running app that starts, reads configuration, connects to Mongo, answers `GET 
 - `GET /status` → 200, empty body.
 - Default port `5000` (`PORT`).
 - Global middleware: JSON and urlencoded bodies, open CORS, response compression. Swagger UI served from `docs/openapi.yml`.
+
+  > **Superseded by [I06](../improvements/I06-idiomatic-fastapi-layer.md):** only `application/json` bodies are accepted, validated by Pydantic models; a body with another content type (urlencoded included) answers 400 `body: Content type should be application/json`.
+
+  > **Superseded by [I06](../improvements/I06-idiomatic-fastapi-layer.md):** FastAPI generates the OpenAPI document from the code at `GET /openapi.json`, with Swagger UI at `GET /docs` and ReDoc at `GET /redoc`. `docs/openapi.yml` is removed, and `GET /` and `GET /openapi.yml` answer 404.
 - Startup: explicit dependency wiring (no DI container). A startup error is logged and the process exits with code 1; uncaught exceptions behave the same.
 - Route order rule: fixed routes (`/feed/list`, `/feed/home`, `/feed/scrap`) are registered **before** `/feed/:id`, so a fixed route is never read as an id.
 
@@ -29,6 +33,8 @@ Body `{"error": "<message>"}`, mapped by error type:
 - Each route maps only the errors it declares (e.g. `GET /feed/home` maps only 400; everything else is 500).
 
 > **Superseded by [I01](../improvements/I01-http-contract-fixes.md):** `GET /feed/home` maps no error to 400, and an invalid stored feed answers 500 on every route.
+
+> **Superseded by [I06](../improvements/I06-idiomatic-fastapi-layer.md):** errors are mapped by kind for every route, with no per-route lists: `InvalidArgumentError` → 400, `NotFoundError` → 404, `ConflictError` → 409, anything else → 500. Every error answers JSON `{"error": "<message>"}`, including the logged 500 of the final handler.
 
 
 ## Configuration

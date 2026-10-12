@@ -1,18 +1,16 @@
 from datetime import UTC, datetime
 
 import pytest
-from fastapi import FastAPI
+from dishka import AsyncContainer
 from fastapi.testclient import TestClient
 from pytest_bdd import scenarios
 
 from daily_trends_py.contexts.cms.feeds.application.home.feed_home_refresher import (
     FeedHomeRefresher,
 )
+from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
-from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.mongo_feed_repository import (  # noqa: E501
-    MongoFeedRepository,
-)
-from tests.apps.cms_backend.conftest import run_in_app
+from tests.apps.cms_backend.conftest import resolve, run_in_app
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
 from tests.scrap_fixtures import FrontPagesTransport
@@ -71,16 +69,16 @@ def test_scraping_returns_the_other_source_when_one_times_out(client: TestClient
 
 
 def test_scraping_after_a_background_run_saves_only_what_that_run_did_not(
-    app: FastAPI, client: TestClient
+    container: AsyncContainer, client: TestClient
 ) -> None:
     stale = FeedMother.random(
         source=FeedSource.EL_MUNDO,
         created_at=FeedCreatedAtMother.create(datetime(2023, 6, 17, tzinfo=UTC)),
     )
-    repository = MongoFeedRepository(app.state.mongo_client)
+    repository = resolve(client, container, FeedRepository)
     run_in_app(client, lambda: repository.save(stale))
     client.get("/feed/home")
-    refresher: FeedHomeRefresher = app.state.feed_home_refresher
+    refresher = resolve(client, container, FeedHomeRefresher)
     run_in_app(client, refresher.join)
 
     response = client.get("/feed/scrap")

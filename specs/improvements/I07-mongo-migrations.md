@@ -52,6 +52,8 @@ young to depend on, and the runner needed here is small.
 ### Startup
 - The lifespan runs the runner after the Mongo ping and before the app takes traffic (S01, I04),
   in every environment, including the test database.
+
+  > **Superseded by [I06](I06-idiomatic-fastapi-layer.md):** the dishka container's Mongo client provider runs the runner right after the ping, and the lifespan builds the client at startup, so the behavior is the same. `create_container(settings, migrations=...)` takes the list instead of `create_app`.
 - A migration failure, or a claim wait that times out, is a startup failure: logged, exit code 1.
 - With no pending migrations, startup costs one read of the `migrations` collection.
 

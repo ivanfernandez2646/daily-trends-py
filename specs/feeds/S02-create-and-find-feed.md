@@ -19,6 +19,8 @@ Create a CMS feed and retrieve it by id. This spec also defines the domain build
 > **Superseded by [I01](../improvements/I01-http-contract-fixes.md):** date-time messages are `<{ClassName}> does not allow the value <{value}>`, with `FeedCreatedAt` and `FeedUpdatedAt` as the feed's date value objects.
 
 - Values in messages are rendered as JavaScript's `String()` does: an absent field is `undefined`, `null` is `null`, `true`/`false`, `123`, lists joined with `,`.
+
+  > **Superseded by [I06](../improvements/I06-idiomatic-fastapi-layer.md):** only strings reach the value objects, so a message shows the string as it was sent. A value that is not a string is rejected by the request schema first. A stored date that is not a date is rendered with Python's `str()`: a missing one is `<None>`.
 - `FeedId` = UUID; `FeedTitle` and `FeedAuthor` = required string; `FeedDescription` = optional string.
 - Equality by value. The value is **not normalized** (no trim on store).
 - Dates are stored as ISO-8601 strings (UTC, milliseconds, `Z`).
@@ -30,6 +32,8 @@ Create a CMS feed and retrieve it by id. This spec also defines the domain build
 
 ## Create — `PUT /feed/:id`
 - Input: `id` in the path; `title`, `description` (optional), `author` in the body, sent as JSON (`application/json`) or urlencoded (`application/x-www-form-urlencoded`). Any other content type is read as an empty body.
+
+  > **Superseded by [I06](../improvements/I06-idiomatic-fastapi-layer.md):** the body is a JSON object validated by `CreateFeedRequest` before the id: `title` and `author` are required strings, `description` an optional string or `null`, with no type coercion and unknown fields ignored. A missing or empty body reads as `{}`. Any other content type, malformed JSON or a value that is not an object → 400 at location `body`. Schema errors answer 400 `<location>: <reason>`, joined with `; `.
 - `source` is always `CMS`, never read from the body. Missing `description` → `null`.
 - Order: validate id, title, description, author (first failure wins) → check duplicate → create, save, publish `feed.created`.
 - Existing id → "already exists" error (302). Nothing is modified.
@@ -41,6 +45,8 @@ Create a CMS feed and retrieve it by id. This spec also defines the domain build
 { "id": "uuid", "title": "string", "description": "string|null", "author": "string",
   "source": "CMS|EL_PAIS|EL_MUNDO|EL_ESPANOL", "createdAt": "ISO-8601", "updatedAt": "ISO-8601|null" }
 ```
+
+> **Superseded by [I06](../improvements/I06-idiomatic-fastapi-layer.md):** the feed JSON is `FeedResponse`, with snake_case keys in the order `id, title, description, author, source, created_at, updated_at`. Dates use Pydantic's format: UTC with `Z`, and six fractional digits only when the fraction is not zero (`2026-10-12T08:00:00Z`, `2026-10-12T08:00:00.123000Z`). Mongo documents keep `createdAt` and `updatedAt`.
 - *Given* a new id and valid title/author, *when* PUT, *then* 201 and the feed is stored with `updatedAt: null`.
 
 ## Find — `GET /feed/:id`
@@ -53,9 +59,13 @@ Create a CMS feed and retrieve it by id. This spec also defines the domain build
 - Missing `title` → 400 `<FeedTitle> is mandatory. Current value: <undefined>`; `"title": null` → `<null>`.
 - A JSON array body has no fields (same as a missing body). An urlencoded key sent twice becomes a list (`title=a&title=b` → `<a,b>`, a 400).
 
+> **Superseded by [I06](../improvements/I06-idiomatic-fastapi-layer.md):** a missing body or `{}` → 400 `title: Field required; author: Field required`; `"title": null` or `0` → 400 `title: Input should be a valid string`; a JSON array → 400 `body: Input should be a valid dictionary or object to extract fields from`; an urlencoded body → 400 `body: Content type should be application/json`.
+
 ### Deliberate divergences from the original
 - **Non-string values** → 400. A non-string `title`/`author` gives `<FeedX> is mandatory. Current value: <{value}>`; a non-string `description` gives `<FeedDescription> does not allow the value <{value}>`. The original answered 500 `value.trim is not a function` for truthy non-strings and stored non-string descriptions as they came.
 - **Malformed JSON**, or a JSON body that does not start with an object or array → 400, plain text `Bad Request`. The original answered an HTML 400 page from its framework.
+
+> **Superseded by [I06](../improvements/I06-idiomatic-fastapi-layer.md):** a non-string value → 400 from the request schema (`<field>: Input should be a valid string`), and malformed JSON → 400 JSON `{"error": "body: JSON decode error"}`.
 
 ## Acceptance criteria
 - Unit tests per value object (valid, invalid, exact messages, equality) and for the aggregate event pull.

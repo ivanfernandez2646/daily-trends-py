@@ -14,8 +14,10 @@ Migrations live in
 `src/daily_trends_py/contexts/cms/shared/infrastructure/persistence/mongo/migrations/`:
 
 - `versions/`: one module per migration, plus the ordered `MIGRATIONS` list in `__init__.py`.
-- `runner.py`: `run_migrations`, which the app lifespan calls after the Mongo ping and before the
-  app takes traffic, in every environment.
+- `runner.py`: `run_migrations`, which the container's Mongo client provider
+  (`apps/cms_backend/providers/infrastructure.py`) calls after the ping. The lifespan builds the
+  client at startup (`STARTUP_DEPENDENCIES`), so migrations run before the app takes traffic, in
+  every environment.
 
 ## Add a migration
 

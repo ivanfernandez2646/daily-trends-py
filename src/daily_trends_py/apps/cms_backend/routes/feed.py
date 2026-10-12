@@ -1,10 +1,13 @@
-from datetime import UTC, datetime
+from dishka.integrations.fastapi import FromDishka
+from fastapi import APIRouter, Response, status
 
-from fastapi import APIRouter, Request, Response, status
-from fastapi.responses import JSONResponse
-
-from daily_trends_py.apps.cms_backend.controllers import run_controller
-from daily_trends_py.apps.cms_backend.request_body import parse_body
+from daily_trends_py.apps.cms_backend.http.json_body_route import JsonBodyRoute
+from daily_trends_py.apps.cms_backend.routes.feed_schemas import (
+    CreateFeedRequest,
+    ErrorResponse,
+    FeedResponse,
+    UpdateFeedRequest,
+)
 from daily_trends_py.contexts.cms.feeds.application.create.feed_creator import FeedCreator
 from daily_trends_py.contexts.cms.feeds.application.delete.feed_deleter import FeedDeleter
 from daily_trends_py.contexts.cms.feeds.application.find.feed_finder import FeedFinder
@@ -14,152 +17,83 @@ from daily_trends_py.contexts.cms.feeds.application.home.feed_home_searcher impo
 from daily_trends_py.contexts.cms.feeds.application.scrap.feed_scraper import FeedScraper
 from daily_trends_py.contexts.cms.feeds.application.search.feed_searcher import FeedSearcher
 from daily_trends_py.contexts.cms.feeds.application.update.feed_updater import FeedUpdater
-from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
-from daily_trends_py.contexts.cms.feeds.domain.feed_already_exists import FeedAlreadyExists
 from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
 from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
-from daily_trends_py.contexts.cms.feeds.domain.feed_not_found import FeedNotFound
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
 from daily_trends_py.contexts.cms.shared.domain.criteria import Order
-from daily_trends_py.contexts.cms.shared.domain.invalid_argument_error import (
-    InvalidArgumentError,
-)
-from daily_trends_py.contexts.cms.shared.domain.raw_value import MISSING
 
-router = APIRouter()
+router = APIRouter(route_class=JsonBodyRoute, tags=["feeds"])
 
 LIST_CRITERIA = FeedCriteria(order=Order("created_at", "desc"))
 
+_ERROR_DESCRIPTIONS = {
+    status.HTTP_400_BAD_REQUEST: "Invalid request: the body, the id or a value",
+    status.HTTP_404_NOT_FOUND: "No feed has this id",
+    status.HTTP_409_CONFLICT: "A feed with this id already exists",
+    status.HTTP_500_INTERNAL_SERVER_ERROR: "Unexpected error, such as an invalid stored feed",
+}
 
-def _json_date(value: datetime | None) -> str | None:
-    if value is None:
-        return None
-    return value.astimezone(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
-
-def _feed_json(feed: Feed) -> dict[str, object]:
-    primitives = feed.to_primitives()
+def _errors(*status_codes: int) -> dict[int | str, dict[str, object]]:
     return {
-        **primitives,
-        "createdAt": _json_date(primitives["createdAt"]),
-        "updatedAt": _json_date(primitives["updatedAt"]),
+        status_code: {"model": ErrorResponse, "description": _ERROR_DESCRIPTIONS[status_code]}
+        for status_code in status_codes
     }
 
 
-@router.get("/feed/list")
-async def list_feeds(request: Request) -> Response:
-    feed_searcher: FeedSearcher = request.app.state.feed_searcher
-
-    async def action() -> Response:
-        feeds = await feed_searcher.execute(LIST_CRITERIA)
-        return JSONResponse([_feed_json(feed) for feed in feeds], status_code=status.HTTP_200_OK)
-
-    return await run_controller(action)
+@router.get("/feed/list", responses=_errors(500))
+async def list_feeds(searcher: FromDishka[FeedSearcher]) -> list[FeedResponse]:
+    """Every feed, newest first."""
+    return [FeedResponse.from_feed(feed) for feed in await searcher.execute(LIST_CRITERIA)]
 
 
-@router.get("/feed/scrap")
-async def scrap_feeds(request: Request) -> Response:
-    feed_scraper: FeedScraper = request.app.state.feed_scraper
-
-    async def action() -> Response:
-        feeds = await feed_scraper.execute()
-        return JSONResponse([_feed_json(feed) for feed in feeds], status_code=status.HTTP_200_OK)
-
-    return await run_controller(action)
+@router.get("/feed/scrap", responses=_errors(500))
+async def scrap_feeds(scraper: FromDishka[FeedScraper]) -> list[FeedResponse]:
+    """Scrape the external front pages and answer the feeds this run stored."""
+    return [FeedResponse.from_feed(feed) for feed in await scraper.execute()]
 
 
-@router.get("/feed/home")
-async def home_feeds(request: Request) -> Response:
-    feed_home_searcher: FeedHomeSearcher = request.app.state.feed_home_searcher
-
-    async def action() -> Response:
-        feeds = await feed_home_searcher.execute()
-        return JSONResponse([_feed_json(feed) for feed in feeds], status_code=status.HTTP_200_OK)
-
-    return await run_controller(action)
+@router.get("/feed/home", responses=_errors(500))
+async def home_feeds(home_searcher: FromDishka[FeedHomeSearcher]) -> list[FeedResponse]:
+    """The newest external feeds; a stale front page is refreshed in the background."""
+    return [FeedResponse.from_feed(feed) for feed in await home_searcher.execute()]
 
 
-@router.put("/feed/{id}")
-async def create_feed(id: str, request: Request) -> Response:
-    feed_creator: FeedCreator = request.app.state.feed_creator
-
-    body = await parse_body(request)
-
-    async def action() -> Response:
-        feed = await feed_creator.execute(
-            {
-                "id": id,
-                "title": body.get("title", MISSING),
-                "description": body.get("description", MISSING),
-                "author": body.get("author", MISSING),
-                "source": FeedSource.CMS,
-            }
-        )
-        return JSONResponse(_feed_json(feed), status_code=status.HTTP_201_CREATED)
-
-    return await run_controller(
-        action,
-        [
-            (FeedAlreadyExists, status.HTTP_409_CONFLICT),
-            (InvalidArgumentError, status.HTTP_400_BAD_REQUEST),
-        ],
+@router.put("/feed/{id}", status_code=status.HTTP_201_CREATED, responses=_errors(400, 409, 500))
+async def create_feed(
+    id: str, body: CreateFeedRequest, creator: FromDishka[FeedCreator]
+) -> FeedResponse:
+    """Create a CMS feed with the given id."""
+    feed = await creator.execute(
+        {
+            "id": id,
+            "title": body.title,
+            "description": body.description,
+            "author": body.author,
+            "source": FeedSource.CMS,
+        }
     )
+    return FeedResponse.from_feed(feed)
 
 
-@router.get("/feed/{id}")
-async def find_feed(id: str, request: Request) -> Response:
-    feed_finder: FeedFinder = request.app.state.feed_finder
-
-    async def action() -> Response:
-        feed = await feed_finder.execute(FeedId(id))
-        return JSONResponse(_feed_json(feed), status_code=status.HTTP_200_OK)
-
-    return await run_controller(
-        action,
-        [
-            (FeedNotFound, status.HTTP_404_NOT_FOUND),
-            (InvalidArgumentError, status.HTTP_400_BAD_REQUEST),
-        ],
-    )
+@router.get("/feed/{id}", responses=_errors(400, 404, 500))
+async def find_feed(id: str, finder: FromDishka[FeedFinder]) -> FeedResponse:
+    return FeedResponse.from_feed(await finder.execute(FeedId(id)))
 
 
-@router.delete("/feed/{id}")
-async def delete_feed(id: str, request: Request) -> Response:
-    feed_deleter: FeedDeleter = request.app.state.feed_deleter
-
-    async def action() -> Response:
-        await feed_deleter.execute(FeedId(id))
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-    return await run_controller(
-        action,
-        [
-            (FeedNotFound, status.HTTP_404_NOT_FOUND),
-            (InvalidArgumentError, status.HTTP_400_BAD_REQUEST),
-        ],
-    )
+@router.delete(
+    "/feed/{id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    responses=_errors(400, 404, 500),
+)
+async def delete_feed(id: str, deleter: FromDishka[FeedDeleter]) -> None:
+    await deleter.execute(FeedId(id))
 
 
-@router.patch("/feed/{id}")
-async def update_feed(id: str, request: Request) -> Response:
-    feed_updater: FeedUpdater = request.app.state.feed_updater
-
-    body = await parse_body(request)
-
-    async def action() -> Response:
-        feed = await feed_updater.execute(
-            {
-                "id": id,
-                "title": body.get("title", MISSING),
-                "description": body.get("description", MISSING),
-            }
-        )
-        return JSONResponse(_feed_json(feed), status_code=status.HTTP_200_OK)
-
-    return await run_controller(
-        action,
-        [
-            (FeedNotFound, status.HTTP_404_NOT_FOUND),
-            (InvalidArgumentError, status.HTTP_400_BAD_REQUEST),
-        ],
-    )
+@router.patch("/feed/{id}", responses=_errors(400, 404, 500))
+async def update_feed(
+    id: str, body: UpdateFeedRequest, updater: FromDishka[FeedUpdater]
+) -> FeedResponse:
+    """Change only the fields that are sent; `null` clears the description."""
+    return FeedResponse.from_feed(await updater.execute({"id": id, **body}))

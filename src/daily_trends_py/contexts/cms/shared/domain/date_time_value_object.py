@@ -5,15 +5,14 @@ from typing import Self
 from daily_trends_py.contexts.cms.shared.domain.invalid_argument_error import (
     InvalidArgumentError,
 )
-from daily_trends_py.contexts.cms.shared.domain.raw_value import render_value
 
 
 def _to_stored_instant(value_object: DateTimeValueObject, value: object) -> datetime:
     """The UTC instant with millisecond precision, the most that storage keeps."""
+    # Stored documents can hold anything, so the value is not always a date.
     if not isinstance(value, datetime) or value.utcoffset() is None:
-        rendered = str(value) if isinstance(value, datetime) else render_value(value)
         raise InvalidArgumentError(
-            f"<{type(value_object).__name__}> does not allow the value <{rendered}>"
+            f"<{type(value_object).__name__}> does not allow the value <{value}>"
         )
     instant = value.astimezone(UTC)
     return instant.replace(microsecond=instant.microsecond // 1000 * 1000)
