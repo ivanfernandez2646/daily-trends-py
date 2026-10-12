@@ -9,6 +9,8 @@ A running app that starts, reads configuration, connects to Mongo, answers `GET 
 - `GET /status` → 200, empty body.
 - Default port `5000` (`PORT`).
 - Global middleware: JSON and urlencoded bodies, open CORS, response compression. Swagger UI served from `docs/openapi.yml`.
+
+  > **Superseded by [I06](../improvements/I06-idiomatic-fastapi-layer.md):** only JSON bodies are accepted, validated by Pydantic models; an urlencoded body answers 400.
 - Startup: explicit dependency wiring (no DI container). A startup error is logged and the process exits with code 1; uncaught exceptions behave the same.
 - Route order rule: fixed routes (`/feed/list`, `/feed/home`, `/feed/scrap`) are registered **before** `/feed/:id`, so a fixed route is never read as an id.
 

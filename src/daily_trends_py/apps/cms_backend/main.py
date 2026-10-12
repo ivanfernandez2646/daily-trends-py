@@ -14,10 +14,6 @@ from uvicorn.config import STARTUP_FAILURE
 
 from daily_trends_py.apps.cms_backend.container import FEED_USE_CASES, create_container
 from daily_trends_py.apps.cms_backend.errors import register_exception_handlers
-from daily_trends_py.apps.cms_backend.request_body import (
-    MalformedRequestBody,
-    handle_malformed_request_body,
-)
 from daily_trends_py.apps.cms_backend.routes import register_routes
 from daily_trends_py.apps.cms_backend.settings import Settings
 from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.migrations.migration import (  # noqa: E501
@@ -51,7 +47,6 @@ def create_app(container: AsyncContainer) -> FastAPI:
         allow_headers=["*"],
     )
     register_exception_handlers(app)
-    app.add_exception_handler(MalformedRequestBody, handle_malformed_request_body)
     register_routes(app)
     setup_dishka(container, app)
     return app

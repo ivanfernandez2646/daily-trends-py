@@ -27,10 +27,13 @@ clients yet, so nothing needs to stay compatible.
 - `PUT /feed/{id}` body, `CreateFeedRequest`:
   - `title: str` (required), `author: str` (required), `description: str | None` (optional,
     default `None`).
-- `PATCH /feed/{id}` body, `UpdateFeedRequest`:
-  - `title: str` (optional; `null` is rejected), `description: str | None` (optional).
+- `PATCH /feed/{id}` body, `UpdateFeedRequest`, a `TypedDict` validated by Pydantic:
+  - `title: NotRequired[str]` (`null` is rejected), `description: NotRequired[str | None]`.
   - "Absent" and `null` stay different for `description`: absent → not changed, `null` → assigned
     (S04). Only the fields the client sent reach the use case (see below).
+  - A `TypedDict` rather than a `BaseModel`: an absent key is simply not there, so `null` is
+    rejected with a single `title: Input should be a valid string`. A model needs a sentinel default
+    for "absent", which Pydantic reports as a second union error.
 - No type coercion: a number, boolean, list or object where a string is expected is rejected. Unknown
   fields are ignored.
 - Only `application/json` bodies are accepted. An urlencoded body, any other content type,
@@ -57,7 +60,7 @@ clients yet, so nothing needs to stay compatible.
   values (`str`, `str | None`) instead of `object`.
 - "Absent" is expressed with `NotRequired` keys: `FeedUpdaterProps` is
   `{id: str, title: NotRequired[str], description: NotRequired[str | None]}`, and a key that was not
-  sent is not in the dict. The route builds it with `model_dump(exclude_unset=True)`.
+  sent is not in the dict. The route builds it from the validated `UpdateFeedRequest` and the id.
 - The domain error messages keep their current wording with `<...>` around values.
 
 ### Responses are Pydantic models

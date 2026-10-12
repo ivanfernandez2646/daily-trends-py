@@ -136,7 +136,7 @@ async def test_find_raises_when_the_stored_feed_is_invalid(
     [
         pytest.param("2026-10-09T08:00:00.000Z", "2026-10-09T08:00:00.000Z", id="ISO string"),
         pytest.param(1_760_000_000_000, "1760000000000", id="number"),
-        pytest.param(_MISSING, "null", id="missing"),
+        pytest.param(_MISSING, "None", id="missing"),
     ],
 )
 async def test_find_raises_when_the_stored_created_at_is_not_a_date(

@@ -4,7 +4,7 @@ description: 'The HTTP layer uses Pydantic models, a DI container, global except
 spec: 'specs/improvements/I06-idiomatic-fastapi-layer.md'
 branch: 'fix/i06-idiomatic-fastapi-layer'
 created_at: '2026-10-12T10:42:14Z'
-updated_at: '2026-10-12T11:00:06Z'
+updated_at: '2026-10-12T11:08:37Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -199,7 +199,7 @@ from it. Bodies are still parsed by hand (`request_body.py` stays until Phase 2)
       always JSON, no per-route lists).
 - [x] Run the quality gate from `AGENTS.md` and fix failures. 364 tests pass. A smoke run of
       `daily-trends-py` against Mongo answers 200/404/400 and shuts down cleanly.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ## Phase 2: Typed requests
 
@@ -218,14 +218,21 @@ disappear.
       description: str | None = None
 
 
-  class UpdateFeedRequest(BaseModel):  # strict, unknown fields ignored
-      title: str  # optional: may be absent; null is rejected
-      description: str | None  # optional: absent ≠ null
+  @with_config(ConfigDict(strict=True))  # unknown fields ignored
+  class UpdateFeedRequest(TypedDict):
+      title: NotRequired[str]  # null is rejected
+      description: NotRequired[str | None]  # absent ≠ null
   ```
 
-  How `title` is made optional without accepting `null` is chosen under TDD, with pyright strict
-  clean. `model_dump(exclude_unset=True)` must give only the keys that were sent.
-- Only `application/json` is accepted. A missing or empty body is read as `{}`.
+  > **Decided under TDD:** `UpdateFeedRequest` is a `TypedDict` validated by Pydantic, not a
+  > `BaseModel`. A model needs a sentinel default for "absent" (`str | MISSING`), and Pydantic then
+  > reports `{"title": null}` as two union errors (`title.str`, `title.missing-sentinel`). With a
+  > `TypedDict` an absent key is simply not there, `null` gives the single
+  > `title: Input should be a valid string`, and the route passes it as `{"id": id, **body}`. The I06
+  > spec is updated.
+- Only `application/json` is accepted. A missing or empty body is read as `{}`: the feed router's
+  route class, `routes/feed_route.py` (`FeedRoute(DishkaRoute)`), turns an empty body into a JSON
+  `{}`. Otherwise FastAPI would answer `body: Field required` instead of listing each field.
 - A `RequestValidationError` handler in `errors.py` answers 400 `{"error": "<loc>: <msg>; ..."}`:
   - `<loc>` is the dotted path without the `body` prefix.
   - A body-level problem (wrong content type, malformed JSON, a non-object value) uses `body`.
@@ -246,55 +253,67 @@ disappear.
 
 ### Tests first
 
-- [ ] `tests/apps/cms_backend/test_feed_schemas.py`:
+- [x] `tests/apps/cms_backend/test_feed_schemas.py`:
   - `CreateFeedRequest`:
     - title and author are required;
     - `0`, `true`, `[]` and `{}` are rejected for every string field;
-    - a `null` description is accepted;
+    - a `null` or absent description is accepted;
     - unknown fields are ignored.
   - `UpdateFeedRequest`:
     - a `null` title is rejected;
-    - `{}` dumps to `{}` with `exclude_unset`;
-    - `{"description": null}` dumps to `{"description": None}`;
+    - `{}` stays `{}`, and `{"description": null}` stays `{"description": None}`;
+    - `0`, `true`, `[]` and `{}` are rejected for both fields;
     - unknown fields are ignored.
-- [ ] `tests/apps/cms_backend/test_errors.py`: a validation error gives 400 with
-      `title: Field required; author: Field required`, and a body-level error uses `body`.
-- [ ] `tests/apps/cms_backend/test_create_feed.py`. The `<undefined>`, `<null>`, `<true>`, `<a,b>`,
+- [x] `tests/apps/cms_backend/test_errors.py`:
+  - a validation error gives 400 listing each problem by field
+    (`title: Field required; author: Input should be a valid string`);
+  - malformed JSON, a non-object value and an urlencoded body are reported at `body`.
+- [x] `tests/apps/cms_backend/test_create_feed.py`. The `<undefined>`, `<null>`, `<true>`, `<a,b>`,
       urlencoded and plain-text `Bad Request` cases are replaced with the spec's edge cases:
-  - no body, and `{}` → `title: Field required; author: Field required`;
-  - `{"title": 0, "author": "a"}` → `title: Input should be a valid string`;
+  - no body, an empty JSON body and `{}` → `title: Field required; author: Field required`;
+  - `{"title": 0}`, `{"title": null}` and `{"description": true}` → `<field>: Input should be a valid
+    string`;
   - a blank title → `<FeedTitle> is mandatory. Current value: <  >`;
-  - urlencoded, malformed JSON, a JSON array or a JSON string → 400 JSON with location `body`.
-- [ ] `tests/apps/cms_backend/test_update_feed.py`:
-  - `{"title": null}` → 400 `title: Input should be a valid string`;
+  - urlencoded, a JSON array or a JSON string → 400 at `body`;
+  - malformed JSON → 400 JSON `body: JSON decode error`;
+  - unknown fields, including `source`, are ignored.
+- [x] `tests/apps/cms_backend/test_update_feed.py`:
+  - `{"title": null}` and `{"title": 0}` → 400 `title: Input should be a valid string`;
   - `{"description": null}` → description `null`;
   - `{}` and no body → 200, unchanged;
   - `PATCH /feed/{missing}` with `{"title": 0}` → 400;
   - a blank title on a missing feed is still 404.
-- [ ] `tests/apps/cms_backend/test_feed_router.py`: `PATCH` with `{}` leaves the feed in the
-      in-memory repository unchanged, and `{"description": null}` clears only the description.
-- [ ] Domain and application tests:
+- [x] `tests/apps/cms_backend/test_feed_router.py`: `PATCH` with `{}` saves nothing, and
+      `{"description": null}` clears only the description. These pass before the change too; they
+      guard the behavior. The existing feed now has a fixed description, because the mother's random
+      one can be `None`.
+- [x] Domain and application tests:
   - delete `test_raw_value.py`;
-  - `test_string_value_object.py`, `test_uuid_value_object.py` and
-    `test_required_string_value_object.py` lose their `from_raw` / `MISSING` cases and keep the
-    message cases with string values;
-  - `test_date_time_value_object.py`: `None` renders `<None>`;
+  - `test_string_value_object.py` and `test_uuid_value_object.py` lose their `from_raw` / `MISSING`
+    cases and keep the message cases with string values. There is no
+    `test_required_string_value_object.py`: required strings are tested in
+    `test_string_value_object.py`;
+  - `test_date_time_value_object.py` and `test_mongo_feed_repository.py`: a missing stored date
+    renders `<None>`;
   - `test_feed_creator.py` and `test_feed_updater.py` use typed props: an absent key keeps the value,
     and `description: None` assigns `null`.
 
 ### Implementation
 
-- [ ] Add `feed_schemas.py` with the two request models and the `RequestValidationError` handler.
-      Make an empty body read as `{}`.
-- [ ] Type `FeedCreatorProps` and `FeedUpdaterProps`. Make the use cases call the value-object
+- [x] Add `feed_schemas.py` with the two request schemas, the `RequestValidationError` handler in
+      `errors.py`, and `FeedRoute`, which reads an empty body as `{}`.
+- [x] Type `FeedCreatorProps` and `FeedUpdaterProps`. Make the use cases call the value-object
       constructors.
-- [ ] Remove `from_raw`, `raw_value.py` and `request_body.py`, and switch the date value objects to
-      `str(value)`.
-- [ ] Rewrite `PUT` and `PATCH` with body models. `PATCH` builds its props from
-      `model_dump(exclude_unset=True)`.
-- [ ] Add "Superseded by I06" to `S01` (urlencoded bodies), `S02` (value rendering, urlencoded,
-      malformed JSON) and `S04` (order of checks).
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] Remove `from_raw`, `raw_value.py` and `request_body.py` (and its handler in `main.py`), and
+      switch the date value objects to `str(value)`.
+- [x] Rewrite `PUT` and `PATCH` with the body schemas. `PATCH` passes `{"id": id, **body}`.
+- [x] Add "Superseded by I06" to `S01` (urlencoded bodies), `S02` (value rendering, input,
+      edge cases, malformed JSON) and `S04` (order of checks). Update the I06 spec for the
+      `TypedDict`.
+- [x] Run the quality gate from `AGENTS.md` and fix failures. 358 tests pass; the removed tests
+      covered `render_value` and `from_raw`. A smoke run against Mongo answers a body-less `PUT`,
+      a form body and malformed JSON as the spec says, and `PATCH` without a body leaves the feed
+      unchanged.
 - [ ] STOP for user review. Suggest three Conventional Commit messages.
 
 ## Phase 3: Response models and generated OpenAPI
@@ -376,4 +395,4 @@ goes away.
 
 ## Next step
 
-Review Phase 1, commit it with `/ai-project-conventional-commit`, then run `/ai-project-implement-phase` for Phase 2.
+Review Phase 2, commit it with `/ai-project-conventional-commit`, then run `/ai-project-implement-phase` for Phase 3.

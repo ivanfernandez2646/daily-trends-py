@@ -62,7 +62,7 @@ def test_required_date_time_rejects_none() -> None:
     with pytest.raises(InvalidArgumentError) as error:
         DummyRequiredDateTime(None)  # pyright: ignore[reportArgumentType]
 
-    assert str(error.value) == "<DummyRequiredDateTime> does not allow the value <null>"
+    assert str(error.value) == "<DummyRequiredDateTime> does not allow the value <None>"
 
 
 def test_now_is_the_current_utc_instant_with_milliseconds() -> None:

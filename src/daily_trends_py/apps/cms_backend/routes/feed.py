@@ -1,10 +1,14 @@
 from datetime import UTC, datetime
 
-from dishka.integrations.fastapi import DishkaRoute, FromDishka
-from fastapi import APIRouter, Request, Response, status
+from dishka.integrations.fastapi import FromDishka
+from fastapi import APIRouter, Response, status
 from fastapi.responses import JSONResponse
 
-from daily_trends_py.apps.cms_backend.request_body import parse_body
+from daily_trends_py.apps.cms_backend.routes.feed_route import FeedRoute
+from daily_trends_py.apps.cms_backend.routes.feed_schemas import (
+    CreateFeedRequest,
+    UpdateFeedRequest,
+)
 from daily_trends_py.contexts.cms.feeds.application.create.feed_creator import FeedCreator
 from daily_trends_py.contexts.cms.feeds.application.delete.feed_deleter import FeedDeleter
 from daily_trends_py.contexts.cms.feeds.application.find.feed_finder import FeedFinder
@@ -19,9 +23,8 @@ from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
 from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
 from daily_trends_py.contexts.cms.shared.domain.criteria import Order
-from daily_trends_py.contexts.cms.shared.domain.raw_value import MISSING
 
-router = APIRouter(route_class=DishkaRoute)
+router = APIRouter(route_class=FeedRoute)
 
 LIST_CRITERIA = FeedCriteria(order=Order("created_at", "desc"))
 
@@ -60,14 +63,15 @@ async def home_feeds(home_searcher: FromDishka[FeedHomeSearcher]) -> Response:
 
 
 @router.put("/feed/{id}")
-async def create_feed(id: str, request: Request, creator: FromDishka[FeedCreator]) -> Response:
-    body = await parse_body(request)
+async def create_feed(
+    id: str, body: CreateFeedRequest, creator: FromDishka[FeedCreator]
+) -> Response:
     feed = await creator.execute(
         {
             "id": id,
-            "title": body.get("title", MISSING),
-            "description": body.get("description", MISSING),
-            "author": body.get("author", MISSING),
+            "title": body.title,
+            "description": body.description,
+            "author": body.author,
             "source": FeedSource.CMS,
         }
     )
@@ -87,13 +91,8 @@ async def delete_feed(id: str, deleter: FromDishka[FeedDeleter]) -> Response:
 
 
 @router.patch("/feed/{id}")
-async def update_feed(id: str, request: Request, updater: FromDishka[FeedUpdater]) -> Response:
-    body = await parse_body(request)
-    feed = await updater.execute(
-        {
-            "id": id,
-            "title": body.get("title", MISSING),
-            "description": body.get("description", MISSING),
-        }
-    )
+async def update_feed(
+    id: str, body: UpdateFeedRequest, updater: FromDishka[FeedUpdater]
+) -> Response:
+    feed = await updater.execute({"id": id, **body})
     return JSONResponse(_feed_json(feed), status_code=status.HTTP_200_OK)
