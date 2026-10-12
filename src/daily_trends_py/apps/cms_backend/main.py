@@ -1,6 +1,6 @@
 import logging
 import sys
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from types import TracebackType
@@ -44,6 +44,15 @@ from daily_trends_py.contexts.cms.feeds.infrastructure.scrap.el_mundo_feed_scrap
 from daily_trends_py.contexts.cms.shared.infrastructure.event_bus.in_memory_event_bus import (
     InMemoryEventBus,
 )
+from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.migrations.migration import (  # noqa: E501
+    Migration,
+)
+from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.migrations.runner import (
+    run_migrations,
+)
+from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.migrations.versions import (  # noqa: E501
+    MIGRATIONS,
+)
 from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_client_factory import (  # noqa: E501
     create_mongo_client,
 )
@@ -60,11 +69,18 @@ async def _handle_unhandled_error(_request: Request, error: Exception) -> Respon
 
 
 def create_app(
-    settings: Settings, http_transport: httpx.AsyncBaseTransport | None = None
+    settings: Settings,
+    http_transport: httpx.AsyncBaseTransport | None = None,
+    migrations: Sequence[Migration] = MIGRATIONS,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         mongo_client = await create_mongo_client(settings.mongo_url)
+        try:
+            await run_migrations(mongo_client.get_default_database(), migrations)
+        except BaseException:
+            await mongo_client.close()
+            raise
         app.state.mongo_client = mongo_client
         event_bus = InMemoryEventBus()
         app.state.event_bus = event_bus
@@ -122,12 +138,12 @@ def _log_uncaught_exception(
     logger.critical("uncaughtException", exc_info=(exc_type, exc_value, traceback))
 
 
-def main() -> None:
+def main(migrations: Sequence[Migration] = MIGRATIONS) -> None:
     logging.basicConfig(level=logging.INFO)
     sys.excepthook = _log_uncaught_exception
     try:
         settings = Settings()
-        uvicorn.run(create_app(settings), host="0.0.0.0", port=settings.port)
+        uvicorn.run(create_app(settings, migrations=migrations), host="0.0.0.0", port=settings.port)
     except SystemExit as error:
         # uvicorn logs why it could not start and exits with its own code (3).
         if error.code == STARTUP_FAILURE:

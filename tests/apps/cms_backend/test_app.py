@@ -3,8 +3,16 @@ from fastapi import Response
 from fastapi.testclient import TestClient
 
 from daily_trends_py.apps.cms_backend.main import create_app
+from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.migrations.migration import (  # noqa: E501
+    Migration,
+)
+from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_client_factory import (  # noqa: E501
+    MongoClient,
+    MongoDatabase,
+)
+from tests.apps.cms_backend.conftest import run_in_app
 from tests.apps.cms_backend.isolated_settings import IsolatedSettings
-from tests.mongo import TEST_MONGO_URL
+from tests.mongo import TEST_MONGO_URL, fresh_database_name, mongo_url_for
 
 pytestmark = pytest.mark.integration
 
@@ -25,6 +33,31 @@ def test_unhandled_error_returns_500_with_plain_message_and_is_logged(
     assert response.text == "boom"
     assert response.headers["content-type"].startswith("text/plain")
     assert any(record.exc_info and record.exc_info[1] is not None for record in caplog.records)
+
+
+def test_applies_migrations_before_taking_traffic() -> None:
+    database = fresh_database_name("daily-trends-test-startup")
+    applied: list[str] = []
+
+    async def up(db: MongoDatabase) -> None:
+        applied.append(db.name)
+
+    app = create_app(
+        IsolatedSettings(mongo_url=mongo_url_for(database)),
+        migrations=[Migration("m_test_records", up)],
+    )
+
+    with TestClient(app) as client:
+        mongo_client: MongoClient = app.state.mongo_client
+        try:
+            assert applied == [database]
+            migration = run_in_app(
+                client, lambda: mongo_client[database]["migrations"].find_one("m_test_records")
+            )
+            assert migration is not None and migration["status"] == "applied"
+            assert client.get("/status").is_success
+        finally:
+            run_in_app(client, lambda: mongo_client.drop_database(database))
 
 
 def test_allows_any_origin(client: TestClient) -> None:
