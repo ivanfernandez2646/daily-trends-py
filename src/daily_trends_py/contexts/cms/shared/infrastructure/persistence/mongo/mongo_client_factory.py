@@ -2,10 +2,12 @@ from datetime import UTC
 
 from pymongo import AsyncMongoClient
 from pymongo.asynchronous.collection import AsyncCollection
+from pymongo.asynchronous.database import AsyncDatabase
 
 type MongoDocument = dict[str, object]
 type MongoClient = AsyncMongoClient[MongoDocument]
 type MongoCollection = AsyncCollection[MongoDocument]
+type MongoDatabase = AsyncDatabase[MongoDocument]
 
 
 async def create_mongo_client(url: str) -> MongoClient:

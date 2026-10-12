@@ -1,0 +1,8 @@
+from collections.abc import Sequence
+
+from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.migrations.migration import (  # noqa: E501
+    Migration,
+)
+
+# Applied in this order. Append new migrations; never reorder, rename or edit an applied one.
+MIGRATIONS: Sequence[Migration] = []

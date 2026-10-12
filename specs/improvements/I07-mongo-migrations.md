@@ -22,6 +22,8 @@ young to depend on, and the runner needed here is small.
   next startup (see below), so this rule is what makes a retry safe.
 - The ordered list of migrations is explicit, in `versions/__init__.py`. There is no file system
   discovery: pyright checks every entry, and the order is the order of the list.
+- I07 ships the list empty. The first real migration, `m0001_feeds_indexes`, belongs to I08; here it
+  is only an example name.
 - An id never changes and an applied migration is never edited; a fix is a new migration.
 
 ### Tracking
@@ -54,8 +56,12 @@ young to depend on, and the runner needed here is small.
 - With no pending migrations, startup costs one read of the `migrations` collection.
 
 ### Documentation
-- `AGENTS.md` explains how to add a migration: create the module, append it to the list, keep it
-  idempotent, never edit an applied one.
+- A supporting agent skill, `ai-project-mongo-migrations` (in `.agents/skills/`, mirrored in
+  `.claude/skills/`), explains how to add a migration: create the module, append it to the list,
+  keep it idempotent, never edit an applied one, test it by running it twice, and clear a stale
+  claim. The agent loads it only when it adds or changes a migration.
+- `AGENTS.md` only references the skill in one line, so the instructions are not loaded in every
+  session.
 
 ## Unchanged
 - Every HTTP route and response.
@@ -88,5 +94,6 @@ young to depend on, and the runner needed here is small.
   - a stale `running` claim fails after the wait, with the message above (the wait is
     configurable so the test runs fast).
 - Startup test: a failing migration makes the app exit with code 1.
-- `AGENTS.md` documents how to add a migration.
+- The `ai-project-mongo-migrations` skill documents how to add a migration, and `AGENTS.md`
+  references it in one line.
 - `README.md` links I07 for #25.
