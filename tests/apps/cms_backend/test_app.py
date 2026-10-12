@@ -2,25 +2,25 @@ import pytest
 from fastapi import Response
 from fastapi.testclient import TestClient
 
+from daily_trends_py.apps.cms_backend.container import create_container
 from daily_trends_py.apps.cms_backend.main import create_app
 from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.migrations.migration import (  # noqa: E501
     Migration,
 )
 from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_client_factory import (  # noqa: E501
-    MongoClient,
     MongoDatabase,
 )
-from tests.apps.cms_backend.conftest import run_in_app
+from tests.apps.cms_backend.conftest import resolve_mongo_client, run_in_app
 from tests.apps.cms_backend.isolated_settings import IsolatedSettings
 from tests.mongo import TEST_MONGO_URL, fresh_database_name, mongo_url_for
 
 pytestmark = pytest.mark.integration
 
 
-def test_unhandled_error_returns_500_with_plain_message_and_is_logged(
+def test_unhandled_error_returns_500_as_json_and_is_logged(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    app = create_app(IsolatedSettings(mongo_url=TEST_MONGO_URL))
+    app = create_app(create_container(IsolatedSettings(mongo_url=TEST_MONGO_URL)))
 
     @app.get("/unhandled")
     async def unhandled() -> Response:  # pyright: ignore[reportUnusedFunction]
@@ -30,8 +30,8 @@ def test_unhandled_error_returns_500_with_plain_message_and_is_logged(
         response = client.get("/unhandled")
 
     assert response.status_code == 500
-    assert response.text == "boom"
-    assert response.headers["content-type"].startswith("text/plain")
+    assert response.json() == {"error": "boom"}
+    assert response.headers["content-type"] == "application/json"
     assert any(record.exc_info and record.exc_info[1] is not None for record in caplog.records)
 
 
@@ -42,13 +42,13 @@ def test_applies_migrations_before_taking_traffic() -> None:
     async def up(db: MongoDatabase) -> None:
         applied.append(db.name)
 
-    app = create_app(
+    container = create_container(
         IsolatedSettings(mongo_url=mongo_url_for(database)),
         migrations=[Migration("m_test_records", up)],
     )
 
-    with TestClient(app) as client:
-        mongo_client: MongoClient = app.state.mongo_client
+    with TestClient(create_app(container)) as client:
+        mongo_client = resolve_mongo_client(client, container)
         try:
             assert applied == [database]
             migration = run_in_app(

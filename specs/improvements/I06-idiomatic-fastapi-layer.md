@@ -17,9 +17,10 @@ clients yet, so nothing needs to stay compatible.
   `infrastructure`. There is no `api` package in the subdomain.
   - `routes/feed.py`: the feed router. `routes/feed_schemas.py`: its request and response schemas.
     `routes/status.py`: unchanged.
-  - `dependencies.py`: the dependency providers. `errors.py`: the exception handlers.
-  - `main.py`: the composition root (settings, wiring, lifespan, middleware, handler and router
-    registration).
+  - `container.py`: the dependency injection container (the wiring). `errors.py`: the exception
+    handlers.
+  - `main.py`: the app factory (container setup, lifespan, middleware, handler and router
+    registration) and the process entry point.
 - The fixed-routes-before-`/feed/{id}` rule (S01) still holds.
 
 ### Request bodies are Pydantic models
@@ -32,8 +33,9 @@ clients yet, so nothing needs to stay compatible.
     (S04). Only the fields the client sent reach the use case (see below).
 - No type coercion: a number, boolean, list or object where a string is expected is rejected. Unknown
   fields are ignored.
-- Only `application/json` bodies are accepted. An urlencoded body, any other content type, a
-  missing body, malformed JSON or a JSON value that is not an object → 400.
+- Only `application/json` bodies are accepted. An urlencoded body, any other content type,
+  malformed JSON or a JSON value that is not an object → 400. A missing or empty body is read as
+  `{}`.
 - The domain still validates what Pydantic cannot: a blank `title` or `author` →
   `<FeedTitle> is mandatory. Current value: <  >`, and an id that is not a valid UUID →
   `<FeedId> does not allow the value <{id}>`. These messages do not change.
@@ -72,15 +74,23 @@ clients yet, so nothing needs to stay compatible.
 - Every feed route declares its `response_model` (or none for `204`) and its error responses
   (`responses={404: {"model": ErrorResponse}, ...}`), so they appear in the OpenAPI document.
 
-### Services through `Depends`
-- The composition root builds one frozen dataclass with the feed use cases (`FeedCreator`,
-  `FeedFinder`, `FeedSearcher`, `FeedUpdater`, `FeedDeleter`, `FeedScraper`, `FeedHomeSearcher`) in
-  the lifespan and stores it once on the app.
-- `dependencies.py` exposes one provider per use case, used as
-  `Annotated[FeedCreator, Depends(get_feed_creator)]`. Reading the untyped `app.state` happens in a
-  single function; routes never touch `app.state`.
-- Tests can replace a use case with `app.dependency_overrides`.
-- This is not a DI container: wiring is still explicit, in one place (`AGENTS.md`).
+### Services through a dependency injection container
+- Wiring moves to a [dishka](https://dishka.readthedocs.io) container declared in `container.py`, the
+  composition root. Its providers build the settings-driven resources (Mongo client, HTTP client
+  and its transport, event bus, clock, scrapers, `FeedHomeRefresher`), the `FeedRepository` port and
+  the feed use cases (`FeedCreator`, `FeedFinder`, `FeedSearcher`, `FeedUpdater`, `FeedDeleter`,
+  `FeedScraper`, `FeedHomeSearcher`). Everything is `Scope.APP`: one instance per app.
+- The container owns the lifecycle. Resources that need closing are generator providers: the
+  refresher is closed first, then the HTTP client, then the Mongo client, as today.
+- Startup and shutdown keep their behavior: the lifespan resolves the resources at startup (an
+  unreachable Mongo still fails startup) and closes the container on shutdown.
+- Routes receive use cases typed through the container (`finder: FromDishka[FeedFinder]` on a router
+  with `route_class=DishkaRoute`). Neither the code nor the tests touch `app.state`.
+- Tests replace a dependency with a test provider declared `override=True` (for example, an
+  in-memory `FeedRepository` or the scrap fixtures' HTTP transport) and read resources with
+  `container.get(...)`.
+- Domain and application code stay unaware of the container: no dishka import outside
+  `apps/cms_backend`.
 
 ### Errors through exception handlers
 - `run_controller` and the per-route error lists are removed.
@@ -117,7 +127,9 @@ clients yet, so nothing needs to stay compatible.
 
 ### Documentation
 - `AGENTS.md` drops the `contexts/<context>/<subdomain>/api` layer from its architecture section:
-  routers, Pydantic schemas, dependencies and exception handlers live in `apps/<app>`.
+  routers, Pydantic schemas, the container and exception handlers live in `apps/<app>`. "There is
+  no DI container" becomes: wiring lives in one dishka container per app, and only `apps/<app>`
+  imports dishka.
 - `README.md` describes the new error contract and the generated OpenAPI document.
 
 ## Unchanged
@@ -140,9 +152,11 @@ clients yet, so nothing needs to stay compatible.
 - `GET /feed/home` with an invalid stored feed → still 500 (I01).
 
 ## Acceptance criteria
-- Router tests for each route through `TestClient`, with use cases replaced by
-  `dependency_overrides` and fakes for the 4xx cases; Mongo-backed acceptance tests keep covering
-  the full stack.
+- Router tests for each route through `TestClient`, with an override provider that supplies fakes
+  (for example `InMemoryFeedRepository`) for the 4xx cases; Mongo-backed acceptance tests keep
+  covering the full stack.
+- Container tests: every use case resolves; resources close in order (refresher, HTTP client,
+  Mongo); an unreachable Mongo still fails startup.
 - Schema tests: required fields, no coercion, `null` handling, absent vs `null` description,
   ignored unknown fields.
 - Exception-handler tests: each row of the table → status and JSON body, using a test-only subclass
@@ -156,6 +170,7 @@ clients yet, so nothing needs to stay compatible.
 - `GET /docs` and `GET /redoc` answer 200 HTML; `GET /` and `GET /openapi.yml` answer 404.
 - A test asserts `/openapi.json` lists every route with its request schema, `FeedResponse` and the
   declared error responses.
-- No `app.state` access outside the composition root and the single dependency helper.
+- No `app.state` access in `src/` or `tests/`, and no dishka import outside `apps/cms_backend` (and
+  its tests).
 - `S01` (error table, urlencoded, Swagger from YAML), `S02` (value rendering, urlencoded, malformed
   JSON, feed JSON keys and date format) and `S04` (order of checks) get a "Superseded by I06" note. `README.md` links I06 for #20.

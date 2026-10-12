@@ -4,9 +4,6 @@ from typing import ClassVar
 import pytest
 
 from daily_trends_py.contexts.cms.shared.domain.criteria import Criteria, Filter, Order
-from daily_trends_py.contexts.cms.shared.domain.invalid_argument_error import (
-    InvalidArgumentError,
-)
 
 
 @dataclass(frozen=True)
@@ -34,21 +31,21 @@ def test_criteria_keeps_its_filters_order_and_limit() -> None:
 
 @pytest.mark.parametrize("limit", [0, -1, True])
 def test_criteria_rejects_a_limit_that_is_not_a_positive_integer(limit: int) -> None:
-    with pytest.raises(InvalidArgumentError) as error:
+    with pytest.raises(ValueError) as error:
         DummyCriteria(limit=limit)
 
     assert str(error.value) == f"<DummyCriteria> does not allow the limit <{limit}>"
 
 
 def test_criteria_rejects_a_filter_on_a_field_it_does_not_have() -> None:
-    with pytest.raises(InvalidArgumentError) as error:
+    with pytest.raises(ValueError) as error:
         DummyCriteria(filters=(Filter("name", "Ivan"), Filter("email", "ivan@example.com")))
 
     assert str(error.value) == "<DummyCriteria> does not allow the field <email>"
 
 
 def test_criteria_rejects_an_order_on_a_field_it_does_not_have() -> None:
-    with pytest.raises(InvalidArgumentError) as error:
+    with pytest.raises(ValueError) as error:
         DummyCriteria(order=Order("email", "asc"))
 
     assert str(error.value) == "<DummyCriteria> does not allow the field <email>"

@@ -21,7 +21,8 @@ are user-invoked. Supporting skills under `.agents/skills/` are selected by the 
 
 ## Architecture
 
-- `src/<package>/apps/<app>`: entry points (FastAPI app, jobs) and the composition root.
+- `src/<package>/apps/<app>`: entry points (FastAPI app, jobs), the composition root (DI container)
+  and the exception handlers.
 - `src/<package>/contexts/<context>/<subdomain>/api`: transport and validation (routers, Pydantic schemas).
 - `src/<package>/contexts/<context>/<subdomain>/application`: use-case orchestration.
 - `src/<package>/contexts/<context>/<subdomain>/domain`: framework-free business types and rules.
@@ -32,7 +33,9 @@ In this project: `src/daily_trends_py/apps/cms_backend` and `src/daily_trends_py
 
 Application code depends on ports (`typing.Protocol`). Infrastructure adapters contain only
 technology details. Domain and application code never import FastAPI, Pydantic or database drivers.
-Wiring lives in one composition root; there is no DI container.
+Wiring lives in one composition root per app: a [dishka](https://dishka.readthedocs.io) container
+(`apps/<app>/container.py`). Only `apps/<app>` and its tests import dishka; tests swap in fakes with
+override providers.
 
 MongoDB schema changes (indexes, data reshapes) are versioned migrations applied at startup;
 the `ai-project-mongo-migrations` skill explains how to add one.

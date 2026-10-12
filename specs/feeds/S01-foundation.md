@@ -30,6 +30,8 @@ Body `{"error": "<message>"}`, mapped by error type:
 
 > **Superseded by [I01](../improvements/I01-http-contract-fixes.md):** `GET /feed/home` maps no error to 400, and an invalid stored feed answers 500 on every route.
 
+> **Superseded by [I06](../improvements/I06-idiomatic-fastapi-layer.md):** errors are mapped by kind for every route, with no per-route lists: `InvalidArgumentError` → 400, `NotFoundError` → 404, `ConflictError` → 409, anything else → 500. Every error answers JSON `{"error": "<message>"}`, including the logged 500 of the final handler.
+
 
 ## Configuration
 - Variables: `ENV` (`production|dev|test`, default `dev`), `MONGO_URL` (default `mongodb://localhost:27017/daily-trends`), `PORT` (default `5000`).

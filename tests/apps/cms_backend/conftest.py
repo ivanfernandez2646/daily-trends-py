@@ -4,16 +4,16 @@ from typing import cast
 
 import httpx2
 import pytest
+from dishka import AsyncContainer
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pytest_bdd import given, parsers, then, when
 
+from daily_trends_py.apps.cms_backend.container import create_container
 from daily_trends_py.apps.cms_backend.main import create_app
 from daily_trends_py.apps.cms_backend.settings import Settings
+from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
-from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.mongo_feed_repository import (  # noqa: E501
-    MongoFeedRepository,
-)
 from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_client_factory import (  # noqa: E501
     MongoClient,
 )
@@ -42,23 +42,50 @@ def settings() -> Settings:
 
 
 @pytest.fixture
-def app(settings: Settings, front_pages_transport: FrontPagesTransport) -> FastAPI:
-    return create_app(settings, http_transport=front_pages_transport)
+def container(settings: Settings, front_pages_transport: FrontPagesTransport) -> AsyncContainer:
+    # The app's lifespan closes it.
+    return create_container(settings, http_transport=front_pages_transport)
 
 
 @pytest.fixture
-def client(app: FastAPI) -> Iterator[TestClient]:
-    with TestClient(app) as test_client:
-        mongo_client: MongoClient = app.state.mongo_client
+def app(container: AsyncContainer) -> FastAPI:
+    return create_app(container)
+
+
+@pytest.fixture
+def raise_server_exceptions() -> bool:
+    """Whether the client re-raises an error the app answered with a 500; override to test 500s."""
+    return True
+
+
+@pytest.fixture
+def client(
+    app: FastAPI, container: AsyncContainer, raise_server_exceptions: bool
+) -> Iterator[TestClient]:
+    with TestClient(app, raise_server_exceptions=raise_server_exceptions) as test_client:
+        mongo_client = resolve_mongo_client(test_client, container)
         feeds = mongo_client.get_default_database()["feeds"]
         run_in_app(test_client, lambda: feeds.delete_many({}))
         yield test_client
 
 
+def resolve[T](client: TestClient, container: AsyncContainer, dependency: type[T]) -> T:
+    """The app's instance of `dependency`, resolved on the app's event loop."""
+    return run_in_app(client, lambda: container.get(dependency))
+
+
+def resolve_mongo_client(client: TestClient, container: AsyncContainer) -> MongoClient:
+    # `MongoClient` is a type alias, which `resolve` cannot take as `type[T]`.
+    mongo_client: MongoClient = run_in_app(client, lambda: container.get(MongoClient))
+    return mongo_client
+
+
 @given("There are feeds:")
-def there_are_feeds(app: FastAPI, client: TestClient, datatable: list[list[str]]) -> None:
+def there_are_feeds(
+    container: AsyncContainer, client: TestClient, datatable: list[list[str]]
+) -> None:
     header, *rows = datatable
-    repository = MongoFeedRepository(app.state.mongo_client)
+    repository = resolve(client, container, FeedRepository)
     for row in rows:
         values = dict(zip(header, row, strict=True))
         created_at = values.get("createdAt")

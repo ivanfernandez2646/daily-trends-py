@@ -1,21 +1,23 @@
 import pytest
-from fastapi import FastAPI
+from dishka import AsyncContainer
 from fastapi.testclient import TestClient
 
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
-from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_client_factory import (  # noqa: E501
-    MongoClient,
-)
-from tests.apps.cms_backend.conftest import run_in_app
+from tests.apps.cms_backend.conftest import resolve_mongo_client, run_in_app
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
 
 pytestmark = pytest.mark.integration
 
 
 @pytest.fixture
-def malformed_feed_id(app: FastAPI, client: TestClient) -> str:
+def raise_server_exceptions() -> bool:
+    return False
+
+
+@pytest.fixture
+def malformed_feed_id(container: AsyncContainer, client: TestClient) -> str:
     """An external feed whose stored `createdAt` was written by something other than this API."""
-    mongo_client: MongoClient = app.state.mongo_client
+    mongo_client = resolve_mongo_client(client, container)
     feeds = mongo_client.get_default_database()["feeds"]
     primitives = FeedMother.random(source=FeedSource.EL_MUNDO).to_primitives()
     document = {**primitives, "_id": primitives["id"], "createdAt": "not-a-date"}

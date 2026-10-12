@@ -2,118 +2,45 @@ import logging
 import sys
 from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
-from datetime import timedelta
 from types import TracebackType
 
-import httpx
 import uvicorn
-from fastapi import FastAPI, Request, Response, status
+from dishka import AsyncContainer
+from dishka.integrations.fastapi import setup_dishka
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import PlainTextResponse
 from uvicorn.config import STARTUP_FAILURE
 
+from daily_trends_py.apps.cms_backend.container import FEED_USE_CASES, create_container
+from daily_trends_py.apps.cms_backend.errors import register_exception_handlers
 from daily_trends_py.apps.cms_backend.request_body import (
     MalformedRequestBody,
     handle_malformed_request_body,
 )
 from daily_trends_py.apps.cms_backend.routes import register_routes
 from daily_trends_py.apps.cms_backend.settings import Settings
-from daily_trends_py.contexts.cms.feeds.application.create.feed_creator import FeedCreator
-from daily_trends_py.contexts.cms.feeds.application.delete.feed_deleter import FeedDeleter
-from daily_trends_py.contexts.cms.feeds.application.find.feed_finder import FeedFinder
-from daily_trends_py.contexts.cms.feeds.application.home.feed_home_refresher import (
-    FeedHomeRefresher,
-)
-from daily_trends_py.contexts.cms.feeds.application.home.feed_home_searcher import (
-    FeedHomeSearcher,
-)
-from daily_trends_py.contexts.cms.feeds.application.scrap.feed_scraper import FeedScraper
-from daily_trends_py.contexts.cms.feeds.application.search.feed_searcher import FeedSearcher
-from daily_trends_py.contexts.cms.feeds.application.update.feed_updater import FeedUpdater
-from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
-from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.mongo_feed_repository import (  # noqa: E501
-    MongoFeedRepository,
-)
-from daily_trends_py.contexts.cms.feeds.infrastructure.scrap.el_espanol_feed_scraper import (
-    ElEspanolFeedScraper,
-)
-from daily_trends_py.contexts.cms.feeds.infrastructure.scrap.el_mundo_feed_scraper import (
-    ElMundoFeedScraper,
-)
-from daily_trends_py.contexts.cms.shared.infrastructure.event_bus.in_memory_event_bus import (
-    InMemoryEventBus,
-)
 from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.migrations.migration import (  # noqa: E501
     Migration,
-)
-from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.migrations.runner import (
-    run_migrations,
 )
 from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.migrations.versions import (  # noqa: E501
     MIGRATIONS,
 )
-from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_client_factory import (  # noqa: E501
-    create_mongo_client,
-)
-from daily_trends_py.contexts.cms.shared.infrastructure.system_clock import SystemClock
 
 logger = logging.getLogger(__name__)
 
-SCRAP_USER_AGENT = "daily-trends-py"
 
-
-async def _handle_unhandled_error(_request: Request, error: Exception) -> Response:
-    logger.error("Unhandled error", exc_info=error)
-    return PlainTextResponse(str(error), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-def create_app(
-    settings: Settings,
-    http_transport: httpx.AsyncBaseTransport | None = None,
-    migrations: Sequence[Migration] = MIGRATIONS,
-) -> FastAPI:
+def create_app(container: AsyncContainer) -> FastAPI:
     @asynccontextmanager
-    async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
-        mongo_client = await create_mongo_client(settings.mongo_url)
+    async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
         try:
-            await run_migrations(mongo_client.get_default_database(), migrations)
-        except BaseException:
-            await mongo_client.close()
-            raise
-        app.state.mongo_client = mongo_client
-        event_bus = InMemoryEventBus()
-        app.state.event_bus = event_bus
-        feed_repository: FeedRepository = MongoFeedRepository(mongo_client)
-        app.state.feed_creator = FeedCreator(feed_repository, event_bus)
-        app.state.feed_finder = FeedFinder(feed_repository)
-        app.state.feed_searcher = FeedSearcher(feed_repository)
-        app.state.feed_updater = FeedUpdater(feed_repository)
-        app.state.feed_deleter = FeedDeleter(feed_repository)
-        http_client = httpx.AsyncClient(
-            transport=http_transport,
-            timeout=settings.scrap_timeout_seconds,
-            headers={"User-Agent": SCRAP_USER_AGENT},
-            follow_redirects=True,
-        )
-        app.state.feed_scraper = FeedScraper(
-            feed_repository,
-            [ElMundoFeedScraper(http_client), ElEspanolFeedScraper(http_client)],
-            settings.timezone,
-        )
-        clock = SystemClock(settings.timezone)
-        feed_home_refresher = FeedHomeRefresher(
-            app.state.feed_scraper, clock, timedelta(seconds=settings.scrap_cooldown_seconds)
-        )
-        app.state.feed_home_refresher = feed_home_refresher
-        app.state.feed_home_searcher = FeedHomeSearcher(feed_repository, feed_home_refresher, clock)
-        try:
+            # Built at startup, not on the first request, so an unreachable Mongo or a failing
+            # migration stops startup before the app takes traffic.
+            for use_case in FEED_USE_CASES:
+                await container.get(use_case)
             yield
         finally:
-            # A background run still uses both clients.
-            await feed_home_refresher.aclose()
-            await http_client.aclose()
-            await mongo_client.close()
+            await container.close()
 
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
     app.add_middleware(GZipMiddleware, minimum_size=1024)
@@ -123,9 +50,10 @@ def create_app(
         allow_methods=["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
         allow_headers=["*"],
     )
+    register_exception_handlers(app)
     app.add_exception_handler(MalformedRequestBody, handle_malformed_request_body)
-    app.add_exception_handler(Exception, _handle_unhandled_error)
     register_routes(app)
+    setup_dishka(container, app)
     return app
 
 
@@ -143,7 +71,8 @@ def main(migrations: Sequence[Migration] = MIGRATIONS) -> None:
     sys.excepthook = _log_uncaught_exception
     try:
         settings = Settings()
-        uvicorn.run(create_app(settings, migrations=migrations), host="0.0.0.0", port=settings.port)
+        container = create_container(settings, migrations=migrations)
+        uvicorn.run(create_app(container), host="0.0.0.0", port=settings.port)
     except SystemExit as error:
         # uvicorn logs why it could not start and exits with its own code (3).
         if error.code == STARTUP_FAILURE:
