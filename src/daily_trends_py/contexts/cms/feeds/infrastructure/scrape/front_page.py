@@ -91,5 +91,7 @@ def extract_feeds(html: str, mapping: ScrapeMapping, now: datetime) -> list[Feed
 
 
 def _text(article: Tag, selector: str) -> str:
-    """The trimmed text of every element matching `selector`, joined; `""` when none matches."""
-    return "".join(element.get_text() for element in article.select(selector)).strip()
+    """The trimmed text of the first element matching `selector`; `""` when none matches."""
+    # Later matches belong to the related stories a teaser can carry, not to its own headline.
+    element = article.select_one(selector)
+    return "" if element is None else element.get_text().strip()

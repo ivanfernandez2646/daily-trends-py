@@ -41,6 +41,9 @@ class FeedSource(StrEnum):
     EL_PAIS = "EL_PAIS"
     EL_MUNDO = "EL_MUNDO"
     EL_ESPANOL = "EL_ESPANOL"
+    EL_CONFIDENCIAL = "EL_CONFIDENCIAL"
+    LA_RAZON = "LA_RAZON"
+    LA_VANGUARDIA = "LA_VANGUARDIA"
 
     @classmethod
     def _missing_(cls, value: object) -> Never:

@@ -1,3 +1,4 @@
+from collections import Counter
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -16,7 +17,7 @@ from tests.apps.cms_backend.isolated_settings import IsolatedSettings
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
 from tests.mongo import TEST_MONGO_URL
-from tests.scrape_fixtures import FrontPagesTransport
+from tests.scrape_fixtures import EVERY_FRONT_PAGE_HOST, FrontPagesTransport
 
 pytestmark = pytest.mark.integration
 
@@ -30,28 +31,50 @@ def _feed_created_at(created_at: datetime, source: FeedSource) -> Feed:
     )
 
 
-def test_home_returns_the_ten_newest_external_feeds(
+def test_home_returns_the_two_newest_feeds_of_each_external_source(
     container: AsyncContainer, client: TestClient
 ) -> None:
     now = datetime.now(UTC)
-    external_sources = [FeedSource.EL_MUNDO, FeedSource.EL_ESPANOL]
+    external_sources = [
+        FeedSource.EL_MUNDO,
+        FeedSource.EL_ESPANOL,
+        FeedSource.EL_CONFIDENCIAL,
+        FeedSource.LA_RAZON,
+        FeedSource.LA_VANGUARDIA,
+    ]
     external_feeds = [
-        _feed_created_at(
-            now - timedelta(milliseconds=index + 1), source=external_sources[index % 2]
-        )
-        for index in range(11)
+        [
+            _feed_created_at(now - timedelta(minutes=10 * index + age), source=source)
+            for age in range(1, 4)
+        ]
+        for index, source in enumerate(external_sources)
     ]
     cms_feed = _feed_created_at(now, source=FeedSource.CMS)
     repository = resolve(client, container, FeedRepository)
-    for feed in [cms_feed, *reversed(external_feeds)]:
+    for feed in [cms_feed, *(feed for feeds in external_feeds for feed in feeds)]:
         run_in_app(client, lambda feed=feed: repository.create(feed))
 
     response = client.get("/feed/home")
 
     assert response.status_code == 200
     assert [feed["id"] for feed in response.json()] == [
-        feed.id.value for feed in external_feeds[:10]
+        feed.id.value for feeds in external_feeds for feed in feeds[:2]
     ]
+
+
+def test_home_shows_two_feeds_of_each_source_after_scraping(client: TestClient) -> None:
+    client.get("/feed/scrap")
+
+    response = client.get("/feed/home")
+
+    assert response.status_code == 200
+    assert Counter(feed["source"] for feed in response.json()) == {
+        "EL_MUNDO": 2,
+        "EL_ESPANOL": 2,
+        "EL_CONFIDENCIAL": 2,
+        "LA_RAZON": 2,
+        "LA_VANGUARDIA": 2,
+    }
 
 
 def _save_stale_feed(container: AsyncContainer, client: TestClient) -> Feed:
@@ -77,7 +100,7 @@ def test_home_answers_the_stale_feeds_and_shows_the_scraped_ones_after_the_backg
 
     assert stale_response.status_code == 200
     assert [feed["id"] for feed in stale_response.json()] == [stale.id.value]
-    assert len(client.get("/feed/list").json()) == 11
+    assert len(client.get("/feed/list").json()) == 26
     assert fresh_response.status_code == 200
     fresh_ids = [feed["id"] for feed in fresh_response.json()]
     assert len(fresh_ids) == 10
@@ -86,7 +109,7 @@ def test_home_answers_the_stale_feeds_and_shows_the_scraped_ones_after_the_backg
 
 @pytest.mark.parametrize(
     "front_pages_transport",
-    [FrontPagesTransport(failing_hosts={"elmundo.es", "www.elespanol.com"})],
+    [FrontPagesTransport(failing_hosts=EVERY_FRONT_PAGE_HOST)],
 )
 def test_home_keeps_the_stale_feeds_without_retrying_in_the_cooldown_when_every_source_fails(
     container: AsyncContainer, client: TestClient, front_pages_transport: FrontPagesTransport
@@ -110,7 +133,7 @@ def test_home_keeps_the_stale_feeds_without_retrying_in_the_cooldown_when_every_
     [
         (
             IsolatedSettings(mongo_url=TEST_MONGO_URL, scrape_cooldown_seconds=0),
-            FrontPagesTransport(failing_hosts={"elmundo.es", "www.elespanol.com"}),
+            FrontPagesTransport(failing_hosts=EVERY_FRONT_PAGE_HOST),
         )
     ],
 )

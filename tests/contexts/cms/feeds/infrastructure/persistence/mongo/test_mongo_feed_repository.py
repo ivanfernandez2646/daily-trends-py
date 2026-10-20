@@ -449,3 +449,35 @@ async def test_exists_headline_compares_bounds_given_in_another_zone_with_stored
     )
 
     assert found is exists
+
+
+async def test_search_returns_the_newest_feeds_of_one_source(
+    repository: MongoFeedRepository,
+) -> None:
+    feeds = [
+        FeedMother.random(
+            source=source,
+            created_at=FeedCreatedAtMother.create(f"2026-10-08T{hour:02}:00:00.000Z"),
+        )
+        for hour, source in enumerate(
+            [
+                FeedSource.LA_RAZON,
+                FeedSource.EL_MUNDO,
+                FeedSource.LA_RAZON,
+                FeedSource.LA_RAZON,
+                FeedSource.EL_MUNDO,
+            ]
+        )
+    ]
+    for feed in feeds:
+        await repository.create(feed)
+
+    found = await repository.search(
+        FeedCriteria(
+            filters=(Filter("source", FeedSource.LA_RAZON),),
+            order=Order("created_at", "desc"),
+            limit=2,
+        )
+    )
+
+    assert _ids(found) == _ids([feeds[3], feeds[2]])

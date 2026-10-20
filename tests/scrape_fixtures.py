@@ -8,8 +8,12 @@ _FIXTURES = Path(__file__).parent / "fixtures" / "scrape"
 _FRONT_PAGES = {
     "www.elespanol.com": ("el_espanol.html", "UTF-8"),
     "www.elmundo.es": ("el_mundo.html", "iso-8859-15"),
+    "www.elconfidencial.com": ("el_confidencial.html", "UTF-8"),
+    "www.larazon.es": ("la_razon.html", "UTF-8"),
+    "www.lavanguardia.com": ("la_vanguardia.html", "UTF-8"),
 }
 _REDIRECTS = {"elmundo.es": "https://www.elmundo.es/"}
+EVERY_FRONT_PAGE_HOST = frozenset({*_FRONT_PAGES, *_REDIRECTS})
 
 
 class FrontPagesTransport(httpx.MockTransport):

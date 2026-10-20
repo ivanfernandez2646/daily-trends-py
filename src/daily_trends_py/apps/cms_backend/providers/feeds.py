@@ -27,11 +27,20 @@ from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedReposi
 from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.mongo_feed_repository import (  # noqa: E501
     MongoFeedRepository,
 )
+from daily_trends_py.contexts.cms.feeds.infrastructure.scrape.el_confidencial_feed_scraper import (
+    ElConfidencialFeedScraper,
+)
 from daily_trends_py.contexts.cms.feeds.infrastructure.scrape.el_espanol_feed_scraper import (
     ElEspanolFeedScraper,
 )
 from daily_trends_py.contexts.cms.feeds.infrastructure.scrape.el_mundo_feed_scraper import (
     ElMundoFeedScraper,
+)
+from daily_trends_py.contexts.cms.feeds.infrastructure.scrape.la_razon_feed_scraper import (
+    LaRazonFeedScraper,
+)
+from daily_trends_py.contexts.cms.feeds.infrastructure.scrape.la_vanguardia_feed_scraper import (
+    LaVanguardiaFeedScraper,
 )
 from daily_trends_py.contexts.cms.shared.domain.clock import Clock
 
@@ -70,7 +79,13 @@ class FeedsProvider(Provider):
     ) -> FeedScraper:
         return FeedScraper(
             repository,
-            [ElMundoFeedScraper(http_client, clock), ElEspanolFeedScraper(http_client, clock)],
+            [
+                ElMundoFeedScraper(http_client, clock),
+                ElEspanolFeedScraper(http_client, clock),
+                ElConfidencialFeedScraper(http_client, clock),
+                LaRazonFeedScraper(http_client, clock),
+                LaVanguardiaFeedScraper(http_client, clock),
+            ],
             settings.timezone,
         )
 

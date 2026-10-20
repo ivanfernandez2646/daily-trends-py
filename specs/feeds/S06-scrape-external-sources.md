@@ -36,6 +36,8 @@ source replacement described in "Deliberate divergences". Depends on S02.
 
 > **Superseded by [I02](../improvements/I02-scraper-robustness.md):** every page is decoded with its declared charset (header, then `<meta>`, else UTF-8), so the Encoding column no longer applies; El Mundo removes only one trailing period; requests have a 10 s timeout, send `User-Agent: daily-trends-py` and no `Content-Type`.
 
+> **See [S08](S08-more-sources.md):** El Confidencial (`EL_CONFIDENCIAL`), La Razón (`LA_RAZON`) and La Vanguardia (`LA_VANGUARDIA`) are scraped too, with the same rules; a run reads five front pages.
+
 - Redirects are followed (`https://elmundo.es/` answers 301 to `https://www.elmundo.es/`).
 - A non-2xx response is not an error: its body is parsed like any other page, so it usually yields no feeds.
 
