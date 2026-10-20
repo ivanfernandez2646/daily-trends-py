@@ -62,11 +62,15 @@ class FeedsProvider(Provider):
 
     @provide
     def feed_scraper(
-        self, settings: Settings, repository: FeedRepository, http_client: httpx.AsyncClient
+        self,
+        settings: Settings,
+        repository: FeedRepository,
+        http_client: httpx.AsyncClient,
+        clock: Clock,
     ) -> FeedScraper:
         return FeedScraper(
             repository,
-            [ElMundoFeedScraper(http_client), ElEspanolFeedScraper(http_client)],
+            [ElMundoFeedScraper(http_client, clock), ElEspanolFeedScraper(http_client, clock)],
             settings.timezone,
         )
 

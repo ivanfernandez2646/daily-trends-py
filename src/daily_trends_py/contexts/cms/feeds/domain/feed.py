@@ -1,4 +1,4 @@
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import datetime
 from typing import TypedDict
 
@@ -44,6 +44,7 @@ class Feed(AggregateRoot):
         description: FeedDescription,
         author: FeedAuthor,
         source: FeedSource,
+        now: datetime,
     ) -> Feed:
         feed = cls(
             id=id,
@@ -51,10 +52,14 @@ class Feed(AggregateRoot):
             description=description,
             author=author,
             source=source,
-            created_at=FeedCreatedAt.now(),
+            created_at=FeedCreatedAt(now),
             updated_at=FeedUpdatedAt(None),
         )
-        feed.record(FeedCreatedDomainEvent(aggregate_id=id.value, title=title.value))
+        feed.record(
+            FeedCreatedDomainEvent(
+                aggregate_id=id.value, title=title.value, occurred_on=feed.created_at.value
+            )
+        )
         return feed
 
     @classmethod
@@ -70,19 +75,28 @@ class Feed(AggregateRoot):
         )
 
     def update(
-        self, *, title: FeedTitle | None = None, description: FeedDescription | None = None
+        self,
+        *,
+        now: datetime,
+        title: FeedTitle | None = None,
+        description: FeedDescription | None = None,
     ) -> Feed | None:
         """Return the updated feed, or `None` if nothing changes; `None` keeps a value."""
         new_title = self.title if title is None else title
         new_description = self.description if description is None else description
         if new_title == self.title and new_description == self.description:
             return None
-        return replace(
-            self,
+        updated = Feed(
+            id=self.id,
             title=new_title,
             description=new_description,
-            updated_at=FeedUpdatedAt.now(),
+            author=self.author,
+            source=self.source,
+            created_at=self.created_at,
+            updated_at=FeedUpdatedAt(now),
         )
+        updated._keep_events_of(self)
+        return updated
 
     def to_primitives(self) -> FeedPrimitives:
         return {

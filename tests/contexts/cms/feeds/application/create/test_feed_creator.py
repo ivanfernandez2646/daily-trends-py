@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 import pytest
 
@@ -17,7 +17,10 @@ from daily_trends_py.contexts.cms.shared.domain.invalid_argument_error import (
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
 from tests.contexts.cms.feeds.fakes.in_memory_feed_repository import InMemoryFeedRepository
 from tests.contexts.cms.shared.domain.mother_creator import MotherCreator
+from tests.contexts.cms.shared.fakes.fixed_clock import FixedClock
 from tests.contexts.cms.shared.fakes.recording_event_bus import RecordingEventBus
+
+NOW = datetime(2026, 10, 20, 9, 30, tzinfo=UTC)
 
 
 def random_props(**overrides: str | None) -> FeedCreatorProps:
@@ -31,11 +34,10 @@ def random_props(**overrides: str | None) -> FeedCreatorProps:
     return props | overrides  # pyright: ignore[reportReturnType]
 
 
-async def test_creates_and_returns_a_new_feed_without_update_date() -> None:
+async def test_creates_and_returns_a_new_feed_created_now_without_update_date() -> None:
     repository = InMemoryFeedRepository()
-    creator = FeedCreator(repository, RecordingEventBus())
+    creator = FeedCreator(repository, RecordingEventBus(), FixedClock(NOW))
     props = random_props()
-    before = datetime.now(UTC)
 
     feed = await creator.execute(props)
 
@@ -43,12 +45,12 @@ async def test_creates_and_returns_a_new_feed_without_update_date() -> None:
     primitives = feed.to_primitives()
     assert {key: primitives[key] for key in props} == props
     assert primitives["updatedAt"] is None
-    assert before - timedelta(milliseconds=1) <= primitives["createdAt"]
+    assert primitives["createdAt"] == NOW
 
 
-async def test_publishes_feed_created() -> None:
+async def test_publishes_feed_created_now() -> None:
     event_bus = RecordingEventBus()
-    creator = FeedCreator(InMemoryFeedRepository(), event_bus)
+    creator = FeedCreator(InMemoryFeedRepository(), event_bus, FixedClock(NOW))
     props = random_props()
 
     await creator.execute(props)
@@ -56,13 +58,14 @@ async def test_publishes_feed_created() -> None:
     [event] = event_bus.published
     assert isinstance(event, FeedCreatedDomainEvent)
     assert (event.aggregate_id, event.title) == (props["id"], props["title"])
+    assert event.occurred_on == NOW
 
 
 async def test_raises_feed_already_exists_from_create_without_finding_or_publishing() -> None:
     existing = FeedMother.random()
     repository = InMemoryFeedRepository([existing])
     event_bus = RecordingEventBus()
-    creator = FeedCreator(repository, event_bus)
+    creator = FeedCreator(repository, event_bus, FixedClock(NOW))
 
     with pytest.raises(FeedAlreadyExists) as error:
         await creator.execute(random_props(id=existing.id.value))
@@ -86,7 +89,7 @@ async def test_raises_the_first_invalid_argument_in_field_order(
     overrides: dict[str, str], message: str
 ) -> None:
     repository = InMemoryFeedRepository()
-    creator = FeedCreator(repository, RecordingEventBus())
+    creator = FeedCreator(repository, RecordingEventBus(), FixedClock(NOW))
 
     with pytest.raises(InvalidArgumentError) as error:
         await creator.execute(random_props(**overrides))
@@ -96,7 +99,7 @@ async def test_raises_the_first_invalid_argument_in_field_order(
 
 
 async def test_a_null_description_is_stored_as_null() -> None:
-    creator = FeedCreator(InMemoryFeedRepository(), RecordingEventBus())
+    creator = FeedCreator(InMemoryFeedRepository(), RecordingEventBus(), FixedClock(NOW))
 
     feed = await creator.execute(random_props(description=None))
 

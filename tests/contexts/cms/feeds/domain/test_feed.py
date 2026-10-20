@@ -1,4 +1,5 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -14,6 +15,8 @@ from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
 from tests.contexts.cms.feeds.domain.feed_title_mother import FeedTitleMother
 from tests.contexts.cms.feeds.domain.feed_updated_at_mother import FeedUpdatedAtMother
 from tests.contexts.cms.shared.domain.mother_creator import MotherCreator
+
+NOW = datetime(2026, 10, 20, 9, 30, tzinfo=UTC)
 
 
 @pytest.mark.parametrize(
@@ -39,8 +42,7 @@ def test_primitives_round_trip_keeps_every_field_in_order(
     assert list(result) == list(primitives)
 
 
-def test_create_sets_creation_dates_and_records_feed_created() -> None:
-    before = datetime.now(UTC)
+def test_create_sets_creation_dates_and_records_feed_created_at_now() -> None:
     id, title = FeedIdMother.random(), FeedTitleMother.random()
 
     feed = Feed.create(
@@ -49,45 +51,85 @@ def test_create_sets_creation_dates_and_records_feed_created() -> None:
         description=FeedDescriptionMother.random(),
         author=FeedAuthorMother.random(),
         source=FeedSource.CMS,
+        now=NOW,
     )
 
+    assert feed.created_at.value == NOW
+    assert feed.created_at.value.tzinfo is UTC
     assert feed.updated_at.value is None
-    assert before - timedelta(milliseconds=1) <= feed.created_at.value <= datetime.now(UTC)
     [event] = feed.pull_domain_events()
     assert isinstance(event, FeedCreatedDomainEvent)
     assert event.event_name == "feed.created"
-    assert (event.aggregate_id, event.title) == (id.value, title.value)
+    assert (event.aggregate_id, event.title, event.occurred_on) == (id.value, title.value, NOW)
 
 
-def test_update_returns_none_when_nothing_changes() -> None:
+def test_update_returns_none_and_records_nothing_when_nothing_changes() -> None:
     feed = FeedMother.random()
 
-    assert feed.update() is None
-    assert feed.update(title=feed.title, description=feed.description) is None
+    assert feed.update(now=NOW) is None
+    assert feed.update(now=NOW, title=feed.title, description=feed.description) is None
+    assert feed.pull_domain_events() == []
 
 
-def test_update_returns_a_new_feed_with_the_new_title_and_update_date() -> None:
+def test_update_returns_a_new_feed_with_the_new_title_updated_now() -> None:
     feed = FeedMother.random(updated_at=FeedUpdatedAtMother.create(None))
     title = FeedTitleMother.random()
-    before = datetime.now(UTC)
 
-    updated = feed.update(title=title)
+    updated = feed.update(now=NOW, title=title)
 
     assert updated is not None
     assert updated.to_primitives() == {
         **feed.to_primitives(),
         "title": title.value,
-        "updatedAt": updated.updated_at.value,
+        "updatedAt": NOW,
     }
-    assert updated.updated_at.value is not None
-    assert before - timedelta(milliseconds=1) <= updated.updated_at.value <= datetime.now(UTC)
     assert updated.pull_domain_events() == []
+
+
+def test_update_keeps_the_pending_events_of_the_original_feed() -> None:
+    id = FeedIdMother.random()
+    feed = Feed.create(
+        id=id,
+        title=FeedTitleMother.random(),
+        description=FeedDescriptionMother.random(),
+        author=FeedAuthorMother.random(),
+        source=FeedSource.CMS,
+        now=NOW,
+    )
+
+    updated = feed.update(now=NOW, title=FeedTitleMother.random())
+
+    assert updated is not None
+    [event] = updated.pull_domain_events()
+    assert isinstance(event, FeedCreatedDomainEvent)
+    assert event.aggregate_id == id.value
+
+
+def test_create_and_update_store_a_business_time_instant_in_utc() -> None:
+    madrid_now = datetime(2026, 10, 20, 11, 30, tzinfo=ZoneInfo("Europe/Madrid"))
+    feed = Feed.create(
+        id=FeedIdMother.random(),
+        title=FeedTitleMother.random(),
+        description=FeedDescriptionMother.random(),
+        author=FeedAuthorMother.random(),
+        source=FeedSource.CMS,
+        now=madrid_now,
+    )
+
+    updated = feed.update(now=madrid_now, title=FeedTitleMother.random())
+
+    assert updated is not None
+    assert feed.created_at.value == datetime(2026, 10, 20, 9, 30, tzinfo=UTC)
+    assert feed.created_at.value.tzinfo is UTC
+    assert updated.updated_at.value is not None
+    assert updated.updated_at.value == feed.created_at.value
+    assert updated.updated_at.value.tzinfo is UTC
 
 
 def test_update_sets_the_description_to_null() -> None:
     feed = FeedMother.random(description=FeedDescriptionMother.create("A description"))
 
-    updated = feed.update(description=FeedDescriptionMother.create(None))
+    updated = feed.update(now=NOW, description=FeedDescriptionMother.create(None))
 
     assert updated is not None
     assert updated.description.value is None

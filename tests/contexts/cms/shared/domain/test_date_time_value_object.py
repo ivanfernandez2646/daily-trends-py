@@ -65,17 +65,6 @@ def test_required_date_time_rejects_none() -> None:
     assert str(error.value) == "<DummyRequiredDateTime> does not allow the value <None>"
 
 
-def test_now_is_the_current_utc_instant_with_milliseconds() -> None:
-    before = datetime.now(UTC)
-
-    now = DummyRequiredDateTime.now()
-
-    assert isinstance(now, DummyRequiredDateTime)
-    assert now.value.tzinfo is UTC
-    assert now.value.microsecond % 1000 == 0
-    assert before - timedelta(milliseconds=1) <= now.value <= datetime.now(UTC)
-
-
 def test_date_times_with_the_same_instant_are_equal() -> None:
     value = MotherCreator.date_time()
 
