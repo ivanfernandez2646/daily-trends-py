@@ -3,7 +3,7 @@ from pathlib import Path
 
 import httpx
 
-_FIXTURES = Path(__file__).parent / "fixtures" / "scrap"
+_FIXTURES = Path(__file__).parent / "fixtures" / "scrape"
 # Fixture and declared charset, as the real sites answer.
 _FRONT_PAGES = {
     "www.elespanol.com": ("el_espanol.html", "UTF-8"),

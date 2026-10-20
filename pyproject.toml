@@ -27,7 +27,6 @@ dev = [
     "faker>=40.41.0",
     "fastapi-cli>=0.0.32",
     "httpx2>=2.13.1",
-    "hypothesis>=6.168.5",
     "import-linter>=2.15",
     "pre-commit>=4.6.2",
     "pyright>=1.1.414",
@@ -59,3 +58,35 @@ markers = [
     "integration: needs a running MongoDB at MONGO_URL",
     "network: hits real external websites",
 ]
+
+[tool.importlinter]
+root_package = "daily_trends_py"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Domain depends on neither application, infrastructure nor apps"
+type = "forbidden"
+source_modules = ["daily_trends_py.contexts.*.*.domain"]
+forbidden_modules = [
+    "daily_trends_py.contexts.*.*.application",
+    "daily_trends_py.contexts.*.*.infrastructure",
+    "daily_trends_py.apps",
+]
+
+[[tool.importlinter.contracts]]
+name = "Application depends on neither infrastructure nor apps"
+type = "forbidden"
+source_modules = ["daily_trends_py.contexts.*.*.application"]
+forbidden_modules = ["daily_trends_py.contexts.*.*.infrastructure", "daily_trends_py.apps"]
+
+[[tool.importlinter.contracts]]
+name = "Bounded contexts know neither the web framework, validation nor the container"
+type = "forbidden"
+source_modules = ["daily_trends_py.contexts"]
+forbidden_modules = ["fastapi", "pydantic", "dishka"]
+
+[[tool.importlinter.contracts]]
+name = "Domain and application use neither the database driver nor the HTTP client"
+type = "forbidden"
+source_modules = ["daily_trends_py.contexts.*.*.domain", "daily_trends_py.contexts.*.*.application"]
+forbidden_modules = ["pymongo", "httpx"]

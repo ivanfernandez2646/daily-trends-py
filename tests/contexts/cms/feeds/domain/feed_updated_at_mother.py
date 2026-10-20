@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from daily_trends_py.contexts.cms.feeds.domain.feed_updated_at import FeedUpdatedAt
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedUpdatedAt
 from tests.contexts.cms.shared.domain.mother_creator import MotherCreator
 
 

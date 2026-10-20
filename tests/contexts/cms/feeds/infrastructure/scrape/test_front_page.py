@@ -1,28 +1,25 @@
+import dataclasses
 from datetime import UTC, datetime
 
 import httpx
 import pytest
 
-from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
-from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
-from daily_trends_py.contexts.cms.feeds.infrastructure.scrap.front_page import (
-    ScrapMapping,
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedId, FeedSource
+from daily_trends_py.contexts.cms.feeds.infrastructure.scrape.front_page import (
+    ScrapeMapping,
     extract_feeds,
-    scrap_front_page,
+    scrape_front_page,
 )
+from tests.contexts.cms.shared.fakes.fixed_clock import FixedClock
 
-MAPPING = ScrapMapping(
+MAPPING = ScrapeMapping(
     url="https://news.example/",
     source=FeedSource.EL_ESPANOL,
     author_selector=".author",
     title_selector=".title",
     description_selector=".description",
 )
-
-
-def _to_millis(moment: datetime) -> datetime:
-    """`createdAt` is stored with millisecond precision."""
-    return moment.replace(microsecond=moment.microsecond // 1000 * 1000)
+NOW = datetime(2026, 10, 20, 9, 30, tzinfo=UTC)
 
 
 def _article(author: str = "Ana", title: str = "A title", description: str = "") -> str:
@@ -34,11 +31,9 @@ def _article(author: str = "Ana", title: str = "A title", description: str = "")
 
 def test_extracts_trimmed_new_feeds_in_document_order() -> None:
     html = _article(" Ana ", "\n First title ", "  A summary ") + _article("Luis", "Second")
-    before = datetime.now(UTC)
 
-    feeds = extract_feeds(html, MAPPING)
+    feeds = extract_feeds(html, MAPPING, NOW)
 
-    after = datetime.now(UTC)
     first, second = (feed.to_primitives() for feed in feeds)
     assert (first["author"], first["title"], first["description"]) == (
         "Ana",
@@ -49,8 +44,8 @@ def test_extracts_trimmed_new_feeds_in_document_order() -> None:
     for primitives in (first, second):
         FeedId(primitives["id"])
         assert primitives["source"] == FeedSource.EL_ESPANOL
-        assert _to_millis(before) <= primitives["createdAt"] <= after
-        assert primitives["updatedAt"] is None
+        assert primitives["created_at"] == NOW
+        assert primitives["updated_at"] is None
     assert first["id"] != second["id"]
 
 
@@ -62,7 +57,7 @@ def test_skips_articles_without_author_or_title() -> None:
         + _article("Ana", "Kept")
     )
 
-    feeds = extract_feeds(html, MAPPING)
+    feeds = extract_feeds(html, MAPPING, NOW)
 
     assert [feed.title.value for feed in feeds] == ["Kept"]
 
@@ -70,7 +65,7 @@ def test_skips_articles_without_author_or_title() -> None:
 def test_stops_at_five_feeds() -> None:
     html = "".join(_article(title=f"Title {index}") for index in range(7))
 
-    feeds = extract_feeds(html, MAPPING)
+    feeds = extract_feeds(html, MAPPING, NOW)
 
     assert [feed.title.value for feed in feeds] == [f"Title {index}" for index in range(5)]
 
@@ -81,9 +76,25 @@ def test_stores_a_missing_or_blank_description_as_null() -> None:
         + _article(title="Blank description", description="  \n ")
     )
 
-    feeds = extract_feeds(html, MAPPING)
+    feeds = extract_feeds(html, MAPPING, NOW)
 
     assert [feed.description.value for feed in feeds] == [None, None]
+
+
+def _without_exclamation(text: str) -> str:
+    return text.removesuffix("!")
+
+
+def test_cleans_the_description_before_creating_the_feed() -> None:
+    mapping = dataclasses.replace(MAPPING, clean_description=_without_exclamation)
+    html = _article(title="Cleaned", description="Wow!") + _article(
+        title="Emptied", description="!"
+    )
+
+    feeds = extract_feeds(html, mapping, NOW)
+
+    assert [feed.description.value for feed in feeds] == ["Wow", None]
+    assert [len(feed.pull_domain_events()) for feed in feeds] == [1, 1]
 
 
 def test_joins_the_text_of_every_match() -> None:
@@ -92,13 +103,13 @@ def test_joins_the_text_of_every_match() -> None:
         "<h2 class='title'>A <b>bold</b> title</h2></article>"
     )
 
-    [feed] = extract_feeds(html, MAPPING)
+    [feed] = extract_feeds(html, MAPPING, NOW)
 
     assert (feed.author.value, feed.title.value) == ("AnaLuis", "A bold title")
 
 
 def test_extracts_nothing_from_a_page_without_articles() -> None:
-    assert extract_feeds("<html><p>Please enable JS</p></html>", MAPPING) == []
+    assert extract_feeds("<html><p>Please enable JS</p></html>", MAPPING, NOW) == []
 
 
 def _page(title: str, meta_charset: str | None = None) -> str:
@@ -106,9 +117,9 @@ def _page(title: str, meta_charset: str | None = None) -> str:
     return f"<html><head>{meta}</head><body>{_article(title=title)}</body></html>"
 
 
-async def _scrap_titles(response: httpx.Response) -> list[str | None]:
+async def _scrape_titles(response: httpx.Response) -> list[str | None]:
     async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _: response)) as client:
-        feeds = await scrap_front_page(client, MAPPING)
+        feeds = await scrape_front_page(client, MAPPING, FixedClock(NOW))
     return [feed.title.value for feed in feeds]
 
 
@@ -119,7 +130,7 @@ async def test_decodes_the_page_with_the_charset_of_the_content_type_header() ->
         content=_page("Cuesta 5 €").encode("iso-8859-15"),
     )
 
-    assert await _scrap_titles(response) == ["Cuesta 5 €"]
+    assert await _scrape_titles(response) == ["Cuesta 5 €"]
 
 
 async def test_decodes_the_page_with_its_meta_charset_when_the_header_declares_none() -> None:
@@ -129,13 +140,13 @@ async def test_decodes_the_page_with_its_meta_charset_when_the_header_declares_n
         content=_page("Cuesta 5 €", meta_charset="iso-8859-15").encode("iso-8859-15"),
     )
 
-    assert await _scrap_titles(response) == ["Cuesta 5 €"]
+    assert await _scrape_titles(response) == ["Cuesta 5 €"]
 
 
 async def test_decodes_the_page_as_utf_8_when_nothing_declares_a_charset() -> None:
     response = httpx.Response(200, content=_page("España").encode())
 
-    assert await _scrap_titles(response) == ["España"]
+    assert await _scrape_titles(response) == ["España"]
 
 
 async def test_prefers_the_header_charset_over_the_meta_charset() -> None:
@@ -145,7 +156,7 @@ async def test_prefers_the_header_charset_over_the_meta_charset() -> None:
         content=_page("Cuesta 5 €", meta_charset="utf-8").encode("iso-8859-15"),
     )
 
-    assert await _scrap_titles(response) == ["Cuesta 5 €"]
+    assert await _scrape_titles(response) == ["Cuesta 5 €"]
 
 
 async def test_ignores_an_unknown_header_charset() -> None:
@@ -155,7 +166,7 @@ async def test_ignores_an_unknown_header_charset() -> None:
         content=_page("Cuesta 5 €", meta_charset="iso-8859-15").encode("iso-8859-15"),
     )
 
-    assert await _scrap_titles(response) == ["Cuesta 5 €"]
+    assert await _scrape_titles(response) == ["Cuesta 5 €"]
 
 
 async def test_requests_the_page_without_a_content_type_header() -> None:
@@ -166,7 +177,7 @@ async def test_requests_the_page_without_a_content_type_header() -> None:
         return httpx.Response(200, content=b"")
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as client:
-        await scrap_front_page(client, MAPPING)
+        await scrape_front_page(client, MAPPING, FixedClock(NOW))
 
     [request] = requests
     assert str(request.url) == "https://news.example/"
@@ -179,4 +190,4 @@ async def test_fails_when_the_request_times_out() -> None:
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(time_out)) as client:
         with pytest.raises(httpx.ReadTimeout):
-            await scrap_front_page(client, MAPPING)
+            await scrape_front_page(client, MAPPING, FixedClock(NOW))

@@ -74,13 +74,15 @@ uv run daily-trends-py       # run the API on PORT (default 5000)
 uv run ruff check .          # lint
 uv run ruff format .         # format
 uv run pyright               # type-check
+uv run lint-imports          # layer and dependency contracts
 uv run pytest                # tests
 ```
 
 Quality gate:
 
 ```bash
-uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run pytest
+uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run lint-imports \
+  && uv run pytest
 ```
 
 After each coherent slice, run lint, type-check, and the relevant test suite. Before handing off a

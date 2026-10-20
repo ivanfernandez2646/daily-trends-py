@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
-from daily_trends_py.contexts.cms.feeds.domain.feed_created_at import FeedCreatedAt
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedCreatedAt
 from tests.contexts.cms.shared.domain.mother_creator import MotherCreator
 
 
@@ -16,4 +16,4 @@ class FeedCreatedAtMother:
 
     @staticmethod
     def now() -> FeedCreatedAt:
-        return FeedCreatedAt.now()
+        return FeedCreatedAt(datetime.now(UTC))

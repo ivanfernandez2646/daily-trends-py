@@ -54,3 +54,21 @@ def test_required_strings_with_the_same_value_are_equal() -> None:
 
     assert DummyRequiredString(value) == DummyRequiredString(value)
     assert DummyRequiredString("test") != DummyRequiredString("TEST")
+
+
+@pytest.mark.parametrize(("value", "rendered"), [(42, "42"), (["a"], "['a']"), (b"a", "b'a'")])
+def test_string_value_object_rejects_a_value_that_is_not_a_string(
+    value: object, rendered: str
+) -> None:
+    with pytest.raises(InvalidArgumentError) as error:
+        DummyString(value)  # pyright: ignore[reportArgumentType]
+
+    assert str(error.value) == f"<DummyString> does not allow the value <{rendered}>"
+
+
+@pytest.mark.parametrize(("value", "rendered"), [(None, "None"), (42, "42"), ({}, "{}")])
+def test_required_string_rejects_a_value_that_is_not_a_string(value: object, rendered: str) -> None:
+    with pytest.raises(InvalidArgumentError) as error:
+        DummyRequiredString(value)  # pyright: ignore[reportArgumentType]
+
+    assert str(error.value) == f"<DummyRequiredString> does not allow the value <{rendered}>"

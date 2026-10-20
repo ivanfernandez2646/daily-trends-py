@@ -10,13 +10,13 @@ from daily_trends_py.contexts.cms.feeds.application.home.feed_home_refresher imp
 )
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
-from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedSource
 from tests.apps.cms_backend.conftest import resolve, run_in_app
 from tests.apps.cms_backend.isolated_settings import IsolatedSettings
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
 from tests.mongo import TEST_MONGO_URL
-from tests.scrap_fixtures import FrontPagesTransport
+from tests.scrape_fixtures import FrontPagesTransport
 
 pytestmark = pytest.mark.integration
 
@@ -109,7 +109,7 @@ def test_home_keeps_the_stale_feeds_without_retrying_in_the_cooldown_when_every_
     ("settings", "front_pages_transport"),
     [
         (
-            IsolatedSettings(mongo_url=TEST_MONGO_URL, scrap_cooldown_seconds=0),
+            IsolatedSettings(mongo_url=TEST_MONGO_URL, scrape_cooldown_seconds=0),
             FrontPagesTransport(failing_hosts={"elmundo.es", "www.elespanol.com"}),
         )
     ],

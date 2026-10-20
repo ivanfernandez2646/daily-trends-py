@@ -14,26 +14,23 @@ class MongoRepository:
     def __init__(self, client: MongoClient, collection_name: str) -> None:
         self._collection: MongoCollection = client.get_default_database()[collection_name]
 
-    async def _insert(self, id: str, primitives: Mapping[str, object]) -> bool:
-        """Insert a new document; `False` when one with this `id` already exists."""
+    async def _insert(self, document: MongoDocument) -> bool:
+        """Insert a new document; `False` when one with its `_id` already exists."""
         try:
-            await self._collection.insert_one(_document(id, primitives))
+            await self._collection.insert_one(document)
         except DuplicateKeyError as error:
             if (error.details or {}).get("keyPattern") != {"_id": 1}:
                 raise
             return False
         return True
 
-    async def _update(self, id: str, primitives: Mapping[str, object]) -> bool:
-        """Set the fields of an existing document; `False` when there is none with this `id`."""
-        result = await self._collection.update_one({"_id": id}, {"$set": _document(id, primitives)})
+    async def _update(self, document: MongoDocument) -> bool:
+        """Set the fields of an existing document; `False` when there is none with its `_id`."""
+        result = await self._collection.update_one({"_id": document["_id"]}, {"$set": document})
         return result.matched_count == 1
 
     async def _by_id(self, id: str) -> MongoDocument | None:
-        document = await self._collection.find_one({"_id": id})
-        if document is None:
-            return None
-        return _with_id(document)
+        return await self._collection.find_one({"_id": id})
 
     async def _by_criteria(
         self, criteria: Criteria, storage_fields: Mapping[str, str]
@@ -53,20 +50,10 @@ class MongoRepository:
         )
         # pymongo reads a limit of 0 as no limit.
         cursor = self._collection.find(query, sort=sort, limit=criteria.limit or 0)
-        return [_with_id(document) async for document in cursor]
+        return [document async for document in cursor]
 
     async def _exists(self, query: MongoDocument) -> bool:
         return await self._collection.find_one(query, projection={"_id": 1}) is not None
 
     async def _remove(self, id: str) -> None:
         await self._collection.delete_one({"_id": id})
-
-
-def _document(id: str, primitives: Mapping[str, object]) -> MongoDocument:
-    document: MongoDocument = {key: value for key, value in primitives.items() if key != "id"}
-    document["_id"] = id
-    return document
-
-
-def _with_id(document: MongoDocument) -> MongoDocument:
-    return {**document, "id": document["_id"]}

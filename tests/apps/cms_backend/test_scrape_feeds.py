@@ -9,11 +9,11 @@ from daily_trends_py.contexts.cms.feeds.application.home.feed_home_refresher imp
     FeedHomeRefresher,
 )
 from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
-from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedSource
 from tests.apps.cms_backend.conftest import resolve, run_in_app
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
-from tests.scrap_fixtures import FrontPagesTransport
+from tests.scrape_fixtures import FrontPagesTransport
 
 pytestmark = pytest.mark.integration
 

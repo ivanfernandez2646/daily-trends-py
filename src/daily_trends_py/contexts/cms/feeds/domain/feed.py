@@ -1,17 +1,17 @@
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import datetime
 from typing import TypedDict
 
-from daily_trends_py.contexts.cms.feeds.domain.feed_author import FeedAuthor
-from daily_trends_py.contexts.cms.feeds.domain.feed_created_at import FeedCreatedAt
-from daily_trends_py.contexts.cms.feeds.domain.feed_created_domain_event import (
-    FeedCreatedDomainEvent,
+from daily_trends_py.contexts.cms.feeds.domain.events import FeedCreatedDomainEvent
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import (
+    FeedAuthor,
+    FeedCreatedAt,
+    FeedDescription,
+    FeedId,
+    FeedSource,
+    FeedTitle,
+    FeedUpdatedAt,
 )
-from daily_trends_py.contexts.cms.feeds.domain.feed_description import FeedDescription
-from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
-from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
-from daily_trends_py.contexts.cms.feeds.domain.feed_title import FeedTitle
-from daily_trends_py.contexts.cms.feeds.domain.feed_updated_at import FeedUpdatedAt
 from daily_trends_py.contexts.cms.shared.domain.aggregate_root import AggregateRoot
 
 
@@ -21,8 +21,8 @@ class FeedPrimitives(TypedDict):
     description: str | None
     author: str
     source: FeedSource
-    createdAt: datetime
-    updatedAt: datetime | None
+    created_at: datetime
+    updated_at: datetime | None
 
 
 @dataclass(eq=False)
@@ -44,6 +44,7 @@ class Feed(AggregateRoot):
         description: FeedDescription,
         author: FeedAuthor,
         source: FeedSource,
+        now: datetime,
     ) -> Feed:
         feed = cls(
             id=id,
@@ -51,10 +52,14 @@ class Feed(AggregateRoot):
             description=description,
             author=author,
             source=source,
-            created_at=FeedCreatedAt.now(),
+            created_at=FeedCreatedAt(now),
             updated_at=FeedUpdatedAt(None),
         )
-        feed.record(FeedCreatedDomainEvent(aggregate_id=id.value, title=title.value))
+        feed.record(
+            FeedCreatedDomainEvent(
+                aggregate_id=id.value, title=title.value, occurred_on=feed.created_at.value
+            )
+        )
         return feed
 
     @classmethod
@@ -65,24 +70,33 @@ class Feed(AggregateRoot):
             description=FeedDescription(primitives["description"]),
             author=FeedAuthor(primitives["author"]),
             source=FeedSource(primitives["source"]),
-            created_at=FeedCreatedAt(primitives["createdAt"]),
-            updated_at=FeedUpdatedAt(primitives["updatedAt"]),
+            created_at=FeedCreatedAt(primitives["created_at"]),
+            updated_at=FeedUpdatedAt(primitives["updated_at"]),
         )
 
     def update(
-        self, *, title: FeedTitle | None = None, description: FeedDescription | None = None
+        self,
+        *,
+        now: datetime,
+        title: FeedTitle | None = None,
+        description: FeedDescription | None = None,
     ) -> Feed | None:
         """Return the updated feed, or `None` if nothing changes; `None` keeps a value."""
         new_title = self.title if title is None else title
         new_description = self.description if description is None else description
         if new_title == self.title and new_description == self.description:
             return None
-        return replace(
-            self,
+        updated = Feed(
+            id=self.id,
             title=new_title,
             description=new_description,
-            updated_at=FeedUpdatedAt.now(),
+            author=self.author,
+            source=self.source,
+            created_at=self.created_at,
+            updated_at=FeedUpdatedAt(now),
         )
+        updated._keep_events_of(self)
+        return updated
 
     def to_primitives(self) -> FeedPrimitives:
         return {
@@ -91,6 +105,6 @@ class Feed(AggregateRoot):
             "description": self.description.value,
             "author": self.author.value,
             "source": self.source,
-            "createdAt": self.created_at.value,
-            "updatedAt": self.updated_at.value,
+            "created_at": self.created_at.value,
+            "updated_at": self.updated_at.value,
         }

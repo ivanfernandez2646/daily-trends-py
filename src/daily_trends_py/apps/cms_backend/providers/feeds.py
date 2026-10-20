@@ -20,17 +20,17 @@ from daily_trends_py.contexts.cms.feeds.application.home.feed_home_refresher imp
 from daily_trends_py.contexts.cms.feeds.application.home.feed_home_searcher import (
     FeedHomeSearcher,
 )
-from daily_trends_py.contexts.cms.feeds.application.scrap.feed_scraper import FeedScraper
+from daily_trends_py.contexts.cms.feeds.application.scrape.feed_scraper import FeedScraper
 from daily_trends_py.contexts.cms.feeds.application.search.feed_searcher import FeedSearcher
 from daily_trends_py.contexts.cms.feeds.application.update.feed_updater import FeedUpdater
 from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
 from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.mongo_feed_repository import (  # noqa: E501
     MongoFeedRepository,
 )
-from daily_trends_py.contexts.cms.feeds.infrastructure.scrap.el_espanol_feed_scraper import (
+from daily_trends_py.contexts.cms.feeds.infrastructure.scrape.el_espanol_feed_scraper import (
     ElEspanolFeedScraper,
 )
-from daily_trends_py.contexts.cms.feeds.infrastructure.scrap.el_mundo_feed_scraper import (
+from daily_trends_py.contexts.cms.feeds.infrastructure.scrape.el_mundo_feed_scraper import (
     ElMundoFeedScraper,
 )
 from daily_trends_py.contexts.cms.shared.domain.clock import Clock
@@ -62,11 +62,15 @@ class FeedsProvider(Provider):
 
     @provide
     def feed_scraper(
-        self, settings: Settings, repository: FeedRepository, http_client: httpx.AsyncClient
+        self,
+        settings: Settings,
+        repository: FeedRepository,
+        http_client: httpx.AsyncClient,
+        clock: Clock,
     ) -> FeedScraper:
         return FeedScraper(
             repository,
-            [ElMundoFeedScraper(http_client), ElEspanolFeedScraper(http_client)],
+            [ElMundoFeedScraper(http_client, clock), ElEspanolFeedScraper(http_client, clock)],
             settings.timezone,
         )
 
@@ -76,7 +80,7 @@ class FeedsProvider(Provider):
     ) -> AsyncIterator[FeedHomeRefresher]:
         # A background run keeps using both clients, so it is closed before them.
         refresher = FeedHomeRefresher(
-            scraper, clock, timedelta(seconds=settings.scrap_cooldown_seconds)
+            scraper, clock, timedelta(seconds=settings.scrape_cooldown_seconds)
         )
         yield refresher
         await refresher.aclose()

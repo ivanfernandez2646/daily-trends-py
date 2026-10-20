@@ -2,7 +2,7 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 
-from daily_trends_py.contexts.cms.feeds.application.scrap.feed_scraper import FeedScraper
+from daily_trends_py.contexts.cms.feeds.application.scrape.feed_scraper import FeedScraper
 from daily_trends_py.contexts.cms.shared.domain.clock import Clock
 
 logger = logging.getLogger(__name__)

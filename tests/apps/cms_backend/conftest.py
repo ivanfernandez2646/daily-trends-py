@@ -13,7 +13,7 @@ from daily_trends_py.apps.cms_backend.container import create_container
 from daily_trends_py.apps.cms_backend.main import create_app
 from daily_trends_py.apps.cms_backend.settings import Settings
 from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
-from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedSource
 from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_client_factory import (  # noqa: E501
     MongoClient,
 )
@@ -22,7 +22,7 @@ from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAt
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
 from tests.contexts.cms.feeds.domain.feed_updated_at_mother import FeedUpdatedAtMother
 from tests.mongo import TEST_MONGO_URL
-from tests.scrap_fixtures import FrontPagesTransport
+from tests.scrape_fixtures import FrontPagesTransport
 
 
 def run_in_app[T](client: TestClient, function: Callable[[], Awaitable[T]]) -> T:
@@ -96,12 +96,12 @@ def there_are_feeds(
                 "description": values["description"],
                 "author": values["author"],
                 "source": FeedSource(values["source"]),
-                "createdAt": (
+                "created_at": (
                     FeedCreatedAtMother.create(created_at)
                     if created_at
                     else FeedCreatedAtMother.now()
                 ).value,
-                "updatedAt": FeedUpdatedAtMother.random().value,
+                "updated_at": FeedUpdatedAtMother.random().value,
             }
         )
         run_in_app(client, lambda feed=feed: repository.create(feed))

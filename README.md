@@ -10,7 +10,7 @@ The port keeps the current behavior of the Node project (same routes, status cod
 - FastAPI, Pydantic v2, pydantic-settings
 - MongoDB (PyMongo async)
 - httpx and BeautifulSoup for scraping
-- ruff, pyright (strict), pytest, pytest-asyncio, pytest-bdd
+- ruff, pyright (strict), import-linter, pytest, pytest-asyncio, pytest-bdd
 - Hexagonal architecture with a single bounded context (`cms`, subdomain `feeds`)
 
 ## API
@@ -89,8 +89,8 @@ settings stop the API at startup with exit code 1.
 | `MONGO_URL` | `dev`: `mongodb://localhost:27017/daily-trends-dev`, `test`: `mongodb://localhost:27017/daily-trends-test`, `production`: required | MongoDB connection string |
 | `PORT` | `5000` | HTTP port |
 | `TIMEZONE` | `Europe/Madrid` | IANA zone that decides when a business day starts; the server's `TZ` is ignored |
-| `SCRAP_TIMEOUT_SECONDS` | `10` | Timeout of each request to a scraped site, > 0 |
-| `SCRAP_COOLDOWN_SECONDS` | `300` | Minimum time between background front page refreshes, ≥ 0 (0 disables it) |
+| `SCRAPE_TIMEOUT_SECONDS` | `10` | Timeout of each request to a scraped site, > 0 |
+| `SCRAPE_COOLDOWN_SECONDS` | `300` | Minimum time between background front page refreshes, ≥ 0 (0 disables it) |
 
 ## Development
 
@@ -98,6 +98,7 @@ settings stop the API at startup with exit code 1.
 uv run ruff check .           # lint
 uv run ruff format .          # format
 uv run pyright                # type-check
+uv run lint-imports           # layer and dependency contracts
 uv run pytest                 # tests
 uv run pytest -m "not integration"  # tests that do not need MongoDB
 ```
@@ -108,7 +109,8 @@ answer, the run stops after a 2-second check with a message saying so.
 Quality gate:
 
 ```bash
-uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run pytest
+uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run lint-imports \
+  && uv run pytest
 ```
 
 Git hooks are managed with [pre-commit](https://pre-commit.com/):

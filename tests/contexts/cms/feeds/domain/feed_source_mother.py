@@ -1,6 +1,6 @@
 import random
 
-from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedSource
 
 
 class FeedSourceMother:

@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import ClassVar, Protocol
 from uuid import uuid4
 
@@ -10,7 +10,7 @@ class DomainEvent:
     event_name: ClassVar[str]
     aggregate_id: str
     event_id: str = field(default_factory=lambda: str(uuid4()))
-    occurred_on: datetime = field(default_factory=lambda: datetime.now(UTC))
+    occurred_on: datetime
 
 
 class DomainEventSubscriber(Protocol):

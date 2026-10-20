@@ -4,7 +4,7 @@ from daily_trends_py.contexts.cms.feeds.application.home.feed_home_refresher imp
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
 from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
-from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedSource
 from daily_trends_py.contexts.cms.shared.domain.clock import Clock
 from daily_trends_py.contexts.cms.shared.domain.criteria import Filter, Order
 

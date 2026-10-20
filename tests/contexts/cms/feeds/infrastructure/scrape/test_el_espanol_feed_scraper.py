@@ -1,13 +1,19 @@
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime
 
 import httpx
 import pytest
 
-from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
-from daily_trends_py.contexts.cms.feeds.infrastructure.scrap.el_espanol_feed_scraper import (
+from daily_trends_py.contexts.cms.feeds.domain.events import FeedCreatedDomainEvent
+from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedSource
+from daily_trends_py.contexts.cms.feeds.infrastructure.scrape.el_espanol_feed_scraper import (
     ElEspanolFeedScraper,
 )
-from tests.scrap_fixtures import FrontPagesTransport
+from tests.contexts.cms.shared.fakes.fixed_clock import FixedClock
+from tests.scrape_fixtures import FrontPagesTransport
+
+NOW = datetime(2026, 10, 20, 9, 30, tzinfo=UTC)
 
 
 @pytest.fixture
@@ -21,17 +27,25 @@ async def client(transport: FrontPagesTransport) -> AsyncIterator[httpx.AsyncCli
         yield client
 
 
+def _assert_each_feed_was_created_once_now(feeds: list[Feed]) -> None:
+    for feed in feeds:
+        assert feed.created_at.value == NOW
+        [event] = feed.pull_domain_events()
+        assert isinstance(event, FeedCreatedDomainEvent)
+        assert event.aggregate_id == feed.id.value
+
+
 async def test_requests_the_front_page(
     client: httpx.AsyncClient, transport: FrontPagesTransport
 ) -> None:
-    await ElEspanolFeedScraper(client).scrap()
+    await ElEspanolFeedScraper(client, FixedClock(NOW)).scrape()
 
     [request] = transport.requests
     assert str(request.url) == "https://www.elespanol.com/"
 
 
-async def test_scraps_five_feeds_from_the_front_page(client: httpx.AsyncClient) -> None:
-    feeds = await ElEspanolFeedScraper(client).scrap()
+async def test_scrapes_five_feeds_from_the_front_page(client: httpx.AsyncClient) -> None:
+    feeds = await ElEspanolFeedScraper(client, FixedClock(NOW)).scrape()
 
     assert [(feed.author.value, feed.title.value) for feed in feeds] == [
         ("Begoña Ejemplo", "Villaejemplo inaugurará su biblioteca municipal en otoño"),
@@ -48,20 +62,21 @@ async def test_scraps_five_feeds_from_the_front_page(client: httpx.AsyncClient) 
         None,
     ]
     assert {feed.source for feed in feeds} == {FeedSource.EL_ESPANOL}
+    _assert_each_feed_was_created_once_now(feeds)
 
 
-async def test_scraps_nothing_from_a_page_that_blocks_the_request() -> None:
+async def test_scrapes_nothing_from_a_page_that_blocks_the_request() -> None:
     blocked = httpx.MockTransport(
         lambda _: httpx.Response(403, html="<p>Please enable JS and disable any ad blocker</p>")
     )
     async with httpx.AsyncClient(transport=blocked) as client:
-        assert await ElEspanolFeedScraper(client).scrap() == []
+        assert await ElEspanolFeedScraper(client, FixedClock(NOW)).scrape() == []
 
 
 @pytest.mark.network
-async def test_scraps_five_feeds_from_the_real_front_page() -> None:
+async def test_scrapes_five_feeds_from_the_real_front_page() -> None:
     async with httpx.AsyncClient(timeout=None, follow_redirects=True) as client:
-        feeds = await ElEspanolFeedScraper(client).scrap()
+        feeds = await ElEspanolFeedScraper(client, FixedClock(NOW)).scrape()
 
     assert len(feeds) == 5
     for feed in feeds:

@@ -1,7 +1,7 @@
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
-from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
 from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
 from daily_trends_py.contexts.cms.feeds.domain.find_feed import find_feed
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedId
 
 
 class FeedFinder:

@@ -14,12 +14,11 @@ from daily_trends_py.contexts.cms.feeds.application.find.feed_finder import Feed
 from daily_trends_py.contexts.cms.feeds.application.home.feed_home_searcher import (
     FeedHomeSearcher,
 )
-from daily_trends_py.contexts.cms.feeds.application.scrap.feed_scraper import FeedScraper
+from daily_trends_py.contexts.cms.feeds.application.scrape.feed_scraper import FeedScraper
 from daily_trends_py.contexts.cms.feeds.application.search.feed_searcher import FeedSearcher
 from daily_trends_py.contexts.cms.feeds.application.update.feed_updater import FeedUpdater
 from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
-from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
-from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedId, FeedSource
 from daily_trends_py.contexts.cms.shared.domain.criteria import Order
 
 router = APIRouter(route_class=JsonBodyRoute, tags=["feeds"])
@@ -65,13 +64,11 @@ async def create_feed(
 ) -> FeedResponse:
     """Create a CMS feed with the given id."""
     feed = await creator.execute(
-        {
-            "id": id,
-            "title": body.title,
-            "description": body.description,
-            "author": body.author,
-            "source": FeedSource.CMS,
-        }
+        id=id,
+        title=body.title,
+        description=body.description,
+        author=body.author,
+        source=FeedSource.CMS,
     )
     return FeedResponse.from_feed(feed)
 
@@ -96,4 +93,4 @@ async def update_feed(
     id: str, body: UpdateFeedRequest, updater: FromDishka[FeedUpdater]
 ) -> FeedResponse:
     """Change only the fields that are sent; `null` clears the description."""
-    return FeedResponse.from_feed(await updater.execute({"id": id, **body}))
+    return FeedResponse.from_feed(await updater.execute(id, **body))

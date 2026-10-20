@@ -1,7 +1,7 @@
 import pytest
 
 from daily_trends_py.contexts.cms.feeds.application.find.feed_finder import FeedFinder
-from daily_trends_py.contexts.cms.feeds.domain.feed_not_found import FeedNotFound
+from daily_trends_py.contexts.cms.feeds.domain.errors import FeedNotFound
 from tests.contexts.cms.feeds.domain.feed_id_mother import FeedIdMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
 from tests.contexts.cms.feeds.fakes.in_memory_feed_repository import InMemoryFeedRepository

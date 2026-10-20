@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Self
 
 from daily_trends_py.contexts.cms.shared.domain.invalid_argument_error import (
     InvalidArgumentError,
@@ -27,10 +26,6 @@ class DateTimeValueObject:
     def __post_init__(self) -> None:
         if self.value is not None:
             object.__setattr__(self, "value", _to_stored_instant(self, self.value))
-
-    @classmethod
-    def now(cls) -> Self:
-        return cls(datetime.now(UTC))
 
 
 @dataclass(frozen=True)

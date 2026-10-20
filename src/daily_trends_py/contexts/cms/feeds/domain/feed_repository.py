@@ -3,9 +3,7 @@ from typing import Protocol
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
-from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
-from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
-from daily_trends_py.contexts.cms.feeds.domain.feed_title import FeedTitle
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedId, FeedSource, FeedTitle
 
 
 class FeedRepository(Protocol):

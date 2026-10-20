@@ -33,6 +33,9 @@ server's `TZ`.
 | `SCRAP_TIMEOUT_SECONDS` | number > 0 | `10` | Was a constant in the composition root (I02). |
 | `SCRAP_COOLDOWN_SECONDS` | number ≥ 0 | `300` | Was a constant in the composition root (I03). `0` disables the cooldown. |
 
+> **Superseded by [I09](I09-domain-correctness-and-python-idioms.md):** the scraping variables are
+> `SCRAPE_TIMEOUT_SECONDS` and `SCRAPE_COOLDOWN_SECONDS`; the `SCRAP_*` names are no longer read.
+
 - The scraping `User-Agent` stays a constant. It identifies the app and is not a deployment choice.
 - Invalid configuration fails at startup, following the S01 rule: the error is logged and the
   process exits with code 1. Invalid means an unknown `ENV`, a `PORT` that is not an integer, an

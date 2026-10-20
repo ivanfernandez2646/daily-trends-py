@@ -4,14 +4,15 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
+from daily_trends_py.contexts.cms.feeds.domain.errors import FeedAlreadyExists, FeedNotFound
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
-from daily_trends_py.contexts.cms.feeds.domain.feed_already_exists import FeedAlreadyExists
 from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
-from daily_trends_py.contexts.cms.feeds.domain.feed_description import FeedDescription
-from daily_trends_py.contexts.cms.feeds.domain.feed_not_found import FeedNotFound
-from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
-from daily_trends_py.contexts.cms.feeds.domain.feed_title import FeedTitle
-from daily_trends_py.contexts.cms.feeds.domain.feed_updated_at import FeedUpdatedAt
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import (
+    FeedDescription,
+    FeedSource,
+    FeedTitle,
+    FeedUpdatedAt,
+)
 from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.invalid_stored_feed import (  # noqa: E501
     InvalidStoredFeed,
 )
@@ -27,6 +28,10 @@ from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAt
 from tests.contexts.cms.feeds.domain.feed_id_mother import FeedIdMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
 from tests.contexts.cms.feeds.domain.feed_updated_at_mother import FeedUpdatedAtMother
+from tests.contexts.cms.feeds.infrastructure.persistence.mongo.feed_document_mother import (
+    MISSING,
+    FeedDocumentMother,
+)
 
 DAY_START = datetime(2026, 10, 8, tzinfo=UTC)
 DAY_END = datetime(2026, 10, 9, tzinfo=UTC)
@@ -71,7 +76,7 @@ async def test_stores_the_feed_document_under_its_id_keeping_nulls(
         "description": None,
         "author": primitives["author"],
         "source": primitives["source"].value,
-        "createdAt": primitives["createdAt"],
+        "createdAt": primitives["created_at"],
         "updatedAt": None,
     }
 
@@ -136,24 +141,15 @@ async def test_find_returns_none_when_the_feed_does_not_exist(
     assert await repository.find(FeedIdMother.random()) is None
 
 
-async def _insert_with_created_at(collection: MongoCollection, created_at: object) -> str:
-    primitives = FeedMother.random().to_primitives()
-    document: dict[str, object] = {k: v for k, v in primitives.items() if k != "id"}
-    document["_id"] = primitives["id"]
-    if created_at is _MISSING:
-        del document["createdAt"]
-    else:
-        document["createdAt"] = created_at
+async def _insert(collection: MongoCollection, **overrides: object) -> str:
+    document = FeedDocumentMother.random(**overrides)
     await collection.insert_one(document)
-    return primitives["id"]
-
-
-_MISSING = object()
+    return str(document["_id"])
 
 
 @pytest.fixture
 async def malformed_feed_id(collection: MongoCollection) -> str:
-    return await _insert_with_created_at(collection, "not-a-date")
+    return await _insert(collection, createdAt="not-a-date")
 
 
 async def test_find_raises_when_the_stored_feed_is_invalid(
@@ -168,34 +164,85 @@ async def test_find_raises_when_the_stored_feed_is_invalid(
     )
 
 
-@pytest.mark.parametrize(
-    ("created_at", "rendered"),
-    [
-        pytest.param("2026-10-09T08:00:00.000Z", "2026-10-09T08:00:00.000Z", id="ISO string"),
-        pytest.param(1_760_000_000_000, "1760000000000", id="number"),
-        pytest.param(_MISSING, "None", id="missing"),
-    ],
-)
-async def test_find_raises_when_the_stored_created_at_is_not_a_date(
-    repository: MongoFeedRepository, collection: MongoCollection, created_at: object, rendered: str
+BROKEN_DOCUMENTS = [
+    pytest.param(
+        {"createdAt": "2026-10-09T08:00:00.000Z"},
+        "<FeedCreatedAt> does not allow the value <2026-10-09T08:00:00.000Z>",
+        id="ISO created at",
+    ),
+    pytest.param(
+        {"createdAt": 1_760_000_000_000},
+        "<FeedCreatedAt> does not allow the value <1760000000000>",
+        id="numeric created at",
+    ),
+    pytest.param(
+        {"createdAt": MISSING},
+        "<FeedCreatedAt> does not allow the value <None>",
+        id="missing created at",
+    ),
+    pytest.param(
+        {"title": MISSING}, "<FeedTitle> does not allow the value <None>", id="missing title"
+    ),
+    pytest.param(
+        {"author": MISSING}, "<FeedAuthor> does not allow the value <None>", id="missing author"
+    ),
+    pytest.param(
+        {"source": MISSING}, "<FeedSource> does not allow the value <None>", id="missing source"
+    ),
+    pytest.param(
+        {"source": "EL_PERIODICO"},
+        "<FeedSource> does not allow the value <EL_PERIODICO>",
+        id="unknown source",
+    ),
+    pytest.param({"title": 42}, "<FeedTitle> does not allow the value <42>", id="numeric title"),
+    pytest.param(
+        {"description": ["a"]},
+        "<FeedDescription> does not allow the value <['a']>",
+        id="list description",
+    ),
+]
+
+
+@pytest.mark.parametrize(("overrides", "reason"), BROKEN_DOCUMENTS)
+async def test_find_raises_invalid_stored_feed_for_a_broken_document(
+    repository: MongoFeedRepository,
+    collection: MongoCollection,
+    overrides: dict[str, object],
+    reason: str,
 ) -> None:
-    id = await _insert_with_created_at(collection, created_at)
+    id = await _insert(collection, **overrides)
 
     with pytest.raises(InvalidStoredFeed) as error:
         await repository.find(FeedIdMother.create(id))
 
-    assert str(error.value) == (
-        f"Stored feed <{id}> is invalid: <FeedCreatedAt> does not allow the value <{rendered}>"
-    )
+    assert str(error.value) == f"Stored feed <{id}> is invalid: {reason}"
 
 
-async def test_search_raises_when_a_stored_feed_is_invalid(
-    repository: MongoFeedRepository, malformed_feed_id: str
+@pytest.mark.parametrize(("overrides", "reason"), BROKEN_DOCUMENTS)
+async def test_search_raises_invalid_stored_feed_for_a_broken_document(
+    repository: MongoFeedRepository,
+    collection: MongoCollection,
+    overrides: dict[str, object],
+    reason: str,
 ) -> None:
     await repository.create(FeedMother.random())
+    id = await _insert(collection, **overrides)
 
-    with pytest.raises(InvalidStoredFeed, match=f"Stored feed <{malformed_feed_id}> is invalid"):
+    with pytest.raises(InvalidStoredFeed) as error:
         await repository.search(FeedCriteria())
+
+    assert str(error.value) == f"Stored feed <{id}> is invalid: {reason}"
+
+
+async def test_find_reads_a_document_without_update_date_as_never_updated(
+    repository: MongoFeedRepository, collection: MongoCollection
+) -> None:
+    id = await _insert(collection, updatedAt=MISSING)
+
+    found = await repository.find(FeedIdMother.create(id))
+
+    assert found is not None
+    assert found.updated_at.value is None
 
 
 async def test_delete_removes_only_the_given_feed(repository: MongoFeedRepository) -> None:

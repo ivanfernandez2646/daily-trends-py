@@ -3,8 +3,8 @@ import asyncio
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 
 
-class BlockingFeedScrap:
-    """Waits inside `scrap()` until `release()` is called, so a test can act mid-run."""
+class BlockingFeedScrape:
+    """Waits inside `scrape()` until `release()` is called, so a test can act mid-run."""
 
     def __init__(self, feeds: list[Feed] | None = None) -> None:
         self._feeds = feeds or []
@@ -12,7 +12,7 @@ class BlockingFeedScrap:
         self.started = asyncio.Event()
         self.calls = 0
 
-    async def scrap(self) -> list[Feed]:
+    async def scrape(self) -> list[Feed]:
         self.calls += 1
         self.started.set()
         await self._released.wait()

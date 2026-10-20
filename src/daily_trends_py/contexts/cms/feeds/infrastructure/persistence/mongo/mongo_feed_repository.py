@@ -1,13 +1,11 @@
+from collections.abc import Mapping
 from datetime import datetime
-from typing import cast
+from typing import Any
 
-from daily_trends_py.contexts.cms.feeds.domain.feed import Feed, FeedPrimitives
-from daily_trends_py.contexts.cms.feeds.domain.feed_already_exists import FeedAlreadyExists
+from daily_trends_py.contexts.cms.feeds.domain.errors import FeedAlreadyExists, FeedNotFound
+from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
-from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
-from daily_trends_py.contexts.cms.feeds.domain.feed_not_found import FeedNotFound
-from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
-from daily_trends_py.contexts.cms.feeds.domain.feed_title import FeedTitle
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedId, FeedSource, FeedTitle
 from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.invalid_stored_feed import (  # noqa: E501
     InvalidStoredFeed,
 )
@@ -22,7 +20,8 @@ from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_
     MongoRepository,
 )
 
-_STORAGE_FIELDS = {"id": "_id", "created_at": "createdAt", "updated_at": "updatedAt"}
+# Domain names that MongoDB stores under another name, for documents and criteria alike.
+_STORED_NAMES = {"id": "_id", "created_at": "createdAt", "updated_at": "updatedAt"}
 
 
 class MongoFeedRepository(MongoRepository):
@@ -30,11 +29,11 @@ class MongoFeedRepository(MongoRepository):
         super().__init__(client, "feeds")
 
     async def create(self, feed: Feed) -> None:
-        if not await self._insert(feed.id.value, feed.to_primitives()):
+        if not await self._insert(_to_document(feed)):
             raise FeedAlreadyExists(feed.id)
 
     async def update(self, feed: Feed) -> None:
-        if not await self._update(feed.id.value, feed.to_primitives()):
+        if not await self._update(_to_document(feed)):
             raise FeedNotFound(feed.id)
 
     async def find(self, id: FeedId) -> Feed | None:
@@ -47,7 +46,7 @@ class MongoFeedRepository(MongoRepository):
         await self._remove(feed.id.value)
 
     async def search(self, criteria: FeedCriteria) -> list[Feed]:
-        documents = await self._by_criteria(criteria, _STORAGE_FIELDS)
+        documents = await self._by_criteria(criteria, _STORED_NAMES)
         return [_to_feed(document) for document in documents]
 
     async def exists_headline(
@@ -57,14 +56,38 @@ class MongoFeedRepository(MongoRepository):
             {
                 "source": source,
                 "title": title.value,
-                "createdAt": {"$gte": since, "$lt": until},
+                _stored("created_at"): {"$gte": since, "$lt": until},
             }
         )
 
 
+def _stored(name: str) -> str:
+    return _STORED_NAMES.get(name, name)
+
+
+def _to_document(feed: Feed) -> MongoDocument:
+    return {_stored(name): value for name, value in feed.to_primitives().items()}
+
+
 def _to_feed(document: MongoDocument) -> Feed:
+    # BSON values are only known at runtime: the value objects check them, and a missing field
+    # reads as `None`, which they reject when the field is required.
+    stored: Mapping[str, Any] = document
+
+    def field(name: str) -> Any:
+        return stored.get(_stored(name))
+
     try:
-        # A missing `createdAt` is rejected like any other value that is not a date.
-        return Feed.from_primitives(cast(FeedPrimitives, {"createdAt": None, **document}))
+        return Feed.from_primitives(
+            {
+                "id": field("id"),
+                "title": field("title"),
+                "description": field("description"),
+                "author": field("author"),
+                "source": field("source"),
+                "created_at": field("created_at"),
+                "updated_at": field("updated_at"),
+            }
+        )
     except InvalidArgumentError as error:
-        raise InvalidStoredFeed(document["id"], error) from error
+        raise InvalidStoredFeed(field("id"), error) from error

@@ -2,18 +2,13 @@ from collections.abc import Mapping
 from datetime import datetime
 from typing import TYPE_CHECKING, cast
 
+from daily_trends_py.contexts.cms.feeds.domain.errors import FeedAlreadyExists, FeedNotFound
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
-from daily_trends_py.contexts.cms.feeds.domain.feed_already_exists import FeedAlreadyExists
 from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
-from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
-from daily_trends_py.contexts.cms.feeds.domain.feed_not_found import FeedNotFound
-from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
-from daily_trends_py.contexts.cms.feeds.domain.feed_title import FeedTitle
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedId, FeedSource, FeedTitle
 
 if TYPE_CHECKING:
     from _typeshed import SupportsRichComparison
-
-_PRIMITIVE_NAMES = {"created_at": "createdAt", "updated_at": "updatedAt"}
 
 
 class InMemoryFeedRepository:
@@ -71,7 +66,7 @@ class InMemoryFeedRepository:
 
 def _value(feed: Feed, field: str) -> object:
     primitives = cast(Mapping[str, object], feed.to_primitives())
-    return primitives[_PRIMITIVE_NAMES.get(field, field)]
+    return primitives[field]
 
 
 def _sortable(feed: Feed, field: str) -> SupportsRichComparison:

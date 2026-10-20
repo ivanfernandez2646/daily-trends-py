@@ -1,11 +1,14 @@
 import pytest
 
-from daily_trends_py.contexts.cms.feeds.domain.feed_author import FeedAuthor
-from daily_trends_py.contexts.cms.feeds.domain.feed_created_at import FeedCreatedAt
-from daily_trends_py.contexts.cms.feeds.domain.feed_description import FeedDescription
-from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
-from daily_trends_py.contexts.cms.feeds.domain.feed_title import FeedTitle
-from daily_trends_py.contexts.cms.feeds.domain.feed_updated_at import FeedUpdatedAt
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import (
+    FeedAuthor,
+    FeedCreatedAt,
+    FeedDescription,
+    FeedId,
+    FeedSource,
+    FeedTitle,
+    FeedUpdatedAt,
+)
 from daily_trends_py.contexts.cms.shared.domain.invalid_argument_error import (
     InvalidArgumentError,
 )
@@ -54,3 +57,19 @@ def test_feed_created_at_is_mandatory_and_feed_updated_at_is_optional() -> None:
         FeedCreatedAt(None)  # pyright: ignore[reportArgumentType]
 
     assert FeedUpdatedAt(None).value is None
+
+
+@pytest.mark.parametrize("value", ["CMS", "EL_PAIS", "EL_MUNDO", "EL_ESPANOL"])
+def test_feed_source_keeps_a_known_source(value: str) -> None:
+    assert FeedSource(value).value == value
+
+
+@pytest.mark.parametrize(
+    ("value", "rendered"),
+    [("EL_PERIODICO", "EL_PERIODICO"), ("cms", "cms"), (1, "1"), (None, "None")],
+)
+def test_feed_source_rejects_an_unknown_source(value: object, rendered: str) -> None:
+    with pytest.raises(InvalidArgumentError) as error:
+        FeedSource(value)
+
+    assert str(error.value) == f"<FeedSource> does not allow the value <{rendered}>"

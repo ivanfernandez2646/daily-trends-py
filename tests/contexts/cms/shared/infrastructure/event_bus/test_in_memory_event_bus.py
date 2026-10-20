@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import ClassVar
 
 from daily_trends_py.contexts.cms.shared.domain.event_bus import DomainEvent
@@ -16,6 +17,9 @@ class ThingCreated(DomainEvent):
 @dataclass(frozen=True, kw_only=True)
 class ThingDeleted(DomainEvent):
     event_name: ClassVar[str] = "thing.deleted"
+
+
+NOW = datetime(2026, 10, 20, 9, 30, tzinfo=UTC)
 
 
 class RecordingSubscriber:
@@ -35,7 +39,7 @@ async def test_publish_delivers_each_event_to_its_subscribers_only() -> None:
     deleted_subscriber = RecordingSubscriber([ThingDeleted])
     event_bus = InMemoryEventBus()
     event_bus.add_subscribers([created_subscriber, deleted_subscriber])
-    event = ThingCreated(aggregate_id="thing-id")
+    event = ThingCreated(aggregate_id="thing-id", occurred_on=NOW)
 
     await event_bus.publish([event])
 
@@ -46,4 +50,4 @@ async def test_publish_delivers_each_event_to_its_subscribers_only() -> None:
 async def test_publish_without_subscribers_completes() -> None:
     event_bus = InMemoryEventBus()
 
-    await event_bus.publish([ThingCreated(aggregate_id="thing-id")])
+    await event_bus.publish([ThingCreated(aggregate_id="thing-id", occurred_on=NOW)])
