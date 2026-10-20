@@ -3,8 +3,10 @@ from datetime import datetime
 from typing import TYPE_CHECKING, cast
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
+from daily_trends_py.contexts.cms.feeds.domain.feed_already_exists import FeedAlreadyExists
 from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
 from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
+from daily_trends_py.contexts.cms.feeds.domain.feed_not_found import FeedNotFound
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
 from daily_trends_py.contexts.cms.feeds.domain.feed_title import FeedTitle
 
@@ -17,13 +19,22 @@ _PRIMITIVE_NAMES = {"created_at": "createdAt", "updated_at": "updatedAt"}
 class InMemoryFeedRepository:
     def __init__(self, feeds: list[Feed] | None = None) -> None:
         self._feeds = {feed.id.value: feed for feed in feeds or []}
-        self.saved: list[Feed] = []
+        self.created: list[Feed] = []
+        self.updated: list[Feed] = []
         self.deleted: list[Feed] = []
         self.searched_ids: list[FeedId] = []
 
-    async def save(self, feed: Feed) -> None:
+    async def create(self, feed: Feed) -> None:
+        if feed.id.value in self._feeds:
+            raise FeedAlreadyExists(feed.id)
         self._feeds[feed.id.value] = feed
-        self.saved.append(feed)
+        self.created.append(feed)
+
+    async def update(self, feed: Feed) -> None:
+        if feed.id.value not in self._feeds:
+            raise FeedNotFound(feed.id)
+        self._feeds[feed.id.value] = feed
+        self.updated.append(feed)
 
     async def find(self, id: FeedId) -> Feed | None:
         self.searched_ids.append(id)

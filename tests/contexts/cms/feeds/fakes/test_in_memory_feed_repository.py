@@ -1,5 +1,9 @@
+import pytest
+
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
+from daily_trends_py.contexts.cms.feeds.domain.feed_already_exists import FeedAlreadyExists
 from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
+from daily_trends_py.contexts.cms.feeds.domain.feed_not_found import FeedNotFound
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
 from daily_trends_py.contexts.cms.shared.domain.criteria import Filter, Order
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
@@ -16,6 +20,29 @@ OLDEST = _feed(FeedSource.CMS, "2026-10-01T10:00:00.000Z")
 MIDDLE = _feed(FeedSource.EL_MUNDO, "2026-10-02T10:00:00.000Z")
 NEWEST = _feed(FeedSource.EL_ESPANOL, "2026-10-03T10:00:00.000Z")
 FEEDS = [MIDDLE, OLDEST, NEWEST]
+
+
+async def test_create_on_an_existing_id_raises_and_keeps_the_stored_feed() -> None:
+    stored = FeedMother.random()
+    repository = InMemoryFeedRepository([stored])
+    same_id = FeedMother.random(id=stored.id)
+
+    with pytest.raises(FeedAlreadyExists):
+        await repository.create(same_id)
+
+    assert await repository.find(stored.id) is stored
+    assert repository.created == []
+
+
+async def test_update_on_a_missing_id_raises_and_stores_nothing() -> None:
+    repository = InMemoryFeedRepository()
+    missing = FeedMother.random()
+
+    with pytest.raises(FeedNotFound):
+        await repository.update(missing)
+
+    assert await repository.find(missing.id) is None
+    assert repository.updated == []
 
 
 async def test_search_without_filters_returns_every_feed_in_storage_order() -> None:

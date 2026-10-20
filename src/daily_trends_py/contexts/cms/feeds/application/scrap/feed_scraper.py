@@ -39,7 +39,7 @@ class FeedScraper:
                 feed.source, feed.title, *self._day_bounds(day)
             ):
                 continue
-            await self._repository.save(feed)
+            await self._repository.create(feed)
             saved.append(feed)
             saved_headlines.add(headline)
         return saved

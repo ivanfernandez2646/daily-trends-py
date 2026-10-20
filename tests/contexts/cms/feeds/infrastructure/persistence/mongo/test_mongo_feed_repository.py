@@ -5,8 +5,10 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
+from daily_trends_py.contexts.cms.feeds.domain.feed_already_exists import FeedAlreadyExists
 from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
 from daily_trends_py.contexts.cms.feeds.domain.feed_description import FeedDescription
+from daily_trends_py.contexts.cms.feeds.domain.feed_not_found import FeedNotFound
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
 from daily_trends_py.contexts.cms.feeds.domain.feed_title import FeedTitle
 from daily_trends_py.contexts.cms.feeds.domain.feed_updated_at import FeedUpdatedAt
@@ -45,10 +47,10 @@ def repository(mongo_client: MongoClient, collection: MongoCollection) -> MongoF
     return MongoFeedRepository(mongo_client)
 
 
-async def test_saves_a_feed_that_can_be_found_by_id(repository: MongoFeedRepository) -> None:
+async def test_creates_a_feed_that_can_be_found_by_id(repository: MongoFeedRepository) -> None:
     feed = FeedMother.random()
 
-    await repository.save(feed)
+    await repository.create(feed)
 
     found = await repository.find(feed.id)
     assert found is not None
@@ -60,7 +62,7 @@ async def test_stores_the_feed_document_under_its_id_keeping_nulls(
 ) -> None:
     feed = FeedMother.random(description=FeedDescription(None), updated_at=FeedUpdatedAt(None))
 
-    await repository.save(feed)
+    await repository.create(feed)
 
     primitives = feed.to_primitives()
     assert await collection.find_one({"_id": feed.id.value}) == {
@@ -84,13 +86,48 @@ async def test_stores_dates_as_native_utc_dates(
         updated_at=FeedUpdatedAtMother.create(updated_at),
     )
 
-    await repository.save(feed)
+    await repository.create(feed)
 
     document = await collection.find_one({"_id": feed.id.value})
     assert document is not None
     assert document["createdAt"] == datetime(2026, 10, 9, 8, 0, 0, 123_000, tzinfo=UTC)
     assert document["updatedAt"] == updated_at
     assert await collection.count_documents({"createdAt": {"$type": "date"}}) == 1
+
+
+async def test_create_on_an_existing_id_raises_and_keeps_the_original_document(
+    repository: MongoFeedRepository,
+) -> None:
+    original = FeedMother.random()
+    await repository.create(original)
+
+    with pytest.raises(FeedAlreadyExists):
+        await repository.create(FeedMother.random(id=original.id))
+
+    found = await repository.find(original.id)
+    assert found is not None
+    assert found.to_primitives() == original.to_primitives()
+
+
+async def test_update_replaces_the_stored_feed_fields(repository: MongoFeedRepository) -> None:
+    feed = FeedMother.random()
+    await repository.create(feed)
+    changed = FeedMother.random(id=feed.id)
+
+    await repository.update(changed)
+
+    found = await repository.find(feed.id)
+    assert found is not None
+    assert found.to_primitives() == changed.to_primitives()
+
+
+async def test_update_on_a_missing_id_raises_and_inserts_nothing(
+    repository: MongoFeedRepository, collection: MongoCollection
+) -> None:
+    with pytest.raises(FeedNotFound):
+        await repository.update(FeedMother.random())
+
+    assert await collection.count_documents({}) == 0
 
 
 async def test_find_returns_none_when_the_feed_does_not_exist(
@@ -155,7 +192,7 @@ async def test_find_raises_when_the_stored_created_at_is_not_a_date(
 async def test_search_raises_when_a_stored_feed_is_invalid(
     repository: MongoFeedRepository, malformed_feed_id: str
 ) -> None:
-    await repository.save(FeedMother.random())
+    await repository.create(FeedMother.random())
 
     with pytest.raises(InvalidStoredFeed, match=f"Stored feed <{malformed_feed_id}> is invalid"):
         await repository.search(FeedCriteria())
@@ -163,8 +200,8 @@ async def test_search_raises_when_a_stored_feed_is_invalid(
 
 async def test_delete_removes_only_the_given_feed(repository: MongoFeedRepository) -> None:
     feed, other = FeedMother.random(), FeedMother.random()
-    await repository.save(feed)
-    await repository.save(other)
+    await repository.create(feed)
+    await repository.create(other)
 
     await repository.delete(feed)
 
@@ -183,7 +220,7 @@ async def stored_feeds(repository: MongoFeedRepository) -> list[Feed]:
     ]
     feeds = [FeedMother.random(source=source) for source in sources]
     for feed in feeds:
-        await repository.save(feed)
+        await repository.create(feed)
     return feeds
 
 
@@ -261,8 +298,8 @@ async def test_search_sorts_creation_dates_chronologically_across_offsets(
         created_at=FeedCreatedAtMother.create("2026-10-09T10:00:00.000+02:00")
     )
     later = FeedMother.random(created_at=FeedCreatedAtMother.create("2026-10-09T09:30:00.000Z"))
-    await repository.save(earlier)
-    await repository.save(later)
+    await repository.create(earlier)
+    await repository.create(later)
 
     found = await repository.search(FeedCriteria(order=Order("created_at", "desc")))
 
@@ -297,7 +334,7 @@ async def test_search_maps_documents_back_to_feeds(
 async def test_exists_headline_finds_a_feed_with_the_same_source_and_title_that_day(
     repository: MongoFeedRepository, created_at: str
 ) -> None:
-    await repository.save(
+    await repository.create(
         FeedMother.random(
             source=FeedSource.EL_MUNDO,
             title=FeedTitle("Same headline"),
@@ -323,7 +360,7 @@ async def test_exists_headline_finds_a_feed_with_the_same_source_and_title_that_
 async def test_exists_headline_ignores_another_source_title_or_day(
     repository: MongoFeedRepository, source: FeedSource, title: str, created_at: str
 ) -> None:
-    await repository.save(
+    await repository.create(
         FeedMother.random(
             source=source,
             title=FeedTitle(title),
@@ -348,7 +385,7 @@ async def test_exists_headline_ignores_another_source_title_or_day(
 async def test_exists_headline_compares_bounds_given_in_another_zone_with_stored_utc_dates(
     repository: MongoFeedRepository, created_at: str, exists: bool
 ) -> None:
-    await repository.save(
+    await repository.create(
         FeedMother.random(
             source=FeedSource.EL_MUNDO,
             title=FeedTitle("Same headline"),

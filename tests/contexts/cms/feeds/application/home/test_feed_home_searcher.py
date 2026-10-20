@@ -93,7 +93,7 @@ async def test_returns_the_stale_feeds_at_once_and_scrapes_in_the_background() -
     await refresher.join()
 
     assert result == [stale]
-    assert repository.saved == [scraped]
+    assert repository.created == [scraped]
 
 
 async def test_returns_nothing_without_scraping_when_there_are_no_feeds() -> None:
@@ -153,7 +153,7 @@ async def test_compares_days_in_the_business_timezone_across_utc_midnight(
 async def test_returns_the_stale_feeds_when_the_background_scraping_fails() -> None:
     stale = _feed_created_at(YESTERDAY)
     repository = FailingFeedRepository(
-        saves_before_failing=0, error=RuntimeError("Mongo is down"), feeds=[stale]
+        creates_before_failing=0, error=RuntimeError("Mongo is down"), feeds=[stale]
     )
     scrap = StubFeedScrap([FeedMother.random()])
     searcher, refresher = _searcher(repository, scrap)

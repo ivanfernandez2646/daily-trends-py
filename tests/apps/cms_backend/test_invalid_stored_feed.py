@@ -30,7 +30,6 @@ def malformed_feed_id(container: AsyncContainer, client: TestClient) -> str:
     ("method", "path", "body"),
     [
         ("GET", "/feed/{id}", None),
-        ("PUT", "/feed/{id}", {"title": "A title", "author": "Ivan"}),
         ("PATCH", "/feed/{id}", {"title": "A title"}),
         ("DELETE", "/feed/{id}", None),
         ("GET", "/feed/list", None),
@@ -51,3 +50,12 @@ def test_an_invalid_stored_feed_answers_500(
         "error": f"Stored feed <{malformed_feed_id}> is invalid: "
         "<FeedCreatedAt> does not allow the value <not-a-date>"
     }
+
+
+def test_creating_over_an_invalid_stored_feed_answers_409(
+    client: TestClient, malformed_feed_id: str
+) -> None:
+    response = client.put(f"/feed/{malformed_feed_id}", json={"title": "A title", "author": "Ivan"})
+
+    assert response.status_code == 409
+    assert response.json() == {"error": f"Feed with id <{malformed_feed_id}> already exists"}

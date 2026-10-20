@@ -37,12 +37,12 @@ async def test_request_starts_a_run_without_waiting_for_it() -> None:
 
     refresher.request()
     await scrap.started.wait()
-    saved_before_the_run_ends = list(repository.saved)
+    created_before_the_run_ends = list(repository.created)
     scrap.release()
     await refresher.join()
 
-    assert saved_before_the_run_ends == []
-    assert repository.saved == feeds
+    assert created_before_the_run_ends == []
+    assert repository.created == feeds
     assert scrap.calls == 1
 
 
@@ -89,20 +89,20 @@ async def test_a_new_request_once_the_cooldown_has_passed_starts_another_run() -
 
 
 @pytest.mark.parametrize(
-    "save_error",
+    "create_error",
     [
         pytest.param(None, id="after a successful run"),
         pytest.param(RuntimeError("blocked"), id="after a failing run"),
     ],
 )
 async def test_a_request_within_the_cooldown_of_the_last_run_end_is_ignored(
-    save_error: Exception | None,
+    create_error: Exception | None,
 ) -> None:
     scrap = BlockingFeedScrap([FeedMother.random()])
     clock = FixedClock(NOW)
     repository = (
-        FailingFeedRepository(saves_before_failing=0, error=save_error)
-        if save_error
+        FailingFeedRepository(creates_before_failing=0, error=create_error)
+        if create_error
         else InMemoryFeedRepository()
     )
     refresher = _refresher(_scraper(scrap, repository), clock)
@@ -153,7 +153,7 @@ async def test_a_failing_run_is_logged_and_does_not_propagate(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     error = RuntimeError("Mongo is down")
-    repository = FailingFeedRepository(saves_before_failing=0, error=error)
+    repository = FailingFeedRepository(creates_before_failing=0, error=error)
     scrap = StubFeedScrap([FeedMother.random()])
     refresher = _refresher(_scraper(scrap, repository))
 
@@ -177,7 +177,7 @@ async def test_aclose_cancels_the_run_in_progress() -> None:
     scrap.release()
     await asyncio.sleep(0)
 
-    assert repository.saved == []
+    assert repository.created == []
     assert not scraper.is_running
 
 

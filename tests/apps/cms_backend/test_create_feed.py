@@ -1,4 +1,6 @@
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 
 import httpx2
 import pytest
@@ -27,6 +29,25 @@ def test_creating_the_same_id_twice_answers_409_and_keeps_the_first_feed(
     assert response.status_code == 409
     assert "location" not in response.headers
     assert response.json() == {"error": f"Feed with id <{id}> already exists"}
+    assert client.get(f"/feed/{id}").json() == created.json()
+
+
+def test_two_concurrent_creations_of_the_same_id_answer_one_201_and_one_409(
+    client: TestClient,
+) -> None:
+    id = MotherCreator.uuid()
+    bodies = [{"title": "First", "author": "Ivan"}, {"title": "Second", "author": "Ivan"}]
+    both_ready = Barrier(len(bodies))
+
+    def put(body: dict[str, str]) -> httpx2.Response:
+        both_ready.wait()
+        return client.put(f"/feed/{id}", json=body)
+
+    with ThreadPoolExecutor(max_workers=len(bodies)) as executor:
+        responses = list(executor.map(put, bodies))
+
+    assert sorted(response.status_code for response in responses) == [201, 409]
+    [created] = [response for response in responses if response.status_code == 201]
     assert client.get(f"/feed/{id}").json() == created.json()
 
 

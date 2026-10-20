@@ -43,7 +43,7 @@ def test_create_find_and_update_answer_the_feed_json(client: TestClient) -> None
 def test_list_and_home_answer_feed_json(container: AsyncContainer, client: TestClient) -> None:
     feed = FeedMother.random(source=FeedSource.EL_MUNDO, created_at=FeedCreatedAtMother.now())
     repository = resolve(client, container, FeedRepository)
-    run_in_app(client, lambda: repository.save(feed))
+    run_in_app(client, lambda: repository.create(feed))
 
     for path in ("/feed/list", "/feed/home"):
         response = client.get(path)

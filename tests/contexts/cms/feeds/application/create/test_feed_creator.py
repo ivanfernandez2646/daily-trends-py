@@ -31,7 +31,7 @@ def random_props(**overrides: str | None) -> FeedCreatorProps:
     return props | overrides  # pyright: ignore[reportReturnType]
 
 
-async def test_saves_and_returns_a_new_feed_without_update_date() -> None:
+async def test_creates_and_returns_a_new_feed_without_update_date() -> None:
     repository = InMemoryFeedRepository()
     creator = FeedCreator(repository, RecordingEventBus())
     props = random_props()
@@ -39,7 +39,7 @@ async def test_saves_and_returns_a_new_feed_without_update_date() -> None:
 
     feed = await creator.execute(props)
 
-    assert repository.saved == [feed]
+    assert repository.created == [feed]
     primitives = feed.to_primitives()
     assert {key: primitives[key] for key in props} == props
     assert primitives["updatedAt"] is None
@@ -58,7 +58,7 @@ async def test_publishes_feed_created() -> None:
     assert (event.aggregate_id, event.title) == (props["id"], props["title"])
 
 
-async def test_raises_feed_already_exists_without_saving_or_publishing() -> None:
+async def test_raises_feed_already_exists_from_create_without_finding_or_publishing() -> None:
     existing = FeedMother.random()
     repository = InMemoryFeedRepository([existing])
     event_bus = RecordingEventBus()
@@ -68,7 +68,9 @@ async def test_raises_feed_already_exists_without_saving_or_publishing() -> None
         await creator.execute(random_props(id=existing.id.value))
 
     assert str(error.value) == f"Feed with id <{existing.id.value}> already exists"
-    assert repository.saved == []
+    assert repository.created == []
+    assert repository.searched_ids == []
+    assert await repository.find(existing.id) is existing
     assert event_bus.published == []
 
 
@@ -90,7 +92,7 @@ async def test_raises_the_first_invalid_argument_in_field_order(
         await creator.execute(random_props(**overrides))
 
     assert str(error.value) == message
-    assert repository.searched_ids == []
+    assert repository.created == []
 
 
 async def test_a_null_description_is_stored_as_null() -> None:
