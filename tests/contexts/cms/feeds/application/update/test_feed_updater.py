@@ -80,7 +80,7 @@ async def test_updates_and_returns_the_feed_updated_now() -> None:
         **feed.to_primitives(),
         "title": title,
         "description": description,
-        "updatedAt": NOW,
+        "updated_at": NOW,
     }
 
 

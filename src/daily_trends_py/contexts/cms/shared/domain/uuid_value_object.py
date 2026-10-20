@@ -21,6 +21,7 @@ _UUID = re.compile(
 @dataclass(frozen=True)
 class UuidValueObject(RequiredStringValueObject):
     def __post_init__(self) -> None:
+        self._ensure_string()
         if not _UUID.fullmatch(self.value):
             raise InvalidArgumentError(
                 f"<{type(self).__name__}> does not allow the value <{self.value}>"

@@ -45,8 +45,8 @@ def test_extracts_trimmed_new_feeds_in_document_order() -> None:
     for primitives in (first, second):
         FeedId(primitives["id"])
         assert primitives["source"] == FeedSource.EL_ESPANOL
-        assert primitives["createdAt"] == NOW
-        assert primitives["updatedAt"] is None
+        assert primitives["created_at"] == NOW
+        assert primitives["updated_at"] is None
     assert first["id"] != second["id"]
 
 

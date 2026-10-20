@@ -32,8 +32,8 @@ def test_primitives_round_trip_keeps_every_field_in_order(
         "description": description,
         "author": "An author",
         "source": FeedSource.CMS,
-        "createdAt": MotherCreator.date_time(),
-        "updatedAt": updated_at,
+        "created_at": MotherCreator.date_time(),
+        "updated_at": updated_at,
     }
 
     result = Feed.from_primitives(primitives).to_primitives()
@@ -81,7 +81,7 @@ def test_update_returns_a_new_feed_with_the_new_title_updated_now() -> None:
     assert updated.to_primitives() == {
         **feed.to_primitives(),
         "title": title.value,
-        "updatedAt": NOW,
+        "updated_at": NOW,
     }
     assert updated.pull_domain_events() == []
 

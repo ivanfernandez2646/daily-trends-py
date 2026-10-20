@@ -1,4 +1,4 @@
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncIterator
 from uuid import uuid4
 
 import pytest
@@ -17,11 +17,11 @@ pytestmark = pytest.mark.integration
 
 
 class ThingMongoRepository(MongoRepository):
-    async def create(self, id: str, primitives: Mapping[str, object]) -> bool:
-        return await self._insert(id, primitives)
+    async def create(self, document: MongoDocument) -> bool:
+        return await self._insert(document)
 
-    async def update(self, id: str, primitives: Mapping[str, object]) -> bool:
-        return await self._update(id, primitives)
+    async def update(self, document: MongoDocument) -> bool:
+        return await self._update(document)
 
     async def search(self, id: str) -> MongoDocument | None:
         return await self._by_id(id)
@@ -42,12 +42,12 @@ def repository(mongo_client: MongoClient, collection: MongoCollection) -> ThingM
     return ThingMongoRepository(mongo_client, collection.name)
 
 
-async def test_insert_stores_document_under_id_without_id_field(
+async def test_insert_stores_the_document_as_given(
     repository: ThingMongoRepository, collection: MongoCollection
 ) -> None:
     id = str(uuid4())
 
-    inserted = await repository.create(id, {"id": id, "title": "A title", "description": None})
+    inserted = await repository.create({"_id": id, "title": "A title", "description": None})
 
     assert inserted
     assert await collection.find_one({"_id": id}) == {
@@ -61,9 +61,9 @@ async def test_insert_on_an_existing_id_returns_false_and_keeps_the_original_doc
     repository: ThingMongoRepository, collection: MongoCollection
 ) -> None:
     id = str(uuid4())
-    await repository.create(id, {"id": id, "title": "A title"})
+    await repository.create({"_id": id, "title": "A title"})
 
-    inserted = await repository.create(id, {"id": id, "title": "Another title"})
+    inserted = await repository.create({"_id": id, "title": "Another title"})
 
     assert not inserted
     assert await collection.find_one({"_id": id}) == {"_id": id, "title": "A title"}
@@ -74,19 +74,19 @@ async def test_insert_raises_a_duplicate_key_on_another_unique_index(
 ) -> None:
     await collection.create_index("slug", unique=True)
     first, second = str(uuid4()), str(uuid4())
-    await repository.create(first, {"id": first, "slug": "same"})
+    await repository.create({"_id": first, "slug": "same"})
 
     with pytest.raises(DuplicateKeyError):
-        await repository.create(second, {"id": second, "slug": "same"})
+        await repository.create({"_id": second, "slug": "same"})
 
 
 async def test_update_sets_the_sent_fields_keeping_the_others(
     repository: ThingMongoRepository, collection: MongoCollection
 ) -> None:
     id = str(uuid4())
-    await repository.create(id, {"id": id, "title": "A title", "author": "An author"})
+    await repository.create({"_id": id, "title": "A title", "author": "An author"})
 
-    updated = await repository.update(id, {"id": id, "title": "Another title"})
+    updated = await repository.update({"_id": id, "title": "Another title"})
 
     assert updated
     assert await collection.find_one({"_id": id}) == {
@@ -101,21 +101,21 @@ async def test_update_on_a_missing_id_returns_false_and_inserts_nothing(
 ) -> None:
     id = str(uuid4())
 
-    updated = await repository.update(id, {"id": id, "title": "A title"})
+    updated = await repository.update({"_id": id, "title": "A title"})
 
     assert not updated
     assert await collection.count_documents({}) == 0
 
 
-async def test_by_id_returns_document_with_id_copied_from_mongo_id(
+async def test_by_id_returns_the_stored_document(
     repository: ThingMongoRepository,
 ) -> None:
     id = str(uuid4())
-    await repository.create(id, {"id": id, "title": "A title"})
+    await repository.create({"_id": id, "title": "A title"})
 
     document = await repository.search(id)
 
-    assert document == {"_id": id, "id": id, "title": "A title"}
+    assert document == {"_id": id, "title": "A title"}
 
 
 async def test_by_id_returns_none_when_document_does_not_exist(
@@ -128,7 +128,7 @@ async def test_remove_deletes_document(
     repository: ThingMongoRepository, collection: MongoCollection
 ) -> None:
     id = str(uuid4())
-    await repository.create(id, {"id": id, "title": "A title"})
+    await repository.create({"_id": id, "title": "A title"})
 
     await repository.delete(id)
 

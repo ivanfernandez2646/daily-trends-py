@@ -13,8 +13,6 @@ from daily_trends_py.contexts.cms.feeds.domain.feed_title import FeedTitle
 if TYPE_CHECKING:
     from _typeshed import SupportsRichComparison
 
-_PRIMITIVE_NAMES = {"created_at": "createdAt", "updated_at": "updatedAt"}
-
 
 class InMemoryFeedRepository:
     def __init__(self, feeds: list[Feed] | None = None) -> None:
@@ -71,7 +69,7 @@ class InMemoryFeedRepository:
 
 def _value(feed: Feed, field: str) -> object:
     primitives = cast(Mapping[str, object], feed.to_primitives())
-    return primitives[_PRIMITIVE_NAMES.get(field, field)]
+    return primitives[field]
 
 
 def _sortable(feed: Feed, field: str) -> SupportsRichComparison:

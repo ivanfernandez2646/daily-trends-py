@@ -7,7 +7,7 @@ created_at: '2026-10-20T09:38:24Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-20T09:44:32Z'
+updated_at: '2026-10-20T09:51:22Z'
 ---
 
 # I09 · Domain correctness and Python idioms
@@ -149,29 +149,33 @@ document the domain rejects into `InvalidStoredFeed`.
 
 ### Tests first
 
-- [ ] Value objects: non-string title, author, description and id raise `InvalidArgumentError`
+- [x] Value objects: non-string title, author, description and id raise `InvalidArgumentError`
       with the existing format; unknown and non-string `source` too.
-- [ ] Domain: primitives round trip uses snake_case keys in order.
-- [ ] Repository (`integration`): documents with missing `title`, `author` or `source`, an unknown
+- [x] Domain: primitives round trip uses snake_case keys in order.
+- [x] Repository (`integration`): documents with missing `title`, `author` or `source`, an unknown
       `source`, and a non-string `title` raise `InvalidStoredFeed` naming the id, from `find` and
       from `search`.
-- [ ] Repository: a document without `updatedAt` reads as `updated_at` `None`.
-- [ ] Repository: the raw stored document still has `_id`, `createdAt` and `updatedAt` (existing
+- [x] Repository: a document without `updatedAt` reads as `updated_at` `None`.
+- [x] Repository: the raw stored document still has `_id`, `createdAt` and `updatedAt` (existing
       shape test stays green).
-- [ ] App (`integration`): one broken-document case beyond `createdAt` answers the generic 500 and
+- [x] Shared `MongoRepository` tests: it stores and returns documents as given (no `id` copy).
+- [x] App (`integration`): one broken-document case beyond `createdAt` answers the generic 500 and
       logs the reason (extend `test_invalid_stored_feed.py` parametrization).
 
 ### Implementation
 
-- [ ] Add type checks to the shared string and UUID value objects; add `FeedSource._missing_`.
-- [ ] Rename `FeedPrimitives` keys and update `to_primitives`/`from_primitives`.
-- [ ] Move the name mapping into `MongoFeedRepository` for documents and criteria; replace
-      `_STORAGE_FIELDS`; remove the `cast`.
-- [ ] Simplify `InMemoryFeedRepository` (no camelCase mapping); map Gherkin `createdAt`/`updatedAt`
+- [x] Add type checks to the shared string and UUID value objects; add `FeedSource._missing_`.
+- [x] Rename `FeedPrimitives` keys and update `to_primitives`/`from_primitives`.
+- [x] Move the name mapping into `MongoFeedRepository` for documents and criteria; replace
+      `_STORAGE_FIELDS`; remove the `cast`. The shared `MongoRepository` now takes and returns raw
+      documents, so `id`↔`_id` is mapped only by the feed adapter.
+- [x] Add `FeedDocumentMother` (raw stored documents, `MISSING` removes a field) for repository and
+      app seeding.
+- [x] Simplify `InMemoryFeedRepository` (no camelCase mapping); map Gherkin `createdAt`/`updatedAt`
       headers in the acceptance seeding helper; update mothers and tests that seed raw documents.
-- [ ] Refactor without changing behavior.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Refactor without changing behavior.
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ## Phase 3: Python idioms, module layout and dev tools (#30, #31)
 
@@ -238,4 +242,4 @@ domain modules, import-linter in the gate, no `hypothesis`, and the docs.
 
 ## Next step
 
-Run `/ai-project-implement-phase` for Phase 2.
+Run `/ai-project-implement-phase` for Phase 3.

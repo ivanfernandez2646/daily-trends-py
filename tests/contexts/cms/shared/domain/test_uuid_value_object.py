@@ -56,3 +56,11 @@ def test_uuids_with_the_same_value_are_equal() -> None:
 
     assert DummyId(value) == DummyId(value)
     assert DummyId(value) != DummyId(MotherCreator.uuid())
+
+
+@pytest.mark.parametrize(("value", "rendered"), [(None, "None"), (42, "42")])
+def test_rejects_a_value_that_is_not_a_string(value: object, rendered: str) -> None:
+    with pytest.raises(InvalidArgumentError) as error:
+        DummyId(value)  # pyright: ignore[reportArgumentType]
+
+    assert str(error.value) == f"<DummyId> does not allow the value <{rendered}>"

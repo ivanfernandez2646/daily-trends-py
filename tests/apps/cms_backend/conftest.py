@@ -96,12 +96,12 @@ def there_are_feeds(
                 "description": values["description"],
                 "author": values["author"],
                 "source": FeedSource(values["source"]),
-                "createdAt": (
+                "created_at": (
                     FeedCreatedAtMother.create(created_at)
                     if created_at
                     else FeedCreatedAtMother.now()
                 ).value,
-                "updatedAt": FeedUpdatedAtMother.random().value,
+                "updated_at": FeedUpdatedAtMother.random().value,
             }
         )
         run_in_app(client, lambda feed=feed: repository.create(feed))

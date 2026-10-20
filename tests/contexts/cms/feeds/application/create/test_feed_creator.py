@@ -44,8 +44,8 @@ async def test_creates_and_returns_a_new_feed_created_now_without_update_date() 
     assert repository.created == [feed]
     primitives = feed.to_primitives()
     assert {key: primitives[key] for key in props} == props
-    assert primitives["updatedAt"] is None
-    assert primitives["createdAt"] == NOW
+    assert primitives["updated_at"] is None
+    assert primitives["created_at"] == NOW
 
 
 async def test_publishes_feed_created_now() -> None:

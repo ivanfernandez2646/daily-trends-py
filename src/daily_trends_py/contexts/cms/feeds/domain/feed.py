@@ -21,8 +21,8 @@ class FeedPrimitives(TypedDict):
     description: str | None
     author: str
     source: FeedSource
-    createdAt: datetime
-    updatedAt: datetime | None
+    created_at: datetime
+    updated_at: datetime | None
 
 
 @dataclass(eq=False)
@@ -70,8 +70,8 @@ class Feed(AggregateRoot):
             description=FeedDescription(primitives["description"]),
             author=FeedAuthor(primitives["author"]),
             source=FeedSource(primitives["source"]),
-            created_at=FeedCreatedAt(primitives["createdAt"]),
-            updated_at=FeedUpdatedAt(primitives["updatedAt"]),
+            created_at=FeedCreatedAt(primitives["created_at"]),
+            updated_at=FeedUpdatedAt(primitives["updated_at"]),
         )
 
     def update(
@@ -105,6 +105,6 @@ class Feed(AggregateRoot):
             "description": self.description.value,
             "author": self.author.value,
             "source": self.source,
-            "createdAt": self.created_at.value,
-            "updatedAt": self.updated_at.value,
+            "created_at": self.created_at.value,
+            "updated_at": self.updated_at.value,
         }

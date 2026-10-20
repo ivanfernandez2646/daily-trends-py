@@ -11,6 +11,7 @@ class RequiredStringValueObject(StringValueObject):
     value: str
 
     def __post_init__(self) -> None:
+        self._ensure_string()
         if self.value.strip() == "":
             raise InvalidArgumentError(
                 f"<{type(self).__name__}> is mandatory. Current value: <{self.value}>"
