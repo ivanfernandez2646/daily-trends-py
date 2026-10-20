@@ -5,6 +5,7 @@ import pytest
 from fastapi import Depends, FastAPI, Response
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
+from starlette.exceptions import HTTPException
 
 from daily_trends_py.apps.cms_backend.errors import register_error_handling
 from daily_trends_py.contexts.cms.shared.domain.conflict_error import ConflictError
@@ -71,15 +72,20 @@ def test_a_conflict_answers_without_location() -> None:
         pytest.param(ValueError("boom"), id="unexpected error"),
     ],
 )
-def test_an_error_of_no_kind_answers_500_as_json_and_is_logged(
+def test_an_error_of_no_kind_answers_a_generic_500_and_logs_the_error_with_method_and_path(
     error: Exception, caplog: pytest.LogCaptureFixture
 ) -> None:
     response = request(error)
 
     assert response.status_code == 500
     assert response.headers["content-type"] == "application/json"
-    assert response.json() == {"error": "boom"}
-    assert [record.exc_info[1] for record in caplog.records if record.exc_info] == [error]
+    assert response.json() == {"error": "Internal server error"}
+    [record] = [record for record in caplog.records if record.exc_info]
+    assert record.levelname == "ERROR"
+    assert record.getMessage() == "Unhandled error on GET /route"
+    assert record.exc_info is not None and record.exc_info[1] is error
+    assert "boom" in caplog.text
+    assert "Traceback" in caplog.text
 
 
 class Body(BaseModel):
@@ -167,3 +173,10 @@ def test_errors_the_framework_raises_use_the_same_body() -> None:
         {"error": "Method Not Allowed"},
     )
     assert wrong_method.headers["allow"] == "GET"
+
+
+def test_a_framework_error_with_a_5xx_status_answers_the_generic_body() -> None:
+    response = request(HTTPException(503, "Pool for mongo:27017 is exhausted"))
+
+    assert response.status_code == 503
+    assert response.json() == {"error": "Internal server error"}

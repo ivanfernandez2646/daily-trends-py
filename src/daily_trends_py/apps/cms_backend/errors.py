@@ -23,6 +23,9 @@ _STATUS_BY_KIND: dict[type[Exception], int] = {
     ConflictError: status.HTTP_409_CONFLICT,
 }
 
+# A 5xx body never carries the error: it may show hosts, collections or stored data.
+_INTERNAL_SERVER_ERROR = "Internal server error"
+
 
 def error_response(
     status_code: int, message: str, headers: Mapping[str, str] | None = None
@@ -45,7 +48,9 @@ def register_error_handling(app: FastAPI) -> None:
 
 
 class UnhandledErrorMiddleware:
-    """Answers an error no handler maps with a 500, logged once and not raised again.
+    """Answers an error no handler maps with a generic 500, logged once and not raised again.
+
+    The log has the error, its traceback, the method and the path.
 
     FastAPI's own handler for `Exception` runs outside every middleware, CORS included, and
     raises the error again after answering, so the server logs it a second time.
@@ -69,11 +74,11 @@ class UnhandledErrorMiddleware:
         try:
             await self._app(scope, receive, send_tracking_start)
         except Exception as error:
-            logger.error("Unhandled error", exc_info=error)
+            logger.error("Unhandled error on %s %s", scope["method"], scope["path"], exc_info=error)
             # Part of the response is already sent: only the server can end it.
             if response_started:
                 raise
-            response = error_response(status.HTTP_500_INTERNAL_SERVER_ERROR, str(error))
+            response = error_response(status.HTTP_500_INTERNAL_SERVER_ERROR, _INTERNAL_SERVER_ERROR)
             await response(scope, receive, send)
 
 
@@ -85,7 +90,8 @@ async def _handle_validation_error(_request: Request, error: Exception) -> Respo
 
 async def _handle_http_exception(_request: Request, error: Exception) -> Response:
     assert isinstance(error, HTTPException)
-    return error_response(error.status_code, str(error.detail), error.headers)
+    message = _INTERNAL_SERVER_ERROR if error.status_code >= 500 else str(error.detail)
+    return error_response(error.status_code, message, error.headers)
 
 
 def _problems(error: RequestValidationError) -> list[Mapping[str, object]]:

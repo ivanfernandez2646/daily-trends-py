@@ -43,7 +43,7 @@ every route:
 | `NotFoundError` (`FeedNotFound`) | 404 |
 | `ConflictError` (`FeedAlreadyExists`) | 409 |
 | Framework errors: unknown route, method not allowed, unreadable body | their status (404, 405, 400) |
-| Anything else | 500, with the CORS headers, logged once |
+| Anything else | 500 `{"error": "Internal server error"}`, with the CORS headers, logged once with the method and path |
 
 A validation message lists each problem as `<field>: <reason>`, joined with `; `, for example
 `title: Field required; author: Field required`. Bodies must be `application/json`: any other

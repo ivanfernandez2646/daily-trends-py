@@ -7,7 +7,7 @@ created_at: '2026-10-12T15:00:00Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-20T09:04:17Z'
+updated_at: '2026-10-20T09:11:22Z'
 implemented_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -169,23 +169,23 @@ original error, its traceback, the method and the path.
 
 ### Tests first
 
-- [ ] `test_errors.py`: an error of no kind answers 500 with `{"error": "Internal server error"}`.
+- [x] `test_errors.py`: an error of no kind answers 500 with `{"error": "Internal server error"}`.
   The captured log has the original message, the traceback, the method and the path.
-- [ ] `test_app.py`: the 500 is still JSON with CORS headers and is logged once, now with the
+- [x] `test_app.py`: the 500 is still JSON with CORS headers and is logged once, now with the
   generic body.
-- [ ] `test_invalid_stored_feed.py`: `GET`, `PATCH` and `DELETE /feed/{id}`, `GET /feed/list` and
+- [x] `test_invalid_stored_feed.py`: `GET`, `PATCH` and `DELETE /feed/{id}`, `GET /feed/list` and
   `GET /feed/home` answer `{"error": "Internal server error"}`. The captured log contains
   `Stored feed <id> is invalid: ...`, the method and the path.
-- [ ] Existing 400, 404 and 409 tests keep passing unchanged.
+- [x] Existing 400, 404 and 409 tests keep passing unchanged.
 
 ### Implementation
 
-- [ ] Answer `error_response(500, "Internal server error")` in the middleware and log the method
+- [x] Answer `error_response(500, "Internal server error")` in the middleware and log the method
   and path from `scope`.
-- [ ] Adjust the OpenAPI or description text if it promises the error message.
-- [ ] Refactor without changing behavior.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Adjust the OpenAPI or description text if it promises the error message.
+- [x] Refactor without changing behavior.
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ## Phase 3: MongoDB indexes (#23)
 
@@ -283,10 +283,11 @@ message whose URL hides credentials. The S01, I01 and README notes close the spe
 
 ## Next step
 
-Phase 1 is implemented and awaits review. After it is committed, run `/ai-project-implement-phase`
-for Phase 2 (generic 500 responses) on branch `fix/i08-persistence-and-error-hardening`.
+Phases 1 and 2 are implemented; Phase 2 awaits review. After it is committed, run
+`/ai-project-implement-phase` for Phase 3 (MongoDB indexes) on branch
+`fix/i08-persistence-and-error-hardening`.
 
-Note from Phase 1: the concurrent `PUT` acceptance test also passed on the old find-then-upsert
-code, because the window between `find` and `save` is a few microseconds. Widening that window
-with a sleep made it fail (`[201, 201]`), so the two requests do overlap. With `create` there is no
-window, and the test guards against one being reintroduced.
+Note from Phase 2: besides the middleware, an `HTTPException` with a 5xx status now answers the
+generic body too, so every 5xx follows the spec whichever handler produces it. The 500 description
+in `_ERROR_DESCRIPTIONS` did not promise the message and is unchanged; the app description in
+`main.py` and the README error table now state the fixed body.
