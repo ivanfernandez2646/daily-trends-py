@@ -30,7 +30,8 @@ logger = logging.getLogger(__name__)
 DESCRIPTION = (
     "Front-page news feeds: CMS feeds managed through this API and headlines scraped from"
     ' El Mundo and El Español. Every error answers `{"error": "<message>"}`: 400 for an invalid'
-    " request, 404 for a missing feed, 409 for an existing id and 500 for anything else."
+    " request, 404 for a missing feed, 409 for an existing id, and 500 for anything else, always"
+    ' with `{"error": "Internal server error"}`.'
 )
 
 

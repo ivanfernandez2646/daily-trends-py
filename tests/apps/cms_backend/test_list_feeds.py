@@ -27,7 +27,7 @@ def test_lists_feeds_chronologically_with_utc_dates_and_a_fraction_only_when_not
     )
     repository = resolve(client, container, FeedRepository)
     for feed in (earlier, later):
-        run_in_app(client, lambda feed=feed: repository.save(feed))
+        run_in_app(client, lambda feed=feed: repository.create(feed))
 
     response = client.get("/feed/list")
 

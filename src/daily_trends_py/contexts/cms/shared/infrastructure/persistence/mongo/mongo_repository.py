@@ -1,5 +1,7 @@
 from collections.abc import Mapping
 
+from pymongo.errors import DuplicateKeyError
+
 from daily_trends_py.contexts.cms.shared.domain.criteria import Criteria
 from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_client_factory import (  # noqa: E501
     MongoClient,
@@ -12,10 +14,20 @@ class MongoRepository:
     def __init__(self, client: MongoClient, collection_name: str) -> None:
         self._collection: MongoCollection = client.get_default_database()[collection_name]
 
-    async def _persist(self, id: str, primitives: Mapping[str, object]) -> None:
-        document = {key: value for key, value in primitives.items() if key != "id"}
-        document["_id"] = id
-        await self._collection.update_one({"_id": id}, {"$set": document}, upsert=True)
+    async def _insert(self, id: str, primitives: Mapping[str, object]) -> bool:
+        """Insert a new document; `False` when one with this `id` already exists."""
+        try:
+            await self._collection.insert_one(_document(id, primitives))
+        except DuplicateKeyError as error:
+            if (error.details or {}).get("keyPattern") != {"_id": 1}:
+                raise
+            return False
+        return True
+
+    async def _update(self, id: str, primitives: Mapping[str, object]) -> bool:
+        """Set the fields of an existing document; `False` when there is none with this `id`."""
+        result = await self._collection.update_one({"_id": id}, {"$set": _document(id, primitives)})
+        return result.matched_count == 1
 
     async def _by_id(self, id: str) -> MongoDocument | None:
         document = await self._collection.find_one({"_id": id})
@@ -48,6 +60,12 @@ class MongoRepository:
 
     async def _remove(self, id: str) -> None:
         await self._collection.delete_one({"_id": id})
+
+
+def _document(id: str, primitives: Mapping[str, object]) -> MongoDocument:
+    document: MongoDocument = {key: value for key, value in primitives.items() if key != "id"}
+    document["_id"] = id
+    return document
 
 
 def _with_id(document: MongoDocument) -> MongoDocument:

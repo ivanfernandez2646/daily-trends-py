@@ -1,7 +1,6 @@
 from typing import TypedDict
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
-from daily_trends_py.contexts.cms.feeds.domain.feed_already_exists import FeedAlreadyExists
 from daily_trends_py.contexts.cms.feeds.domain.feed_author import FeedAuthor
 from daily_trends_py.contexts.cms.feeds.domain.feed_description import FeedDescription
 from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
@@ -30,12 +29,9 @@ class FeedCreator:
         description = FeedDescription(props["description"])
         author = FeedAuthor(props["author"])
 
-        if await self._repository.find(id) is not None:
-            raise FeedAlreadyExists(id)
-
         feed = Feed.create(
             id=id, title=title, description=description, author=author, source=props["source"]
         )
-        await self._repository.save(feed)
+        await self._repository.create(feed)
         await self._event_bus.publish(feed.pull_domain_events())
         return feed

@@ -44,7 +44,7 @@ def test_home_returns_the_ten_newest_external_feeds(
     cms_feed = _feed_created_at(now, source=FeedSource.CMS)
     repository = resolve(client, container, FeedRepository)
     for feed in [cms_feed, *reversed(external_feeds)]:
-        run_in_app(client, lambda feed=feed: repository.save(feed))
+        run_in_app(client, lambda feed=feed: repository.create(feed))
 
     response = client.get("/feed/home")
 
@@ -57,7 +57,7 @@ def test_home_returns_the_ten_newest_external_feeds(
 def _save_stale_feed(container: AsyncContainer, client: TestClient) -> Feed:
     stale = _feed_created_at(datetime(2023, 6, 17, 14, 58, tzinfo=UTC), FeedSource.EL_MUNDO)
     repository = resolve(client, container, FeedRepository)
-    run_in_app(client, lambda: repository.save(stale))
+    run_in_app(client, lambda: repository.create(stale))
     return stale
 
 

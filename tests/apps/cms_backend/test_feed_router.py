@@ -44,13 +44,13 @@ def test_finds_a_feed_from_the_injected_repository(client: TestClient, existing_
     assert response.json()["id"] == existing_feed.id.value
 
 
-def test_patching_nothing_saves_nothing(
+def test_patching_nothing_writes_nothing(
     client: TestClient, repository: InMemoryFeedRepository, existing_feed: Feed
 ) -> None:
     response = client.patch(f"/feed/{existing_feed.id.value}", json={})
 
     assert response.status_code == 200
-    assert repository.saved == []
+    assert repository.updated == []
 
 
 def test_patching_a_null_description_clears_only_the_description(
@@ -59,10 +59,10 @@ def test_patching_a_null_description_clears_only_the_description(
     response = client.patch(f"/feed/{existing_feed.id.value}", json={"description": None})
 
     assert response.status_code == 200
-    [saved] = repository.saved
-    assert saved.description.value is None
-    assert saved.title == existing_feed.title
-    assert saved.author == existing_feed.author
+    [updated] = repository.updated
+    assert updated.description.value is None
+    assert updated.title == existing_feed.title
+    assert updated.author == existing_feed.author
 
 
 @pytest.mark.parametrize(

@@ -5,6 +5,7 @@ import pytest
 
 from daily_trends_py.contexts.cms.feeds.application.scrap.feed_scraper import FeedScraper
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
+from daily_trends_py.contexts.cms.feeds.domain.feed_already_exists import FeedAlreadyExists
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
 from daily_trends_py.contexts.cms.feeds.domain.feed_title import FeedTitle
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
@@ -17,7 +18,7 @@ from tests.contexts.cms.feeds.fakes.stub_feed_scrap import StubFeedScrap
 MADRID = ZoneInfo("Europe/Madrid")
 
 
-async def test_saves_and_returns_every_feed_of_every_scraper_in_scraper_order() -> None:
+async def test_creates_and_returns_every_feed_of_every_scraper_in_scraper_order() -> None:
     first_feeds = [FeedMother.random(), FeedMother.random()]
     second_feeds = [FeedMother.random()]
     scrapers = [StubFeedScrap(first_feeds), StubFeedScrap(second_feeds)]
@@ -25,8 +26,8 @@ async def test_saves_and_returns_every_feed_of_every_scraper_in_scraper_order() 
 
     result = await FeedScraper(repository, scrapers, MADRID).execute()
 
-    assert repository.saved == [*first_feeds, *second_feeds]
-    assert result == repository.saved
+    assert repository.created == [*first_feeds, *second_feeds]
+    assert result == repository.created
     assert [scraper.calls for scraper in scrapers] == [1, 1]
 
 
@@ -37,7 +38,7 @@ async def test_drops_a_failing_scraper_and_saves_and_returns_the_others() -> Non
 
     result = await FeedScraper(repository, scrapers, MADRID).execute()
 
-    assert repository.saved == feeds
+    assert repository.created == feeds
     assert result == feeds
 
 
@@ -48,7 +49,7 @@ async def test_returns_nothing_when_every_scraper_fails() -> None:
     result = await FeedScraper(repository, scrapers, MADRID).execute()
 
     assert result == []
-    assert repository.saved == []
+    assert repository.created == []
 
 
 async def test_saves_nothing_when_the_scrapers_return_nothing() -> None:
@@ -57,28 +58,48 @@ async def test_saves_nothing_when_the_scrapers_return_nothing() -> None:
     result = await FeedScraper(repository, [StubFeedScrap(), StubFeedScrap()], MADRID).execute()
 
     assert result == []
-    assert repository.saved == []
+    assert repository.created == []
 
 
-async def test_saves_each_feed_with_its_own_id_without_looking_it_up() -> None:
+async def test_creates_each_feed_with_its_own_id_without_looking_it_up() -> None:
     scraped = FeedMother.random()
     repository = InMemoryFeedRepository()
 
     result = await FeedScraper(repository, [StubFeedScrap([scraped])], MADRID).execute()
 
-    assert repository.saved == [scraped]
+    assert repository.created == [scraped]
     assert result == [scraped]
     assert repository.searched_ids == []
 
 
-async def test_propagates_a_save_error_keeping_the_feeds_already_saved() -> None:
+async def test_propagates_a_create_error_keeping_the_feeds_already_created() -> None:
     feeds = [FeedMother.random(), FeedMother.random(), FeedMother.random()]
-    repository = FailingFeedRepository(saves_before_failing=1, error=RuntimeError("Mongo is down"))
+    repository = FailingFeedRepository(
+        creates_before_failing=1, error=RuntimeError("Mongo is down")
+    )
 
     with pytest.raises(RuntimeError, match="Mongo is down"):
         await FeedScraper(repository, [StubFeedScrap(feeds)], MADRID).execute()
 
-    assert repository.saved == feeds[:1]
+    assert repository.created == feeds[:1]
+
+
+async def test_propagates_feed_already_exists_from_create_keeping_the_feeds_already_created() -> (
+    None
+):
+    stored = FeedMother.random()
+    first, clashing, last = (
+        FeedMother.random(),
+        FeedMother.random(id=stored.id),
+        FeedMother.random(),
+    )
+    repository = InMemoryFeedRepository([stored])
+
+    with pytest.raises(FeedAlreadyExists):
+        await FeedScraper(repository, [StubFeedScrap([first, clashing, last])], MADRID).execute()
+
+    assert repository.created == [first]
+    assert await repository.find(stored.id) is stored
 
 
 def _headline(source: FeedSource, title: str, created_at: str) -> Feed:
@@ -98,7 +119,7 @@ async def test_skips_a_headline_already_stored_the_same_business_day() -> None:
 
     result = await FeedScraper(repository, [StubFeedScrap([repeated, new])], MADRID).execute()
 
-    assert repository.saved == [new]
+    assert repository.created == [new]
     assert result == [new]
 
 
@@ -109,7 +130,7 @@ async def test_saves_only_the_first_of_two_equal_headlines_in_the_same_run() -> 
 
     result = await FeedScraper(repository, [StubFeedScrap([first, second])], MADRID).execute()
 
-    assert repository.saved == [first]
+    assert repository.created == [first]
     assert result == [first]
 
 
@@ -189,7 +210,7 @@ async def test_a_concurrent_run_waits_for_the_run_in_progress_and_skips_its_head
     assert scrap.calls == 2
     assert first == feeds
     assert second == []
-    assert repository.saved == feeds
+    assert repository.created == feeds
 
 
 async def test_is_running_only_while_a_run_is_in_progress() -> None:
@@ -208,9 +229,11 @@ async def test_is_running_only_while_a_run_is_in_progress() -> None:
     assert not scraper.is_running
 
 
-async def test_is_not_running_after_a_run_whose_save_raised() -> None:
+async def test_is_not_running_after_a_run_whose_create_raised() -> None:
     scrap = BlockingFeedScrap([FeedMother.random()])
-    repository = FailingFeedRepository(saves_before_failing=0, error=RuntimeError("Mongo is down"))
+    repository = FailingFeedRepository(
+        creates_before_failing=0, error=RuntimeError("Mongo is down")
+    )
     scraper = FeedScraper(repository, [scrap], MADRID)
     run = asyncio.create_task(scraper.execute())
     await scrap.started.wait()

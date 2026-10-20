@@ -104,7 +104,7 @@ def there_are_feeds(
                 "updatedAt": FeedUpdatedAtMother.random().value,
             }
         )
-        run_in_app(client, lambda feed=feed: repository.save(feed))
+        run_in_app(client, lambda feed=feed: repository.create(feed))
 
 
 @when(parsers.parse('I send a GET request to "{path}"'), target_fixture="response")

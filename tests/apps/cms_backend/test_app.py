@@ -18,7 +18,7 @@ from tests.mongo import TEST_MONGO_URL, fresh_database_name, mongo_url_for
 pytestmark = pytest.mark.integration
 
 
-def test_unhandled_error_returns_500_as_json_with_cors_headers_and_is_logged_once(
+def test_unhandled_error_returns_a_generic_500_with_cors_headers_and_is_logged_once(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     app = create_app(create_container(IsolatedSettings(mongo_url=TEST_MONGO_URL)))
@@ -32,10 +32,11 @@ def test_unhandled_error_returns_500_as_json_with_cors_headers_and_is_logged_onc
         response = client.get("/unhandled", headers={"Origin": "https://example.com"})
 
     assert response.status_code == 500
-    assert response.json() == {"error": "boom"}
+    assert response.json() == {"error": "Internal server error"}
     assert response.headers["content-type"] == "application/json"
     assert response.headers["access-control-allow-origin"] == "*"
-    assert len([record for record in caplog.records if record.exc_info]) == 1
+    [record] = [record for record in caplog.records if record.exc_info]
+    assert record.getMessage() == "Unhandled error on GET /unhandled"
 
 
 def test_migrations_run_at_startup_even_when_the_repository_is_a_fake() -> None:

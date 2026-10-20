@@ -43,7 +43,7 @@ every route:
 | `NotFoundError` (`FeedNotFound`) | 404 |
 | `ConflictError` (`FeedAlreadyExists`) | 409 |
 | Framework errors: unknown route, method not allowed, unreadable body | their status (404, 405, 400) |
-| Anything else | 500, with the CORS headers, logged once |
+| Anything else | 500 `{"error": "Internal server error"}`, with the CORS headers, logged once with the method and path |
 
 A validation message lists each problem as `<field>: <reason>`, joined with `; `, for example
 `title: Field required; author: Field required`. Bodies must be `application/json`: any other
@@ -99,7 +99,11 @@ uv run ruff check .           # lint
 uv run ruff format .          # format
 uv run pyright                # type-check
 uv run pytest                 # tests
+uv run pytest -m "not integration"  # tests that do not need MongoDB
 ```
+
+Tests marked `integration` need MongoDB (`docker compose up -d --wait mongo`). If it does not
+answer, the run stops after a 2-second check with a message saying so.
 
 Quality gate:
 

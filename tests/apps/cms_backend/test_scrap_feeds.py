@@ -76,7 +76,7 @@ def test_scraping_after_a_background_run_saves_only_what_that_run_did_not(
         created_at=FeedCreatedAtMother.create(datetime(2023, 6, 17, tzinfo=UTC)),
     )
     repository = resolve(client, container, FeedRepository)
-    run_in_app(client, lambda: repository.save(stale))
+    run_in_app(client, lambda: repository.create(stale))
     client.get("/feed/home")
     refresher = resolve(client, container, FeedHomeRefresher)
     run_in_app(client, refresher.join)

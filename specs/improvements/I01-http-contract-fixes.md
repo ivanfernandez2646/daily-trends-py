@@ -49,6 +49,8 @@ empty success is `204`, a scraping run reports what it saved, `PATCH` validates 
   Body: `{"error": "Stored feed <{id}> is invalid: {reason}"}`, where `{reason}` is the value
   object's message.
 - `GET /feed/home` no longer maps any error to 400: it has no client input.
+
+> **Superseded by [I08](I08-persistence-and-error-hardening.md):** the 500 body is `{"error": "Internal server error"}`; `Stored feed <{id}> is invalid: {reason}` goes only to the log. `PUT /feed/:id` no longer reads the stored feed: over an invalid stored document it answers 409.
 - Client input errors keep their 400 (an invalid UUID in the path, an invalid body field).
 
 ## Unchanged

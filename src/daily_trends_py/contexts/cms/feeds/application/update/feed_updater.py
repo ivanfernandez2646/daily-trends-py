@@ -29,5 +29,5 @@ class FeedUpdater:
         if updated is None:
             return feed
 
-        await self._repository.save(updated)
+        await self._repository.update(updated)
         return updated

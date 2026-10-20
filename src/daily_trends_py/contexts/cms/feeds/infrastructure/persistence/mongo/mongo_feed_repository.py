@@ -2,8 +2,10 @@ from datetime import datetime
 from typing import cast
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed, FeedPrimitives
+from daily_trends_py.contexts.cms.feeds.domain.feed_already_exists import FeedAlreadyExists
 from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
 from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
+from daily_trends_py.contexts.cms.feeds.domain.feed_not_found import FeedNotFound
 from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
 from daily_trends_py.contexts.cms.feeds.domain.feed_title import FeedTitle
 from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.invalid_stored_feed import (  # noqa: E501
@@ -27,8 +29,13 @@ class MongoFeedRepository(MongoRepository):
     def __init__(self, client: MongoClient) -> None:
         super().__init__(client, "feeds")
 
-    async def save(self, feed: Feed) -> None:
-        await self._persist(feed.id.value, feed.to_primitives())
+    async def create(self, feed: Feed) -> None:
+        if not await self._insert(feed.id.value, feed.to_primitives()):
+            raise FeedAlreadyExists(feed.id)
+
+    async def update(self, feed: Feed) -> None:
+        if not await self._update(feed.id.value, feed.to_primitives()):
+            raise FeedNotFound(feed.id)
 
     async def find(self, id: FeedId) -> Feed | None:
         document = await self._by_id(id.value)
