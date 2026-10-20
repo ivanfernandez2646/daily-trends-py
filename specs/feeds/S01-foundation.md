@@ -36,6 +36,8 @@ Body `{"error": "<message>"}`, mapped by error type:
 
 > **Superseded by [I06](../improvements/I06-idiomatic-fastapi-layer.md):** errors are mapped by kind for every route, with no per-route lists: `InvalidArgumentError` → 400, `NotFoundError` → 404, `ConflictError` → 409, anything else → 500. Every error answers JSON `{"error": "<message>"}`, including the logged 500 of the final handler.
 
+> **Superseded by [I08](../improvements/I08-persistence-and-error-hardening.md):** every 500 answers `{"error": "Internal server error"}` instead of `err.message`; the error, its traceback, the method and the path go only to the log.
+
 
 ## Configuration
 - Variables: `ENV` (`production|dev|test`, default `dev`), `MONGO_URL` (default `mongodb://localhost:27017/daily-trends`), `PORT` (default `5000`).
@@ -47,6 +49,8 @@ Body `{"error": "<message>"}`, mapped by error type:
 - One shared client, opened before accepting traffic.
 - Collection `feeds`; `_id` = the feed UUID as a string; the `id` field is not stored. Undefined fields are ignored on write.
 - Generic operations used by later capabilities: upsert by `_id` (`$set`), find by `_id`, delete by `_id`, search by criteria (defined in S03).
+
+> **Superseded by [I08](../improvements/I08-persistence-and-error-hardening.md):** there is no upsert. Writes are an insert by `_id` (a duplicate `_id` is reported, never overwritten) and an update by `_id` with `$set` that never inserts (a missing document is reported). The `feeds` indexes are created by the first migration.
 
 ## Delivery
 - Docker image for the app and a `docker-compose` with Mongo for development.

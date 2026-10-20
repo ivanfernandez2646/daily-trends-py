@@ -7,7 +7,8 @@ created_at: '2026-10-12T15:00:00Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-20T09:13:41Z'
+updated_at: '2026-10-20T09:17:12Z'
+implemented_at: '2026-10-20T09:17:12Z'
 implemented_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -255,16 +256,16 @@ message whose URL hides credentials. The S01, I01 and README notes close the spe
 
 ### Tests first
 
-- [ ] `redacted_mongo_url`:
+- [x] `redacted_mongo_url`:
   - `mongodb://user:secret@host:27017/db?authSource=admin&serverSelectionTimeoutMS=2000` becomes
     `mongodb://host:27017/db`.
   - A URL without credentials is kept as scheme, host, port and database.
-- [ ] `mongo_unreachable_message` on an unreachable URL, for example a closed local port with a
+- [x] `mongo_unreachable_message` on an unreachable URL, for example a closed local port with a
   short timeout, returns the spec message, shows no credentials, and answers within a few seconds.
-- [ ] `mongo_unreachable_message` on `TEST_MONGO_URL` returns `None`. This test is marked
+- [x] `mongo_unreachable_message` on `TEST_MONGO_URL` returns `None`. This test is marked
   `integration`.
-- [ ] `TEST_MONGO_URL` has `serverSelectionTimeoutMS=2000` and keeps existing options.
-- [ ] Session behavior, through a `pytester` test or a subprocess run of `pytest` with
+- [x] `TEST_MONGO_URL` has `serverSelectionTimeoutMS=2000` and keeps existing options.
+- [x] Session behavior, through a `pytester` test or a subprocess run of `pytest` with
   `MONGO_URL` on a closed port:
   - With an integration test selected, it exits with code 1 within a few seconds and prints the
     message.
@@ -272,22 +273,25 @@ message whose URL hides credentials. The S01, I01 and README notes close the spe
 
 ### Implementation
 
-- [ ] Add the URL helpers and the check to `tests/mongo.py`, and the hook to `tests/conftest.py`.
-- [ ] Run `MONGO_URL=mongodb://localhost:1/daily-trends-test uv run pytest -m "not integration"`.
+- [x] Add the URL helpers and the check to `tests/mongo.py`, and the hook to `tests/conftest.py`.
+- [x] Run `MONGO_URL=mongodb://localhost:1/daily-trends-test uv run pytest -m "not integration"`.
   Mark `integration` any test that fails because it needs Mongo.
-- [ ] Run `uv run pytest` with Mongo stopped and confirm it fails in seconds with the message.
-- [ ] Add the spec notes and the README links.
-- [ ] Refactor without changing behavior.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Run `uv run pytest` with Mongo stopped and confirm it fails in seconds with the message.
+- [x] Add the spec notes and the README links.
+- [x] Refactor without changing behavior.
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ## Next step
 
-Phases 1 to 3 are implemented; Phase 3 awaits review. After it is committed, run
-`/ai-project-implement-phase` for Phase 4 (test session fails fast without MongoDB, and the spec
-notes) on branch `fix/i08-persistence-and-error-hardening`.
+Every phase is implemented. After review, commit Phase 4, then merge
+`fix/i08-persistence-and-error-hardening`.
 
-Note from Phase 3: the runner tests use fixture migrations, so
-`versions/test_migrations_list.py` runs the real `MIGRATIONS` twice on its own database and checks
-that the second run changes nothing. The feed repository tests empty `feeds` with `delete_many`,
-so the indexes that startup creates on `daily-trends-test` stay in place.
+Notes from Phase 4:
+- The session check runs as the last `pytest_collection_modifyitems`, after `-m` has deselected
+  items, and never under `--collect-only`.
+- `-m "not integration"` with `MONGO_URL` on a closed port passed (277 tests), so no unmarked test
+  needed Mongo. `uv run pytest` with the Mongo container stopped exited with code 1 in about 3
+  seconds with the message.
+- `specs/improvements/README.md` already linked I08 for #21–#24. The project README now documents
+  `-m "not integration"` and the fast failure.
