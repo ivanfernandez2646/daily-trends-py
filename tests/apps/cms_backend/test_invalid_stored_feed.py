@@ -2,7 +2,7 @@ import pytest
 from dishka import AsyncContainer
 from fastapi.testclient import TestClient
 
-from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedSource
 from tests.apps.cms_backend.conftest import resolve_mongo_client, run_in_app
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
 from tests.contexts.cms.feeds.infrastructure.persistence.mongo.feed_document_mother import (

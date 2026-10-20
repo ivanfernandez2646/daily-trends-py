@@ -1,4 +1,4 @@
-from daily_trends_py.contexts.cms.feeds.domain.feed_title import FeedTitle
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedTitle
 from tests.contexts.cms.shared.domain.mother_creator import MotherCreator
 
 

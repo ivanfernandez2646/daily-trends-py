@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 import pytest
 
 from daily_trends_py.contexts.cms.feeds.application.update.feed_updater import FeedUpdater
-from daily_trends_py.contexts.cms.feeds.domain.feed_not_found import FeedNotFound
+from daily_trends_py.contexts.cms.feeds.domain.errors import FeedNotFound
 from daily_trends_py.contexts.cms.shared.domain.invalid_argument_error import (
     InvalidArgumentError,
 )
@@ -26,7 +26,7 @@ async def test_raises_feed_not_found_without_writing_when_the_feed_does_not_exis
     id = FeedIdMother.random()
 
     with pytest.raises(FeedNotFound):
-        await updater.execute({"id": id.value, "title": "A title"})
+        await updater.execute(id.value, title="A title")
 
     assert repository.updated == []
 
@@ -36,9 +36,7 @@ async def test_raises_feed_not_found_when_the_feed_is_deleted_before_the_write()
     repository = DeletedAfterFindFeedRepository([feed])
 
     with pytest.raises(FeedNotFound):
-        await FeedUpdater(repository, FixedClock(NOW)).execute(
-            {"id": feed.id.value, "title": "A new title"}
-        )
+        await FeedUpdater(repository, FixedClock(NOW)).execute(feed.id.value, title="A new title")
 
     assert repository.updated == []
     assert await repository.find(feed.id) is None
@@ -48,7 +46,7 @@ async def test_returns_the_stored_feed_without_writing_when_nothing_is_sent() ->
     feed = FeedMother.random()
     repository = InMemoryFeedRepository([feed])
 
-    result = await FeedUpdater(repository, FixedClock(NOW)).execute({"id": feed.id.value})
+    result = await FeedUpdater(repository, FixedClock(NOW)).execute(feed.id.value)
 
     assert result is feed
     assert repository.updated == []
@@ -59,7 +57,7 @@ async def test_returns_the_stored_feed_without_writing_when_the_values_are_the_s
     repository = InMemoryFeedRepository([feed])
 
     result = await FeedUpdater(repository, FixedClock(NOW)).execute(
-        {"id": feed.id.value, "title": feed.title.value, "description": feed.description.value}
+        feed.id.value, title=feed.title.value, description=feed.description.value
     )
 
     assert result is feed
@@ -72,7 +70,7 @@ async def test_updates_and_returns_the_feed_updated_now() -> None:
     title, description = MotherCreator.sentence(), MotherCreator.sentence()
 
     result = await FeedUpdater(repository, FixedClock(NOW)).execute(
-        {"id": feed.id.value, "title": title, "description": description}
+        feed.id.value, title=title, description=description
     )
 
     assert repository.updated == [result]
@@ -89,7 +87,7 @@ async def test_an_absent_description_keeps_the_stored_one() -> None:
     repository = InMemoryFeedRepository([feed])
 
     result = await FeedUpdater(repository, FixedClock(NOW)).execute(
-        {"id": feed.id.value, "title": "A new title"}
+        feed.id.value, title="A new title"
     )
 
     assert result.title.value == "A new title"
@@ -102,9 +100,7 @@ async def test_rejects_a_blank_title(title: str) -> None:
     repository = InMemoryFeedRepository([feed])
 
     with pytest.raises(InvalidArgumentError) as error:
-        await FeedUpdater(repository, FixedClock(NOW)).execute(
-            {"id": feed.id.value, "title": title}
-        )
+        await FeedUpdater(repository, FixedClock(NOW)).execute(feed.id.value, title=title)
 
     assert str(error.value) == f"<FeedTitle> is mandatory. Current value: <{title}>"
     assert repository.updated == []
@@ -116,7 +112,7 @@ async def test_assigns_a_null_or_empty_description(description: str | None) -> N
     repository = InMemoryFeedRepository([feed])
 
     result = await FeedUpdater(repository, FixedClock(NOW)).execute(
-        {"id": feed.id.value, "description": description}
+        feed.id.value, description=description
     )
 
     assert result.description.value == description
@@ -126,7 +122,7 @@ async def test_assigns_a_null_or_empty_description(description: str | None) -> N
 
 async def test_rejects_an_id_that_is_not_a_uuid() -> None:
     with pytest.raises(InvalidArgumentError) as error:
-        await FeedUpdater(InMemoryFeedRepository(), FixedClock(NOW)).execute({"id": "not-a-uuid"})
+        await FeedUpdater(InMemoryFeedRepository(), FixedClock(NOW)).execute("not-a-uuid")
 
     assert str(error.value) == "<FeedId> does not allow the value <not-a-uuid>"
 
@@ -134,5 +130,5 @@ async def test_rejects_an_id_that_is_not_a_uuid() -> None:
 async def test_looks_for_the_feed_before_validating_the_title() -> None:
     with pytest.raises(FeedNotFound):
         await FeedUpdater(InMemoryFeedRepository(), FixedClock(NOW)).execute(
-            {"id": FeedIdMother.random().value, "title": "   "}
+            FeedIdMother.random().value, title="   "
         )

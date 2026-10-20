@@ -1,11 +1,13 @@
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed, FeedPrimitives
-from daily_trends_py.contexts.cms.feeds.domain.feed_author import FeedAuthor
-from daily_trends_py.contexts.cms.feeds.domain.feed_created_at import FeedCreatedAt
-from daily_trends_py.contexts.cms.feeds.domain.feed_description import FeedDescription
-from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
-from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
-from daily_trends_py.contexts.cms.feeds.domain.feed_title import FeedTitle
-from daily_trends_py.contexts.cms.feeds.domain.feed_updated_at import FeedUpdatedAt
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import (
+    FeedAuthor,
+    FeedCreatedAt,
+    FeedDescription,
+    FeedId,
+    FeedSource,
+    FeedTitle,
+    FeedUpdatedAt,
+)
 from tests.contexts.cms.feeds.domain.feed_author_mother import FeedAuthorMother
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_description_mother import FeedDescriptionMother

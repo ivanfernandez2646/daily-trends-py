@@ -4,16 +4,15 @@ from datetime import UTC, datetime
 import httpx
 import pytest
 
-from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
-from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
-from daily_trends_py.contexts.cms.feeds.infrastructure.scrap.front_page import (
-    ScrapMapping,
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedId, FeedSource
+from daily_trends_py.contexts.cms.feeds.infrastructure.scrape.front_page import (
+    ScrapeMapping,
     extract_feeds,
-    scrap_front_page,
+    scrape_front_page,
 )
 from tests.contexts.cms.shared.fakes.fixed_clock import FixedClock
 
-MAPPING = ScrapMapping(
+MAPPING = ScrapeMapping(
     url="https://news.example/",
     source=FeedSource.EL_ESPANOL,
     author_selector=".author",
@@ -118,9 +117,9 @@ def _page(title: str, meta_charset: str | None = None) -> str:
     return f"<html><head>{meta}</head><body>{_article(title=title)}</body></html>"
 
 
-async def _scrap_titles(response: httpx.Response) -> list[str | None]:
+async def _scrape_titles(response: httpx.Response) -> list[str | None]:
     async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _: response)) as client:
-        feeds = await scrap_front_page(client, MAPPING, FixedClock(NOW))
+        feeds = await scrape_front_page(client, MAPPING, FixedClock(NOW))
     return [feed.title.value for feed in feeds]
 
 
@@ -131,7 +130,7 @@ async def test_decodes_the_page_with_the_charset_of_the_content_type_header() ->
         content=_page("Cuesta 5 €").encode("iso-8859-15"),
     )
 
-    assert await _scrap_titles(response) == ["Cuesta 5 €"]
+    assert await _scrape_titles(response) == ["Cuesta 5 €"]
 
 
 async def test_decodes_the_page_with_its_meta_charset_when_the_header_declares_none() -> None:
@@ -141,13 +140,13 @@ async def test_decodes_the_page_with_its_meta_charset_when_the_header_declares_n
         content=_page("Cuesta 5 €", meta_charset="iso-8859-15").encode("iso-8859-15"),
     )
 
-    assert await _scrap_titles(response) == ["Cuesta 5 €"]
+    assert await _scrape_titles(response) == ["Cuesta 5 €"]
 
 
 async def test_decodes_the_page_as_utf_8_when_nothing_declares_a_charset() -> None:
     response = httpx.Response(200, content=_page("España").encode())
 
-    assert await _scrap_titles(response) == ["España"]
+    assert await _scrape_titles(response) == ["España"]
 
 
 async def test_prefers_the_header_charset_over_the_meta_charset() -> None:
@@ -157,7 +156,7 @@ async def test_prefers_the_header_charset_over_the_meta_charset() -> None:
         content=_page("Cuesta 5 €", meta_charset="utf-8").encode("iso-8859-15"),
     )
 
-    assert await _scrap_titles(response) == ["Cuesta 5 €"]
+    assert await _scrape_titles(response) == ["Cuesta 5 €"]
 
 
 async def test_ignores_an_unknown_header_charset() -> None:
@@ -167,7 +166,7 @@ async def test_ignores_an_unknown_header_charset() -> None:
         content=_page("Cuesta 5 €", meta_charset="iso-8859-15").encode("iso-8859-15"),
     )
 
-    assert await _scrap_titles(response) == ["Cuesta 5 €"]
+    assert await _scrape_titles(response) == ["Cuesta 5 €"]
 
 
 async def test_requests_the_page_without_a_content_type_header() -> None:
@@ -178,7 +177,7 @@ async def test_requests_the_page_without_a_content_type_header() -> None:
         return httpx.Response(200, content=b"")
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as client:
-        await scrap_front_page(client, MAPPING, FixedClock(NOW))
+        await scrape_front_page(client, MAPPING, FixedClock(NOW))
 
     [request] = requests
     assert str(request.url) == "https://news.example/"
@@ -191,4 +190,4 @@ async def test_fails_when_the_request_times_out() -> None:
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(time_out)) as client:
         with pytest.raises(httpx.ReadTimeout):
-            await scrap_front_page(client, MAPPING, FixedClock(NOW))
+            await scrape_front_page(client, MAPPING, FixedClock(NOW))

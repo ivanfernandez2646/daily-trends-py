@@ -1,14 +1,14 @@
 import httpx
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
-from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
-from daily_trends_py.contexts.cms.feeds.infrastructure.scrap.front_page import (
-    ScrapMapping,
-    scrap_front_page,
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedSource
+from daily_trends_py.contexts.cms.feeds.infrastructure.scrape.front_page import (
+    ScrapeMapping,
+    scrape_front_page,
 )
 from daily_trends_py.contexts.cms.shared.domain.clock import Clock
 
-_MAPPING = ScrapMapping(
+_MAPPING = ScrapeMapping(
     url="https://www.elespanol.com/",
     source=FeedSource.EL_ESPANOL,
     author_selector=".art__author",
@@ -22,5 +22,5 @@ class ElEspanolFeedScraper:
         self._client = client
         self._clock = clock
 
-    async def scrap(self) -> list[Feed]:
-        return await scrap_front_page(self._client, _MAPPING, self._clock)
+    async def scrape(self) -> list[Feed]:
+        return await scrape_front_page(self._client, _MAPPING, self._clock)

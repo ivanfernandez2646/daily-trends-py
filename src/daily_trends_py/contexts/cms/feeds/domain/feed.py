@@ -2,16 +2,16 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import TypedDict
 
-from daily_trends_py.contexts.cms.feeds.domain.feed_author import FeedAuthor
-from daily_trends_py.contexts.cms.feeds.domain.feed_created_at import FeedCreatedAt
-from daily_trends_py.contexts.cms.feeds.domain.feed_created_domain_event import (
-    FeedCreatedDomainEvent,
+from daily_trends_py.contexts.cms.feeds.domain.events import FeedCreatedDomainEvent
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import (
+    FeedAuthor,
+    FeedCreatedAt,
+    FeedDescription,
+    FeedId,
+    FeedSource,
+    FeedTitle,
+    FeedUpdatedAt,
 )
-from daily_trends_py.contexts.cms.feeds.domain.feed_description import FeedDescription
-from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
-from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
-from daily_trends_py.contexts.cms.feeds.domain.feed_title import FeedTitle
-from daily_trends_py.contexts.cms.feeds.domain.feed_updated_at import FeedUpdatedAt
 from daily_trends_py.contexts.cms.shared.domain.aggregate_root import AggregateRoot
 
 

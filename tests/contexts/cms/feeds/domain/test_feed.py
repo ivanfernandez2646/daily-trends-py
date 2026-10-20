@@ -3,11 +3,9 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
+from daily_trends_py.contexts.cms.feeds.domain.events import FeedCreatedDomainEvent
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed, FeedPrimitives
-from daily_trends_py.contexts.cms.feeds.domain.feed_created_domain_event import (
-    FeedCreatedDomainEvent,
-)
-from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedSource
 from tests.contexts.cms.feeds.domain.feed_author_mother import FeedAuthorMother
 from tests.contexts.cms.feeds.domain.feed_description_mother import FeedDescriptionMother
 from tests.contexts.cms.feeds.domain.feed_id_mother import FeedIdMother

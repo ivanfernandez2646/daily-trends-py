@@ -7,7 +7,11 @@ created_at: '2026-10-20T09:38:24Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-20T09:51:22Z'
+updated_at: '2026-10-20T10:03:11Z'
+implemented_at: '2026-10-20T10:03:11Z'
+implemented_by:
+  tool: 'Claude Code'
+  model: 'claude-opus-5-5'
 ---
 
 # I09 · Domain correctness and Python idioms
@@ -212,34 +216,36 @@ domain modules, import-linter in the gate, no `hypothesis`, and the docs.
 
 ### Tests first
 
-- [ ] `FeedCreator` and `FeedUpdater` tests call `execute` with keyword arguments; `FeedUpdater`
+- [x] `FeedCreator` and `FeedUpdater` tests call `execute` with keyword arguments; `FeedUpdater`
       with `description=None` assigns `null`, with no changes keeps the feed and writes nothing.
-- [ ] Settings: `SCRAPE_TIMEOUT_SECONDS`/`SCRAPE_COOLDOWN_SECONDS` are read and validated
+- [x] Settings: `SCRAPE_TIMEOUT_SECONDS`/`SCRAPE_COOLDOWN_SECONDS` are read and validated
       (existing settings tests renamed).
-- [ ] `test_main.py`: existing startup-failure tests still exit with 1.
-- [ ] OpenAPI test passes without changes to its expectations.
-- [ ] `uv run lint-imports` passes; temporarily adding a forbidden import to a domain module makes
+- [x] `test_main.py`: existing startup-failure tests still exit with 1. Removing the
+      `excepthook` restores Python's default, which is not worth a test of its own.
+- [x] OpenAPI test passes without changes to its expectations.
+- [x] `uv run lint-imports` passes; temporarily adding a forbidden import to a domain module makes
       it fail (manual check, not committed).
 
 ### Implementation
 
-- [ ] Replace the `*Props` dicts with keyword arguments and `FeedChanges`; update routes and tests.
-- [ ] Drop `_log_uncaught_exception` and the `sys.excepthook` assignment from `main.py`.
-- [ ] Rename `scrap` → `scrape` in internal names, packages, test modules and fixtures with
+- [x] Replace the `*Props` dicts with keyword arguments and `FeedChanges`; update routes and tests.
+- [x] Drop `_log_uncaught_exception` and the `sys.excepthook` assignment from `main.py`.
+- [x] Rename `scrap` → `scrape` in internal names, packages, test modules and fixtures with
       `git mv`; rename the settings and their env vars in `settings.py`, providers, `.env.example`,
       `README.md` and tests.
-- [ ] Group the `feeds` domain modules; update every import; remove `# noqa: E501` where the new
+- [x] Group the `feeds` domain modules; update every import; remove `# noqa: E501` where the new
       imports fit.
-- [ ] Add the import-linter contracts; add `lint-imports` to `AGENTS.md`, `README.md`, CI and
+- [x] Add the import-linter contracts; add `lint-imports` to `AGENTS.md`, `README.md`, CI and
       `.pre-commit-config.yaml`; `uv remove --dev hypothesis`.
-- [ ] Docs: I04 gets a "Superseded by I09" note for the env var names; `README.md` improvements
-      table already links I09 for #26–#31; set I09 status to done.
-- [ ] Check `grep -rniE "scrap\b|scrap_|Scrap[A-Z]" src tests` matches only the `/feed/scrap` route,
-      `scrap_feeds`, its OpenAPI metadata and the `scrap-feed.feature` contents.
-- [ ] Refactor without changing behavior.
-- [ ] Run the quality gate from `AGENTS.md` (with `lint-imports`) and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Docs: I04 gets a "Superseded by I09" note for the env var names; `README.md` improvements
+      table already links I09 for #26–#31. I09 keeps `Status: draft`, as I01–I08 do.
+- [x] Check `grep -rniE "scrap\b|scrap_|Scrap[A-Z]" src tests` matches only the `/feed/scrap` route,
+      `scrap_feeds`, its OpenAPI metadata and the `scrap-feed.feature` contents. With `-i`,
+      `Scrap[A-Z]` also matches every `Scraper`, so the check ran case-sensitively.
+- [x] Refactor without changing behavior.
+- [x] Run the quality gate from `AGENTS.md` (with `lint-imports`) and fix failures.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ## Next step
 
-Run `/ai-project-implement-phase` for Phase 3.
+All phases are implemented. Review the branch and open a pull request.

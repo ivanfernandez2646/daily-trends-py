@@ -5,15 +5,15 @@ from datetime import date, datetime, time, timedelta, tzinfo
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
-from daily_trends_py.contexts.cms.feeds.domain.feed_scrap import FeedScrap
-from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
+from daily_trends_py.contexts.cms.feeds.domain.feed_scrape import FeedScrape
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedSource
 
 logger = logging.getLogger(__name__)
 
 
 class FeedScraper:
     def __init__(
-        self, repository: FeedRepository, scrapers: Sequence[FeedScrap], timezone: tzinfo
+        self, repository: FeedRepository, scrapers: Sequence[FeedScrape], timezone: tzinfo
     ) -> None:
         self._repository = repository
         self._scrapers = scrapers
@@ -32,7 +32,7 @@ class FeedScraper:
     async def _run(self) -> list[Feed]:
         saved: list[Feed] = []
         saved_headlines: set[tuple[FeedSource, str | None, date]] = set()
-        for feed in await self._scrap_all():
+        for feed in await self._scrape_all():
             day = feed.created_at.value.astimezone(self._timezone).date()
             headline = (feed.source, feed.title.value, day)
             if headline in saved_headlines or await self._repository.exists_headline(
@@ -50,9 +50,9 @@ class FeedScraper:
         end = datetime.combine(day + timedelta(days=1), time(), self._timezone)
         return start, end
 
-    async def _scrap_all(self) -> list[Feed]:
+    async def _scrape_all(self) -> list[Feed]:
         results = await asyncio.gather(
-            *(scraper.scrap() for scraper in self._scrapers), return_exceptions=True
+            *(scraper.scrape() for scraper in self._scrapers), return_exceptions=True
         )
         feeds: list[Feed] = []
         for result in results:

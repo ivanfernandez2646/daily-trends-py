@@ -5,7 +5,7 @@ from dishka import AsyncContainer
 from fastapi.testclient import TestClient
 
 from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
-from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedSource
 from tests.apps.cms_backend.conftest import resolve, run_in_app
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
@@ -53,7 +53,7 @@ def test_list_and_home_answer_feed_json(container: AsyncContainer, client: TestC
         _assert_is_feed_json(listed)
 
 
-def test_scrap_answers_feed_json(client: TestClient) -> None:
+def test_scrape_answers_feed_json(client: TestClient) -> None:
     response = client.get("/feed/scrap")
 
     assert response.status_code == 200

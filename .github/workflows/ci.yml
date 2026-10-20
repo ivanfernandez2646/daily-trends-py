@@ -40,5 +40,8 @@ jobs:
       - name: Type-check
         run: uv run pyright
 
+      - name: Check import contracts
+        run: uv run lint-imports
+
       - name: Test
         run: uv run pytest

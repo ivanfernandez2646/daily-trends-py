@@ -68,7 +68,7 @@ class InfrastructureProvider(Provider):
     async def http_client(self, settings: Settings) -> AsyncIterator[httpx.AsyncClient]:
         client = httpx.AsyncClient(
             transport=self._http_transport,
-            timeout=settings.scrap_timeout_seconds,
+            timeout=settings.scrape_timeout_seconds,
             headers={"User-Agent": HTTP_USER_AGENT},
             follow_redirects=True,
         )

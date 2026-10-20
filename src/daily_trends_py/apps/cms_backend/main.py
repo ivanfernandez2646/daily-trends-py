@@ -3,7 +3,6 @@ import sys
 from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
 from importlib.metadata import version
-from types import TracebackType
 
 import uvicorn
 from dishka import AsyncContainer
@@ -67,18 +66,8 @@ def create_app(container: AsyncContainer) -> FastAPI:
     return app
 
 
-def _log_uncaught_exception(
-    exc_type: type[BaseException],
-    exc_value: BaseException,
-    traceback: TracebackType | None,
-) -> None:
-    # The interpreter exits with code 1 after the hook returns.
-    logger.critical("uncaughtException", exc_info=(exc_type, exc_value, traceback))
-
-
 def main(migrations: Sequence[Migration] = MIGRATIONS) -> None:
     logging.basicConfig(level=logging.INFO)
-    sys.excepthook = _log_uncaught_exception
     try:
         settings = Settings()
         container = create_container(settings, migrations=migrations)

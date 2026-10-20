@@ -4,7 +4,7 @@ from typing import NotRequired, Self, TypedDict
 from pydantic import BaseModel, ConfigDict, with_config
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
-from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedSource
 
 # Strict: a number, boolean, list or object is never coerced into a string. Unknown fields are
 # ignored, Pydantic's default.

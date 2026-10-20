@@ -4,14 +4,15 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
+from daily_trends_py.contexts.cms.feeds.domain.errors import FeedAlreadyExists, FeedNotFound
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
-from daily_trends_py.contexts.cms.feeds.domain.feed_already_exists import FeedAlreadyExists
 from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
-from daily_trends_py.contexts.cms.feeds.domain.feed_description import FeedDescription
-from daily_trends_py.contexts.cms.feeds.domain.feed_not_found import FeedNotFound
-from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
-from daily_trends_py.contexts.cms.feeds.domain.feed_title import FeedTitle
-from daily_trends_py.contexts.cms.feeds.domain.feed_updated_at import FeedUpdatedAt
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import (
+    FeedDescription,
+    FeedSource,
+    FeedTitle,
+    FeedUpdatedAt,
+)
 from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.invalid_stored_feed import (  # noqa: E501
     InvalidStoredFeed,
 )

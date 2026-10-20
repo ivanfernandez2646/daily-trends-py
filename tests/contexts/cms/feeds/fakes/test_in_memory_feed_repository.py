@@ -1,10 +1,9 @@
 import pytest
 
+from daily_trends_py.contexts.cms.feeds.domain.errors import FeedAlreadyExists, FeedNotFound
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
-from daily_trends_py.contexts.cms.feeds.domain.feed_already_exists import FeedAlreadyExists
 from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
-from daily_trends_py.contexts.cms.feeds.domain.feed_not_found import FeedNotFound
-from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedSource
 from daily_trends_py.contexts.cms.shared.domain.criteria import Filter, Order
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother

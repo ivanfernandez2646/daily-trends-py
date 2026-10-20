@@ -9,11 +9,13 @@ from bs4 import BeautifulSoup, Tag
 from bs4.dammit import EncodingDetector
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
-from daily_trends_py.contexts.cms.feeds.domain.feed_author import FeedAuthor
-from daily_trends_py.contexts.cms.feeds.domain.feed_description import FeedDescription
-from daily_trends_py.contexts.cms.feeds.domain.feed_id import FeedId
-from daily_trends_py.contexts.cms.feeds.domain.feed_source import FeedSource
-from daily_trends_py.contexts.cms.feeds.domain.feed_title import FeedTitle
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import (
+    FeedAuthor,
+    FeedDescription,
+    FeedId,
+    FeedSource,
+    FeedTitle,
+)
 from daily_trends_py.contexts.cms.shared.domain.clock import Clock
 
 MAX_FEEDS_PER_SOURCE = 5
@@ -24,7 +26,7 @@ def _unchanged(text: str) -> str:
 
 
 @dataclass(frozen=True)
-class ScrapMapping:
+class ScrapeMapping:
     url: str
     source: FeedSource
     author_selector: str
@@ -33,8 +35,8 @@ class ScrapMapping:
     clean_description: Callable[[str], str] = _unchanged
 
 
-async def scrap_front_page(
-    client: httpx.AsyncClient, mapping: ScrapMapping, clock: Clock
+async def scrape_front_page(
+    client: httpx.AsyncClient, mapping: ScrapeMapping, clock: Clock
 ) -> list[Feed]:
     # A non-2xx answer is not an error: its body is parsed like any other page.
     response = await client.get(mapping.url)
@@ -42,7 +44,7 @@ async def scrap_front_page(
 
 
 def _extract_feeds_from_response(
-    response: httpx.Response, mapping: ScrapMapping, now: datetime
+    response: httpx.Response, mapping: ScrapeMapping, now: datetime
 ) -> list[Feed]:
     html = response.content.decode(_charset(response), errors="replace")
     return extract_feeds(html, mapping, now)
@@ -65,7 +67,7 @@ def _is_known(charset: str) -> bool:
     return True
 
 
-def extract_feeds(html: str, mapping: ScrapMapping, now: datetime) -> list[Feed]:
+def extract_feeds(html: str, mapping: ScrapeMapping, now: datetime) -> list[Feed]:
     feeds: list[Feed] = []
     for article in BeautifulSoup(html, "lxml").select("article"):
         author = _text(article, mapping.author_selector)
