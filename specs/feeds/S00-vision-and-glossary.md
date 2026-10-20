@@ -6,7 +6,7 @@
 Re-implement daily-trends in Python (FastAPI + Mongo) with the same observable behavior: same API, same status codes and bodies, same data in Mongo.
 
 ## What the system is
-A news API ("feeds"). A feed is a headline with an author and an optional description. Sources: `CMS` (created by hand through the API), `EL_MUNDO` and `EL_ESPANOL` (obtained by scraping their front pages), and `EL_PAIS` (scraped by the original; no longer scraped, see S06).
+A news API ("feeds"). A feed is a headline with an author and an optional description. Sources: `CMS` (created by hand through the API), `EL_MUNDO`, `EL_ESPANOL`, `EL_CONFIDENCIAL`, `LA_RAZON` and `LA_VANGUARDIA` (obtained by scraping their front pages, see S06 and S08), and `EL_PAIS` (scraped by the original; no longer scraped, see S06).
 
 ## Bounded context
 A single one, `cms/feeds`.
@@ -23,14 +23,15 @@ Each spec is a **capability** and is self-contained: it holds its own HTTP contr
 | S05 | Delete a feed | S02 |
 | S06 | Scrape external sources | S02 |
 | S07 | Front page | S03, S06 |
+| S08 | More sources | S06, S07, I02, I03 |
 
 Implementation order is the table order. S04 and S05 are independent of each other, and so are S03 and S06.
 
 ## Glossary
 - **Feed:** aggregate root. Fields: `id`, `title`, `description` (nullable), `author`, `source`, `createdAt`, `updatedAt` (nullable).
-- **Source:** `CMS` | `EL_PAIS` | `EL_MUNDO` | `EL_ESPANOL`.
+- **Source:** `CMS` | `EL_PAIS` | `EL_MUNDO` | `EL_ESPANOL` | `EL_CONFIDENCIAL` | `LA_RAZON` | `LA_VANGUARDIA`.
 - **Front page (home):** the 10 most recent feeds from external sources.
-- **Scrap:** acquiring headlines from the El Mundo and El Español front pages (El País in the original; see S06).
+- **Scrap:** acquiring headlines from the El Mundo, El Español, El Confidencial, La Razón and La Vanguardia front pages (El País in the original; see S06 and S08).
 
 ## Out of scope
 Authentication, scheduler, pagination, Django, production deployment. Known improvements are in `improvements/`.

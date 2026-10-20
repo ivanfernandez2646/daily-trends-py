@@ -59,7 +59,18 @@ def test_feed_created_at_is_mandatory_and_feed_updated_at_is_optional() -> None:
     assert FeedUpdatedAt(None).value is None
 
 
-@pytest.mark.parametrize("value", ["CMS", "EL_PAIS", "EL_MUNDO", "EL_ESPANOL"])
+@pytest.mark.parametrize(
+    "value",
+    [
+        "CMS",
+        "EL_PAIS",
+        "EL_MUNDO",
+        "EL_ESPANOL",
+        "EL_CONFIDENCIAL",
+        "LA_RAZON",
+        "LA_VANGUARDIA",
+    ],
+)
 def test_feed_source_keeps_a_known_source(value: str) -> None:
     assert FeedSource(value).value == value
 

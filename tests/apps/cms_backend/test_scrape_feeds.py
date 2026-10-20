@@ -19,23 +19,60 @@ pytestmark = pytest.mark.integration
 
 scenarios("features/scrap-feed.feature")
 
+OTHER_SOURCES_THAN_EL_MUNDO = ["EL_ESPANOL", "EL_CONFIDENCIAL", "LA_RAZON", "LA_VANGUARDIA"]
+
+
+def _sources(feeds: list[dict[str, object]]) -> list[object]:
+    return sorted({feed["source"] for feed in feeds}, key=str)
+
+
+def test_scraping_reads_the_five_front_pages(
+    client: TestClient, front_pages_transport: FrontPagesTransport
+) -> None:
+    response = client.get("/feed/scrap")
+
+    assert response.status_code == 200
+    assert {request.url.host for request in front_pages_transport.requests} >= {
+        "www.elmundo.es",
+        "www.elespanol.com",
+        "www.elconfidencial.com",
+        "www.larazon.es",
+        "www.lavanguardia.com",
+    }
+    scraped = response.json()
+    assert len(scraped) == 25
+    assert _sources(scraped) == sorted([*OTHER_SOURCES_THAN_EL_MUNDO, "EL_MUNDO"])
+
 
 @pytest.mark.parametrize(
     "front_pages_transport", [FrontPagesTransport(failing_hosts={"elmundo.es"})]
 )
-def test_scraping_stores_and_returns_the_other_source_when_one_fails(client: TestClient) -> None:
+def test_scraping_stores_and_returns_the_other_sources_when_one_fails(
+    client: TestClient,
+) -> None:
     response = client.get("/feed/scrap")
 
     assert response.status_code == 200
     scraped = response.json()
-    assert [feed["source"] for feed in scraped] == ["EL_ESPANOL"] * 5
+    assert len(scraped) == 20
+    assert _sources(scraped) == sorted(OTHER_SOURCES_THAN_EL_MUNDO)
     stored = client.get("/feed/list").json()
     assert sorted(feed["id"] for feed in stored) == sorted(feed["id"] for feed in scraped)
 
 
 @pytest.mark.parametrize(
     "front_pages_transport",
-    [FrontPagesTransport(failing_hosts={"elmundo.es", "www.elespanol.com"})],
+    [
+        FrontPagesTransport(
+            failing_hosts={
+                "elmundo.es",
+                "www.elespanol.com",
+                "www.elconfidencial.com",
+                "www.larazon.es",
+                "www.lavanguardia.com",
+            }
+        )
+    ],
 )
 def test_scraping_answers_an_empty_array_and_stores_nothing_when_every_source_fails(
     client: TestClient,
@@ -61,11 +98,13 @@ def test_scraping_identifies_itself_with_a_user_agent(
 @pytest.mark.parametrize(
     "front_pages_transport", [FrontPagesTransport(timing_out_hosts={"www.elmundo.es"})]
 )
-def test_scraping_returns_the_other_source_when_one_times_out(client: TestClient) -> None:
+def test_scraping_returns_the_other_sources_when_one_times_out(client: TestClient) -> None:
     response = client.get("/feed/scrap")
 
     assert response.status_code == 200
-    assert [feed["source"] for feed in response.json()] == ["EL_ESPANOL"] * 5
+    scraped = response.json()
+    assert len(scraped) == 20
+    assert _sources(scraped) == sorted(OTHER_SOURCES_THAN_EL_MUNDO)
 
 
 def test_scraping_after_a_background_run_saves_only_what_that_run_did_not(
@@ -85,4 +124,4 @@ def test_scraping_after_a_background_run_saves_only_what_that_run_did_not(
 
     assert response.status_code == 200
     assert response.json() == []
-    assert len(client.get("/feed/list").json()) == 11
+    assert len(client.get("/feed/list").json()) == 26

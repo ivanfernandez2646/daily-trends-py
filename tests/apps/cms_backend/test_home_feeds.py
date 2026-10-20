@@ -77,7 +77,7 @@ def test_home_answers_the_stale_feeds_and_shows_the_scraped_ones_after_the_backg
 
     assert stale_response.status_code == 200
     assert [feed["id"] for feed in stale_response.json()] == [stale.id.value]
-    assert len(client.get("/feed/list").json()) == 11
+    assert len(client.get("/feed/list").json()) == 26
     assert fresh_response.status_code == 200
     fresh_ids = [feed["id"] for feed in fresh_response.json()]
     assert len(fresh_ids) == 10

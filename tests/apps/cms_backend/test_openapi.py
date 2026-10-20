@@ -153,3 +153,17 @@ def test_does_not_advertise_fastapi_validation_errors(document: Json) -> None:
     )
     assert "HTTPValidationError" not in schemas
     assert "ValidationError" not in schemas
+
+
+def test_the_feed_source_lists_every_source(document: Json) -> None:
+    schema = cast(Json, _get(document, "components", "schemas", "FeedSource"))
+
+    assert schema["enum"] == [
+        "CMS",
+        "EL_PAIS",
+        "EL_MUNDO",
+        "EL_ESPANOL",
+        "EL_CONFIDENCIAL",
+        "LA_RAZON",
+        "LA_VANGUARDIA",
+    ]
