@@ -30,7 +30,7 @@ Implementation order is the table order. S04 and S05 are independent of each oth
 ## Glossary
 - **Feed:** aggregate root. Fields: `id`, `title`, `description` (nullable), `author`, `source`, `createdAt`, `updatedAt` (nullable).
 - **Source:** `CMS` | `EL_PAIS` | `EL_MUNDO` | `EL_ESPANOL` | `EL_CONFIDENCIAL` | `LA_RAZON` | `LA_VANGUARDIA`.
-- **Front page (home):** the 10 most recent feeds from external sources.
+- **Front page (home):** up to 10 feeds from the scraped sources: the 2 most recent of each, filled with the most recent of any of them (see S08).
 - **Scrap:** acquiring headlines from the El Mundo, El Español, El Confidencial, La Razón and La Vanguardia front pages (El País in the original; see S06 and S08).
 
 ## Out of scope

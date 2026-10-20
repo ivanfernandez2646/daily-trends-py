@@ -13,7 +13,7 @@ from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedSource
 from tests.apps.cms_backend.conftest import resolve, run_in_app
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
-from tests.scrape_fixtures import FrontPagesTransport
+from tests.scrape_fixtures import EVERY_FRONT_PAGE_HOST, FrontPagesTransport
 
 pytestmark = pytest.mark.integration
 
@@ -62,17 +62,7 @@ def test_scraping_stores_and_returns_the_other_sources_when_one_fails(
 
 @pytest.mark.parametrize(
     "front_pages_transport",
-    [
-        FrontPagesTransport(
-            failing_hosts={
-                "elmundo.es",
-                "www.elespanol.com",
-                "www.elconfidencial.com",
-                "www.larazon.es",
-                "www.lavanguardia.com",
-            }
-        )
-    ],
+    [FrontPagesTransport(failing_hosts=EVERY_FRONT_PAGE_HOST)],
 )
 def test_scraping_answers_an_empty_array_and_stores_nothing_when_every_source_fails(
     client: TestClient,

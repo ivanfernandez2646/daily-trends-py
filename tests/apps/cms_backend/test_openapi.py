@@ -167,3 +167,9 @@ def test_the_feed_source_lists_every_source(document: Json) -> None:
         "LA_RAZON",
         "LA_VANGUARDIA",
     ]
+
+
+def test_the_front_page_describes_its_per_source_selection(document: Json) -> None:
+    description = cast(str, _get(document, "paths", "/feed/home", "get", "description"))
+
+    assert "2 newest feeds of each external source" in description

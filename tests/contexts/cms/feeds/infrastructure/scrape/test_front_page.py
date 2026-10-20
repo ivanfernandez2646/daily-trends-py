@@ -97,15 +97,21 @@ def test_cleans_the_description_before_creating_the_feed() -> None:
     assert [len(feed.pull_domain_events()) for feed in feeds] == [1, 1]
 
 
-def test_joins_the_text_of_every_match() -> None:
+def test_takes_the_text_of_the_first_match_only() -> None:
+    # A teaser can carry related headlines and their bylines after its own.
     html = (
         "<article><span class='author'>Ana</span> <span class='author'>Luis</span>"
-        "<h2 class='title'>A <b>bold</b> title</h2></article>"
+        "<h2 class='title'>A <b>bold</b> title</h2><h3 class='title'>A related story</h3>"
+        "<p class='description'>The lead</p><p class='description'>Another lead</p></article>"
     )
 
     [feed] = extract_feeds(html, MAPPING, NOW)
 
-    assert (feed.author.value, feed.title.value) == ("AnaLuis", "A bold title")
+    assert (feed.author.value, feed.title.value, feed.description.value) == (
+        "Ana",
+        "A bold title",
+        "The lead",
+    )
 
 
 def test_extracts_nothing_from_a_page_without_articles() -> None:

@@ -7,7 +7,8 @@ created_at: '2026-10-20T15:16:05Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-20T15:40:00Z'
+updated_at: '2026-10-20T16:10:00Z'
+implemented_at: '2026-10-20T16:10:00Z'
 implemented_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -133,7 +134,7 @@ newest feed of the result.
 
 ### Tests first
 
-- [ ] `test_feed_home_searcher.py` with the in-memory fake:
+- [x] `test_feed_home_searcher.py` with the in-memory fake:
   - each home source has 3 or more feeds → 2 per source (10), ordered by `createdAt`
     descending, and each source's third feed is left out even when it is newer than the others;
   - only El Mundo has 12 feeds → its 10 newest;
@@ -148,29 +149,32 @@ newest feed of the result.
     existing staleness tests stay.
   - Replace `test_returns_the_ten_newest_external_feeds_without_cms_or_other_sources`, which
     encodes the S07 selection.
-- [ ] `test_mongo_feed_repository.py` (real Mongo): a single-source search with `created_at`
+- [x] `test_mongo_feed_repository.py` (real Mongo): a single-source search with `created_at`
       descending and limit 2 returns only that source's 2 newest feeds.
-- [ ] `test_home_feeds.py` (app level): after a five-source scrape, `/feed/home` answers 2 from
-      each source.
-- [ ] `home-feed.feature` passes unchanged.
-- [ ] `test_openapi.py`: the `/feed/home` description mentions the per-source selection, if the
+- [x] `test_home_feeds.py` (app level): after a five-source scrape, `/feed/home` answers 2 from
+      each source; with three stored feeds per source and a newer `CMS` one, it answers the 2
+      newest of each (replaces the S07 ten-newest test).
+- [x] `home-feed.feature` passes unchanged.
+- [x] `test_openapi.py`: the `/feed/home` description mentions the per-source selection, if the
       suite checks route descriptions.
 
 ### Implementation
 
-- [ ] `FeedHomeSearcher.execute`: run `asyncio.gather` over one `FeedCriteria(filters=(source,),
+- [x] `FeedHomeSearcher.execute`: run `asyncio.gather` over one `FeedCriteria(filters=(source,),
       order=created_at desc, limit=FEEDS_PER_SOURCE)` per home source and one newest-`HOME_LIMIT`
       search over all home sources. Merge the per-source picks, append unpicked feeds from the
       newest search until `HOME_LIMIT`, sort by `created_at` descending and keep `feeds[0]` for
       staleness.
-- [ ] Update the `/feed/home` route docstring.
-- [ ] Specs: S07 gets a "See S08" note on the home search, and the S00 glossary's "Front page"
+- [x] Update the `/feed/home` route docstring.
+- [x] The two cooldown tests in `test_home_feeds.py` and the every-source-fails scrape test now
+      fail every host through `EVERY_FRONT_PAGE_HOST` (`tests/scrape_fixtures.py`). They named
+      only El Mundo and El Español, so after Phase 1 the other three sources still answered.
+- [x] Specs: S07 gets a "See S08" note on the home search, and the S00 glossary's "Front page"
       entry describes the per-source selection.
-- [ ] Refactor without changing behavior.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Refactor without changing behavior.
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ## Next step
 
-Phase 1 is implemented and waiting for review. Then run `/ai-project-implement-phase` for Phase 2 on
-`feat/s08-more-sources`.
+Both phases are implemented. Review Phase 2, then commit it with `/ai-project-conventional-commit`.

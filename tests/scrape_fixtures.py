@@ -13,6 +13,7 @@ _FRONT_PAGES = {
     "www.lavanguardia.com": ("la_vanguardia.html", "UTF-8"),
 }
 _REDIRECTS = {"elmundo.es": "https://www.elmundo.es/"}
+EVERY_FRONT_PAGE_HOST = frozenset({*_FRONT_PAGES, *_REDIRECTS})
 
 
 class FrontPagesTransport(httpx.MockTransport):

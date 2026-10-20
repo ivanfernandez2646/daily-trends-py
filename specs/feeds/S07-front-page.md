@@ -4,6 +4,9 @@
 
 ## `GET /feed/home`
 1. Search with filter `source = EL_MUNDO OR source = EL_ESPANOL`, sort `createdAt` desc, `limit 10`. (`EL_ESPANOL` replaces `EL_PAIS`, as it replaces El País as a scraped source, see S06. The database starts empty, so there are no stored `EL_PAIS` feeds to show; the `EL_PAIS` source stays valid for other routes.)
+
+> **See [S08](S08-more-sources.md):** the front page takes the 2 newest feeds of each of El Mundo, El Español, El Confidencial, La Razón and La Vanguardia and fills the free slots with the newest of any of them, up to 10 ordered by `createdAt` descending.
+
 2. If there are results and the **newest** is from a day before today (day-level comparison, server local time) → run the scraping from S06 **inside the request** and repeat the search.
 3. If there are no results, scraping is **not** triggered (returns `[]`).
 4. Response 200 with the array. Never includes `CMS` feeds.
