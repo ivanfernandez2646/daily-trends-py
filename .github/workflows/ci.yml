@@ -91,3 +91,56 @@ jobs:
 
       - name: Check the route tree
         run: git diff --exit-code -- src/routeTree.gen.ts
+
+  e2e:
+    runs-on: ubuntu-22.04
+
+    services:
+      mongo:
+        image: mongo:8
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand(\"ping\").ok'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    defaults:
+      run:
+        working-directory: web
+
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.12.23"
+
+      - name: Install Python and dependencies
+        run: uv sync --frozen
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: web/.nvmrc
+
+      - name: Install pnpm and dependencies
+        run: corepack enable && pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      # Starts the API against the Mongo service and the built app, then runs the scenarios.
+      - name: End-to-end tests
+        run: pnpm e2e
+
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            web/playwright-report/
+            web/test-results/

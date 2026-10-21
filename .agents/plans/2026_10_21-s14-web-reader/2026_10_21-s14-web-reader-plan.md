@@ -7,7 +7,7 @@ created_at: '2026-10-21T13:00:00Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-21T17:30:00Z'
+updated_at: '2026-10-21T19:00:00Z'
 implemented_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -373,11 +373,11 @@ API with Mongo and seeds feeds. CI gains the `e2e` job.
 
 ### Tests first
 
-- [ ] `front-page.test.ts`:
+- [x] `front-page.test.ts`:
   - `splitFrontPage` for 0, 1, 4 and 10 feeds: 1 is a lead alone, 4 is a lead plus 3 side
     feeds and no *more*, 10 is 1 + 3 + 6;
   - `lastUpdated` picks the newest date.
-- [ ] `routes/index.test.tsx` (MSW, with the real router and query client):
+- [x] `routes/index.test.tsx` (MSW, with the real router and query client):
   - loading shows skeletons;
   - 10 feeds render the lead headline as Display, 3 side feeds, 6 cards under *Más titulares*
     and *Ver todas las noticias →*;
@@ -390,11 +390,11 @@ API with Mongo and seeds feeds. CI gains the `e2e` job.
   - *Leer en El Mundo* opens `url` in a new tab with `rel="noopener noreferrer"`;
   - a `CMS` feed has no source link;
   - the top bar shows *Actualizado hace N min* from the newest `created_at`.
-- [ ] `ReaderHeader.test.tsx`:
+- [x] `ReaderHeader.test.tsx`:
   - the section links point at `/feeds?category=…`;
   - *Secciones* toggles `aria-expanded` and the list;
   - the landmarks `header`, `nav` and `footer` exist.
-- [ ] `web/tests/e2e/front-page.spec.ts`:
+- [x] `web/tests/e2e/front-page.spec.ts`:
   - with 10 seeded scraped feeds, the lead, the side column and the grid show them in API order,
     and a source link has the seeded `url` and `target=_blank`;
   - no request leaves `localhost` while the page loads, which checks that the fonts come from
@@ -402,11 +402,49 @@ API with Mongo and seeds feeds. CI gains the `e2e` job.
 
 ### Implementation
 
-- [ ] Write the query client, the hooks, the layout components and the front page. Wire the root
+- [x] Write the query client, the hooks, the layout components and the front page. Wire the root
   route with `QueryClientProvider` and the layout.
-- [ ] Add the Playwright config, the fixtures and the `e2e` CI job.
-- [ ] Run the web gate including `pnpm e2e` (Mongo from `docker compose up -d --wait mongo`).
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Add the Playwright config, the fixtures and the `e2e` CI job.
+- [x] Run the web gate including `pnpm e2e` (Mongo from `docker compose up -d --wait mongo`).
+- [x] STOP for user review. Suggest three Conventional Commit messages.
+
+### Implementation notes
+
+- **Pulled forward from phase 4:** the header's typed links to `/feeds?category=…` need the browse
+  route and its search params.
+  - `src/routes/feeds.index.tsx` exists as a stub with `validateSearch: parseFeedFilters`.
+  - `parseFeedFilters` (`features/feeds/feed-filters.ts`, with its tests) drops unknown
+    categories and sources, and trims `q`, dropping it when blank or longer than 100.
+  - Phase 4 adds the URL rewrite and the page itself.
+- **Query client:**
+  - `createQueryClient({ retryDelay, log })` retries a failed read once, after 500 ms in the app
+    and at once in tests.
+  - It never retries a 4xx `ApiError`, which phase 5 needs for 400 and 404.
+  - `log` defaults to `console.error`, and tests pass a recorder.
+  - `createAppRouter({ queryClient, history })` wraps the router in `QueryClientProvider`.
+  - `feedKeys` only has `home` for now: the list and detail keys come with their screens.
+- **Layout:** `ReaderPage` renders the header, the page's own `main` and the footer. The
+  front-page masthead is the page's `h1`.
+- **Mobile:**
+  - The masthead sits on the left, with the search link and the menu button beside it.
+  - The menu button opens the same sections list as *Secciones*.
+  - The list shows the 11 categories with their marker (`CategoryMarker`, exported from
+    `category-label.tsx`) and *Todas las noticias*.
+  - *Buscar* leads to `/feeds`. Focusing the search box comes with phase 4.
+- **Front page:**
+  - The route branches on `data`, so a failed refetch keeps the feeds already shown.
+  - The empty state has no action.
+- **E2E harness:**
+  - Ports default to 5199 for the API and 4173 for the app, and `E2E_API_PORT`, `E2E_WEB_PORT`
+    and `E2E_MONGO_URL` override them.
+  - The app's web server runs `vite build && vite preview`, not `pnpm build`. pnpm is not on the
+    child process's PATH without `corepack enable`, and E2E does not need the type-check.
+  - The front-page scenario was written after the screen. It also follows a headline to its
+    page.
+- **Checked by hand with screenshots:**
+  - 1440 px in light against the canvas;
+  - 390 px in dark with the sections open;
+  - no horizontal scroll at 360 and 390 px.
 
 ## Phase 4: Browse
 
@@ -536,4 +574,4 @@ a *not found* page, and the docs are updated.
 
 ## Next step
 
-Phase 2 is implemented and awaits review. Then run `/ai-project-implement-phase` for Phase 3.
+Phase 3 is implemented and awaits review. Then run `/ai-project-implement-phase` for Phase 4.

@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as FeedsIndexRouteImport } from './routes/feeds.index'
 import { Route as FeedsIdRouteImport } from './routes/feeds.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeedsIndexRoute = FeedsIndexRouteImport.update({
+  id: '/feeds/',
+  path: '/feeds/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FeedsIdRoute = FeedsIdRouteImport.update({
@@ -26,27 +32,31 @@ const FeedsIdRoute = FeedsIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/feeds/$id': typeof FeedsIdRoute
+  '/feeds/': typeof FeedsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/feeds/$id': typeof FeedsIdRoute
+  '/feeds': typeof FeedsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/feeds/$id': typeof FeedsIdRoute
+  '/feeds/': typeof FeedsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/feeds/$id'
+  fullPaths: '/' | '/feeds/$id' | '/feeds/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/feeds/$id'
-  id: '__root__' | '/' | '/feeds/$id'
+  to: '/' | '/feeds/$id' | '/feeds'
+  id: '__root__' | '/' | '/feeds/$id' | '/feeds/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   FeedsIdRoute: typeof FeedsIdRoute
+  FeedsIndexRoute: typeof FeedsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -56,6 +66,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/feeds/': {
+      id: '/feeds/'
+      path: '/feeds'
+      fullPath: '/feeds/'
+      preLoaderRoute: typeof FeedsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/feeds/$id': {
@@ -71,6 +88,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   FeedsIdRoute: FeedsIdRoute,
+  FeedsIndexRoute: FeedsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

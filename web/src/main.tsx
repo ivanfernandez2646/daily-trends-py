@@ -5,6 +5,7 @@ import "./styles/global.css";
 import { RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { createQueryClient } from "./api/query-client";
 import { createAppRouter } from "./router";
 
 const root = document.getElementById("root");
@@ -14,6 +15,6 @@ if (root === null) {
 
 createRoot(root).render(
   <StrictMode>
-    <RouterProvider router={createAppRouter()} />
+    <RouterProvider router={createAppRouter({ queryClient: createQueryClient() })} />
   </StrictMode>,
 );

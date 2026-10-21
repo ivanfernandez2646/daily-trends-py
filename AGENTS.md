@@ -104,12 +104,13 @@ pnpm lint                    # Biome
 pnpm typecheck               # tsc
 pnpm test                    # Vitest
 pnpm build                   # production build
+pnpm e2e                     # Playwright: the real API and Mongo with the built app
 ```
 
 Web quality gate, from `web/`:
 
 ```bash
-pnpm biome ci . && pnpm tsc --noEmit && pnpm vitest run && pnpm build
+pnpm biome ci . && pnpm tsc --noEmit && pnpm vitest run && pnpm build && pnpm playwright test
 ```
 
 - The API contract is generated: `pnpm api:generate` writes `web/openapi.json` (from
@@ -120,6 +121,9 @@ pnpm biome ci . && pnpm tsc --noEmit && pnpm vitest run && pnpm build
   interfaces.
 - Tests use MSW as a fake API that answers like the real one (`src/test/server.ts`, feed mothers
   in `src/test/`). No `vi.mock` or module mocking. A request without a handler fails the test.
+- End-to-end tests (`web/tests/e2e/`) run the real API with `ENV=test` and scheduled scraping off
+  against the `daily-trends-e2e` database, which each test empties and seeds through the `feeds`
+  fixture. They never call `/feed/scrap`: it reads the real newspapers.
 - TypeScript is `strict`. No `any` without a comment that justifies it.
 - The interface is in Spanish; code, comments, tests and commits stay in English.
 - Styles use the Tinta tokens, never raw colors.

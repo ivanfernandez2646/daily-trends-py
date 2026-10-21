@@ -166,10 +166,14 @@ pnpm api:generate                 # runs `uv run daily-trends-py openapi` and re
 `uv run daily-trends-py openapi` prints the OpenAPI document without starting the API or reading
 any configuration. CI fails when `web/openapi.json` or `web/src/api/schema.gen.ts` are out of date.
 
+End-to-end tests need MongoDB (`docker compose up -d --wait mongo`) and Chromium
+(`pnpm exec playwright install chromium`, once). `pnpm e2e` starts the API on port 5199 against the
+`daily-trends-e2e` database, with scheduled scraping off, and the built app on port 4173.
+
 Web quality gate, from `web/`:
 
 ```bash
-pnpm biome ci . && pnpm tsc --noEmit && pnpm vitest run && pnpm build
+pnpm biome ci . && pnpm tsc --noEmit && pnpm vitest run && pnpm build && pnpm playwright test
 ```
 
 ## Development

@@ -6,11 +6,17 @@ import {
 } from "@tanstack/react-router";
 import { render } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { createQueryClient } from "../api/query-client";
 import { createAppRouter } from "../router";
 
-/** Render the whole app at `path`, with the real routes. */
-export function renderRoute(path: string) {
-  const router = createAppRouter(createMemoryHistory({ initialEntries: [path] }));
+type RenderRouteOptions = { log?: (message: string) => void };
+
+/** Render the whole app at `path`, with the real routes and a query client of its own. */
+export function renderRoute(path: string, { log = () => {} }: RenderRouteOptions = {}) {
+  const router = createAppRouter({
+    queryClient: createQueryClient({ retryDelay: 0, log }),
+    history: createMemoryHistory({ initialEntries: [path] }),
+  });
   return { router, ...render(<RouterProvider router={router} />) };
 }
 
