@@ -55,3 +55,15 @@ def test_criteria_with_the_same_values_are_equal() -> None:
     assert DummyCriteria(filters=(Filter("name", "Ivan"),), limit=1) == DummyCriteria(
         filters=(Filter("name", "Ivan"),), limit=1
     )
+
+
+def test_criteria_groups_the_values_of_each_filtered_field_in_filter_order() -> None:
+    criteria = DummyCriteria(
+        filters=(Filter("name", "Ivan"), Filter("age", 30), Filter("name", "Ana"))
+    )
+
+    assert criteria.values_by_field() == {"name": ("Ivan", "Ana"), "age": (30,)}
+
+
+def test_criteria_without_filters_has_no_values_by_field() -> None:
+    assert DummyCriteria().values_by_field() == {}

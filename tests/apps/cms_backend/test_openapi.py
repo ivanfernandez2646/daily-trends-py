@@ -218,15 +218,21 @@ def test_the_request_bodies_take_a_category(document: Json, schema: str, require
     assert "url" not in properties
 
 
-def test_the_list_takes_an_optional_category_query_parameter(document: Json) -> None:
-    [parameter] = cast(list[Json], _get(document, "paths", "/feed/list", "get", "parameters"))
+def test_the_list_takes_optional_category_and_source_query_parameters(document: Json) -> None:
+    parameters = cast(list[Json], _get(document, "paths", "/feed/list", "get", "parameters"))
 
-    assert (parameter["name"], parameter["in"], parameter["required"]) == (
-        "category",
-        "query",
-        False,
-    )
-    assert cast(Json, parameter["schema"])["anyOf"] == [_ref("FeedCategory"), {"type": "null"}]
+    assert [
+        (
+            parameter["name"],
+            parameter["in"],
+            parameter["required"],
+            cast(Json, parameter["schema"])["anyOf"],
+        )
+        for parameter in parameters
+    ] == [
+        ("category", "query", False, [_ref("FeedCategory"), {"type": "null"}]),
+        ("source", "query", False, [_ref("FeedSource"), {"type": "null"}]),
+    ]
 
 
 def test_documents_the_login_under_the_auth_tag(document: Json) -> None:

@@ -46,9 +46,10 @@ class MongoRepository:
         def stored(field: str) -> str:
             return storage_fields.get(field, field)
 
-        query: MongoDocument = {}
-        if criteria.filters:
-            query["$or"] = [{stored(f.field): f.value} for f in criteria.filters]
+        query: MongoDocument = {
+            stored(field): values[0] if len(values) == 1 else {"$in": list(values)}
+            for field, values in criteria.values_by_field().items()
+        }
         sort = (
             None
             if criteria.order is None

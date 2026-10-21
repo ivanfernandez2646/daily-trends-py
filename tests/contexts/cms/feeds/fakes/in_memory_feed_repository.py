@@ -40,11 +40,11 @@ class InMemoryFeedRepository:
         self.deleted.append(feed)
 
     async def search(self, criteria: FeedCriteria) -> list[Feed]:
+        values_by_field = criteria.values_by_field()
         feeds = [
             feed
             for feed in self._feeds.values()
-            if not criteria.filters
-            or any(_value(feed, f.field) == f.value for f in criteria.filters)
+            if all(_value(feed, field) in values for field, values in values_by_field.items())
         ]
         if criteria.order is not None:
             field = criteria.order.field

@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import ClassVar, Literal
 
@@ -20,7 +21,10 @@ class Order:
 
 @dataclass(frozen=True)
 class Criteria:
-    """Filters combined with OR; no filters means every item, and no limit means all of them."""
+    """Filters on different fields combined with AND, and on the same field with OR.
+
+    No filters means every item, and no limit means all of them.
+    """
 
     FIELDS: ClassVar[frozenset[str]] = frozenset()
     """The domain field names that subclasses can filter and order by."""
@@ -39,3 +43,10 @@ class Criteria:
         for field in fields:
             if field not in self.FIELDS:
                 raise ValueError(f"<{type(self).__name__}> does not allow the field <{field}>")
+
+    def values_by_field(self) -> Mapping[str, tuple[object, ...]]:
+        """The accepted values of each filtered field: an item matches when every field has one."""
+        values: dict[str, tuple[object, ...]] = {}
+        for condition in self.filters:
+            values[condition.field] = (*values.get(condition.field, ()), condition.value)
+        return values

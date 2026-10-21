@@ -337,6 +337,47 @@ async def test_search_combines_filter_conditions_with_or(
     assert sorted(_ids(found)) == sorted(_ids(stored_feeds[3:]))
 
 
+async def test_search_combines_filters_on_different_fields_with_and(
+    repository: MongoFeedRepository,
+) -> None:
+    cms_sports = FeedMother.random(source=FeedSource.CMS, category=FeedCategory.SPORTS)
+    cms_culture = FeedMother.random(source=FeedSource.CMS, category=FeedCategory.CULTURE)
+    el_mundo_sports = FeedMother.random(source=FeedSource.EL_MUNDO, category=FeedCategory.SPORTS)
+    for feed in (cms_sports, cms_culture, el_mundo_sports):
+        await repository.create(feed)
+
+    found = await repository.search(
+        FeedCriteria(
+            filters=(Filter("source", FeedSource.CMS), Filter("category", FeedCategory.SPORTS))
+        )
+    )
+
+    assert _ids(found) == _ids([cms_sports])
+
+
+async def test_search_ors_filters_on_the_same_field_and_ands_them_with_other_fields(
+    repository: MongoFeedRepository,
+) -> None:
+    cms_sports = FeedMother.random(source=FeedSource.CMS, category=FeedCategory.SPORTS)
+    cms_culture = FeedMother.random(source=FeedSource.CMS, category=FeedCategory.CULTURE)
+    el_mundo_sports = FeedMother.random(source=FeedSource.EL_MUNDO, category=FeedCategory.SPORTS)
+    el_pais_sports = FeedMother.random(source=FeedSource.EL_PAIS, category=FeedCategory.SPORTS)
+    for feed in (cms_sports, cms_culture, el_mundo_sports, el_pais_sports):
+        await repository.create(feed)
+
+    found = await repository.search(
+        FeedCriteria(
+            filters=(
+                Filter("source", FeedSource.CMS),
+                Filter("category", FeedCategory.SPORTS),
+                Filter("source", FeedSource.EL_MUNDO),
+            )
+        )
+    )
+
+    assert sorted(_ids(found)) == sorted(_ids([cms_sports, el_mundo_sports]))
+
+
 async def test_search_sorts_feeds_by_creation_date_descending(
     repository: MongoFeedRepository, stored_feeds: list[Feed]
 ) -> None:

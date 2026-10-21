@@ -30,7 +30,6 @@ from daily_trends_py.contexts.cms.shared.domain.criteria import Filter, Order
 router = APIRouter(route_class=JsonBodyRoute, tags=["feeds"])
 
 NEWEST_FIRST = Order("created_at", "desc")
-LIST_CRITERIA = FeedCriteria(order=NEWEST_FIRST)
 
 _ERROR_DESCRIPTIONS = {
     status.HTTP_400_BAD_REQUEST: "Invalid request: the body, the id or a value",
@@ -59,14 +58,17 @@ admin_router = APIRouter(
 
 @router.get("/feed/list", responses=_errors(400, 500))
 async def list_feeds(
-    searcher: FromDishka[FeedSearcher], category: FeedCategory | None = None
+    searcher: FromDishka[FeedSearcher],
+    category: FeedCategory | None = None,
+    source: FeedSource | None = None,
 ) -> list[FeedResponse]:
-    """Every feed, or only those of `category`, newest first."""
-    criteria = (
-        LIST_CRITERIA
-        if category is None
-        else FeedCriteria(filters=(Filter("category", category),), order=NEWEST_FIRST)
+    """Every feed, or only those of `category` and of `source`, newest first."""
+    filters = tuple(
+        Filter(field, value)
+        for field, value in (("category", category), ("source", source))
+        if value is not None
     )
+    criteria = FeedCriteria(filters=filters, order=NEWEST_FIRST)
     return [FeedResponse.from_feed(feed) for feed in await searcher.execute(criteria)]
 
 

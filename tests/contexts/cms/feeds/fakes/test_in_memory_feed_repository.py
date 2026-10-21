@@ -3,7 +3,7 @@ import pytest
 from daily_trends_py.contexts.cms.feeds.domain.errors import FeedAlreadyExists, FeedNotFound
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
-from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedSource
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedCategory, FeedSource
 from daily_trends_py.contexts.cms.shared.domain.criteria import Filter, Order
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
@@ -60,6 +60,41 @@ async def test_search_combines_filters_with_or() -> None:
     )
 
     assert found == [OLDEST, NEWEST]
+
+
+async def test_search_combines_filters_on_different_fields_with_and() -> None:
+    cms_sports = FeedMother.random(source=FeedSource.CMS, category=FeedCategory.SPORTS)
+    cms_culture = FeedMother.random(source=FeedSource.CMS, category=FeedCategory.CULTURE)
+    el_mundo_sports = FeedMother.random(source=FeedSource.EL_MUNDO, category=FeedCategory.SPORTS)
+    repository = InMemoryFeedRepository([cms_sports, cms_culture, el_mundo_sports])
+
+    found = await repository.search(
+        FeedCriteria(
+            filters=(Filter("source", FeedSource.CMS), Filter("category", FeedCategory.SPORTS))
+        )
+    )
+
+    assert found == [cms_sports]
+
+
+async def test_search_ors_filters_on_the_same_field_and_ands_them_with_other_fields() -> None:
+    cms_sports = FeedMother.random(source=FeedSource.CMS, category=FeedCategory.SPORTS)
+    cms_culture = FeedMother.random(source=FeedSource.CMS, category=FeedCategory.CULTURE)
+    el_mundo_sports = FeedMother.random(source=FeedSource.EL_MUNDO, category=FeedCategory.SPORTS)
+    el_pais_sports = FeedMother.random(source=FeedSource.EL_PAIS, category=FeedCategory.SPORTS)
+    repository = InMemoryFeedRepository([cms_sports, cms_culture, el_mundo_sports, el_pais_sports])
+
+    found = await repository.search(
+        FeedCriteria(
+            filters=(
+                Filter("source", FeedSource.CMS),
+                Filter("category", FeedCategory.SPORTS),
+                Filter("source", FeedSource.EL_MUNDO),
+            )
+        )
+    )
+
+    assert found == [cms_sports, el_mundo_sports]
 
 
 async def test_search_filters_by_the_primitive_value_of_a_field() -> None:
