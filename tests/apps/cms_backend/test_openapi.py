@@ -46,7 +46,7 @@ def test_describes_the_api(document: Json) -> None:
 
     assert info["title"] == "Daily trends"
     assert info["version"] == version("daily-trends-py")
-    assert info["description"]
+    assert "scraped when the API starts and then every 2 hours" in cast(str, info["description"])
 
 
 def test_lists_every_route(document: Json) -> None:
@@ -178,6 +178,13 @@ def test_the_front_page_describes_its_per_source_selection(document: Json) -> No
     description = cast(str, _get(document, "paths", "/feed/home", "get", "description"))
 
     assert "2 newest feeds of each external source" in description
+    assert "refresh" not in description
+
+
+def test_the_manual_scraping_says_it_waits_for_a_run_in_progress(document: Json) -> None:
+    description = cast(str, _get(document, "paths", "/feed/scrap", "get", "description"))
+
+    assert "waits for a scraping run in progress" in description
 
 
 def test_the_feed_category_lists_every_category(document: Json) -> None:

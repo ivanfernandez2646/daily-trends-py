@@ -25,6 +25,7 @@ Each spec is a **capability** and is self-contained: it holds its own HTTP contr
 | S07 | Front page | S03, S06 |
 | S08 | More sources | S06, S07, I02, I03 |
 | S09 | Feed category and article URL | S02, S03, S04, S06, S08, I02, I07 |
+| S10 | Scheduled scraping | S06, S07, S08, I02, I03, I04 |
 | S11 | Authentication (`cms/users`, in `specs/users/`) | S01, S02, S04, S05, S06, I04, I06, I07 |
 | S12 | Browse feeds: pagination, filters by source and text search | S03, S08, S09, I05, I07, I08 |
 | S13 | Administrator session (`GET /auth/me`, in `specs/users/`) | S11 |
@@ -43,7 +44,7 @@ Implementation order is the table order. S04 and S05 are independent of each oth
 - **Scrap:** acquiring headlines from the El Mundo, El Español, El Confidencial, La Razón and La Vanguardia front pages (El País in the original; see S06 and S08).
 
 ## Out of scope
-Scheduler, pagination, Django, production deployment. Known improvements are in `improvements/`.
+Pagination, Django, production deployment. Known improvements are in `improvements/`.
 
 ## Source of truth for behavior
 The Node reference repo (`reference/daily-trends-node`): the `.feature` files under `tests/apps/cms/backend/controllers/**` and `docs/openapi.yml`. If a spec and a `.feature` disagree, the `.feature` wins and the discrepancy is noted.

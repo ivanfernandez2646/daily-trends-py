@@ -14,11 +14,11 @@ from daily_trends_py.apps.cms_backend.settings import Settings
 from daily_trends_py.contexts.cms.feeds.application.create.feed_creator import FeedCreator
 from daily_trends_py.contexts.cms.feeds.application.delete.feed_deleter import FeedDeleter
 from daily_trends_py.contexts.cms.feeds.application.find.feed_finder import FeedFinder
-from daily_trends_py.contexts.cms.feeds.application.home.feed_home_refresher import (
-    FeedHomeRefresher,
-)
 from daily_trends_py.contexts.cms.feeds.application.home.feed_home_searcher import (
     FeedHomeSearcher,
+)
+from daily_trends_py.contexts.cms.feeds.application.scrape.feed_scrape_scheduler import (
+    FeedScrapeScheduler,
 )
 from daily_trends_py.contexts.cms.feeds.application.scrape.feed_scraper import FeedScraper
 from daily_trends_py.contexts.cms.feeds.application.search.feed_searcher import FeedSearcher
@@ -56,7 +56,7 @@ FEED_USE_CASES = (
 
 
 class FeedsProvider(Provider):
-    """The feeds subdomain: its repository, scrapers, background refresher and use cases."""
+    """The feeds subdomain: its repository, scrapers, scrape scheduler and use cases."""
 
     scope = Scope.APP
 
@@ -90,12 +90,12 @@ class FeedsProvider(Provider):
         )
 
     @provide
-    async def feed_home_refresher(
-        self, settings: Settings, scraper: FeedScraper, clock: Clock
-    ) -> AsyncIterator[FeedHomeRefresher]:
-        # A background run keeps using both clients, so it is closed before them.
-        refresher = FeedHomeRefresher(
-            scraper, clock, timedelta(seconds=settings.scrape_cooldown_seconds)
+    async def feed_scrape_scheduler(
+        self, settings: Settings, scraper: FeedScraper
+    ) -> AsyncIterator[FeedScrapeScheduler]:
+        # A scheduled run keeps using both clients, so it is closed before them.
+        scheduler = FeedScrapeScheduler(
+            scraper, timedelta(seconds=settings.scrape_interval_seconds)
         )
-        yield refresher
-        await refresher.aclose()
+        yield scheduler
+        await scheduler.aclose()

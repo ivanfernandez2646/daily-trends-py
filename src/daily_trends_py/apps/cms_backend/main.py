@@ -17,6 +17,9 @@ from daily_trends_py.apps.cms_backend.container import STARTUP_DEPENDENCIES, cre
 from daily_trends_py.apps.cms_backend.errors import register_error_handling
 from daily_trends_py.apps.cms_backend.routes import register_routes
 from daily_trends_py.apps.cms_backend.settings import Settings
+from daily_trends_py.contexts.cms.feeds.application.scrape.feed_scrape_scheduler import (
+    FeedScrapeScheduler,
+)
 from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.migrations.migration import (  # noqa: E501
     Migration,
 )
@@ -28,7 +31,10 @@ logger = logging.getLogger(__name__)
 
 DESCRIPTION = (
     "Front-page news feeds: CMS feeds managed through this API and headlines scraped from"
-    ' El Mundo and El Español. Every error answers `{"error": "<message>"}`: 400 for an invalid'
+    " El Mundo, El Español, El Confidencial, La Razón and La Vanguardia. The front pages are"
+    " scraped when the API starts and then every 2 hours by default (`SCRAPE_INTERVAL_SECONDS`),"
+    " and `/feed/scrap` scrapes them on demand."
+    ' Every error answers `{"error": "<message>"}`: 400 for an invalid'
     " request, 404 for a missing feed, 409 for an existing id, and 500 for anything else, always"
     ' with `{"error": "Internal server error"}`.'
 )
@@ -42,6 +48,9 @@ def create_app(container: AsyncContainer) -> FastAPI:
             # traffic.
             for dependency in STARTUP_DEPENDENCIES:
                 await container.get(dependency)
+            settings = await container.get(Settings)
+            if settings.scrape_schedule_enabled:
+                (await container.get(FeedScrapeScheduler)).start()
             yield
         finally:
             await container.close()

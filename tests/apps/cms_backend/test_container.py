@@ -8,8 +8,8 @@ from pymongo.errors import InvalidOperation
 from daily_trends_py.apps.cms_backend.container import create_container
 from daily_trends_py.apps.cms_backend.providers.feeds import FEED_USE_CASES
 from daily_trends_py.apps.cms_backend.settings import Settings
-from daily_trends_py.contexts.cms.feeds.application.home.feed_home_refresher import (
-    FeedHomeRefresher,
+from daily_trends_py.contexts.cms.feeds.application.scrape.feed_scrape_scheduler import (
+    FeedScrapeScheduler,
 )
 from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
 from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_client_factory import (  # noqa: E501
@@ -49,7 +49,7 @@ async def test_closing_the_container_closes_its_resources(settings: Settings) ->
     container = create_container(settings)
     mongo_client = await container.get(MongoClient)
     http_client = await container.get(httpx.AsyncClient)
-    await container.get(FeedHomeRefresher)
+    await container.get(FeedScrapeScheduler)
 
     await container.close()
 

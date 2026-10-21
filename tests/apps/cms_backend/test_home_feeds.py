@@ -1,3 +1,4 @@
+import asyncio
 from collections import Counter
 from datetime import UTC, datetime, timedelta
 
@@ -6,18 +7,13 @@ from dishka import AsyncContainer
 from fastapi.testclient import TestClient
 from pytest_bdd import scenarios
 
-from daily_trends_py.contexts.cms.feeds.application.home.feed_home_refresher import (
-    FeedHomeRefresher,
-)
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
 from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedSource
 from tests.apps.cms_backend.conftest import resolve, run_in_app
-from tests.apps.cms_backend.isolated_settings import IsolatedSettings
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
-from tests.mongo import TEST_MONGO_URL
-from tests.scrape_fixtures import EVERY_FRONT_PAGE_HOST, FrontPagesTransport
+from tests.scrape_fixtures import FrontPagesTransport
 
 pytestmark = pytest.mark.integration
 
@@ -77,76 +73,17 @@ def test_home_shows_two_feeds_of_each_source_after_scraping(client: TestClient) 
     }
 
 
-def _save_stale_feed(container: AsyncContainer, client: TestClient) -> Feed:
+def test_home_answers_a_stale_front_page_as_it_is_without_scraping(
+    container: AsyncContainer, client: TestClient, front_pages_transport: FrontPagesTransport
+) -> None:
     stale = _feed_created_at(datetime(2023, 6, 17, 14, 58, tzinfo=UTC), FeedSource.EL_MUNDO)
     repository = resolve(client, container, FeedRepository)
     run_in_app(client, lambda: repository.create(stale))
-    return stale
-
-
-def _wait_for_the_background_scraping(container: AsyncContainer, client: TestClient) -> None:
-    refresher = resolve(client, container, FeedHomeRefresher)
-    run_in_app(client, refresher.join)
-
-
-def test_home_answers_the_stale_feeds_and_shows_the_scraped_ones_after_the_background_run(
-    container: AsyncContainer, client: TestClient
-) -> None:
-    stale = _save_stale_feed(container, client)
-
-    stale_response = client.get("/feed/home")
-    _wait_for_the_background_scraping(container, client)
-    fresh_response = client.get("/feed/home")
-
-    assert stale_response.status_code == 200
-    assert [feed["id"] for feed in stale_response.json()] == [stale.id.value]
-    assert len(client.get("/feed/list").json()) == 26
-    assert fresh_response.status_code == 200
-    fresh_ids = [feed["id"] for feed in fresh_response.json()]
-    assert len(fresh_ids) == 10
-    assert stale.id.value not in fresh_ids
-
-
-@pytest.mark.parametrize(
-    "front_pages_transport",
-    [FrontPagesTransport(failing_hosts=EVERY_FRONT_PAGE_HOST)],
-)
-def test_home_keeps_the_stale_feeds_without_retrying_in_the_cooldown_when_every_source_fails(
-    container: AsyncContainer, client: TestClient, front_pages_transport: FrontPagesTransport
-) -> None:
-    stale = _save_stale_feed(container, client)
-    client.get("/feed/home")
-    _wait_for_the_background_scraping(container, client)
-    requests_of_the_first_run = len(front_pages_transport.requests)
 
     response = client.get("/feed/home")
-    _wait_for_the_background_scraping(container, client)
+    # Lets a background run, if one had been started, reach the scraped sites.
+    run_in_app(client, lambda: asyncio.sleep(0.1))
 
     assert response.status_code == 200
     assert [feed["id"] for feed in response.json()] == [stale.id.value]
-    assert requests_of_the_first_run > 0
-    assert len(front_pages_transport.requests) == requests_of_the_first_run
-
-
-@pytest.mark.parametrize(
-    ("settings", "front_pages_transport"),
-    [
-        (
-            IsolatedSettings(mongo_url=TEST_MONGO_URL, scrape_cooldown_seconds=0),
-            FrontPagesTransport(failing_hosts=EVERY_FRONT_PAGE_HOST),
-        )
-    ],
-)
-def test_home_retries_right_after_a_failed_run_when_the_cooldown_is_zero(
-    container: AsyncContainer, client: TestClient, front_pages_transport: FrontPagesTransport
-) -> None:
-    _save_stale_feed(container, client)
-    client.get("/feed/home")
-    _wait_for_the_background_scraping(container, client)
-    requests_of_the_first_run = len(front_pages_transport.requests)
-
-    client.get("/feed/home")
-    _wait_for_the_background_scraping(container, client)
-
-    assert requests_of_the_first_run > 0
-    assert len(front_pages_transport.requests) == 2 * requests_of_the_first_run
+    assert front_pages_transport.requests == []

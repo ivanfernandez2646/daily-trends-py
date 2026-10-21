@@ -13,6 +13,8 @@
 
 > **Superseded by [I03](../improvements/I03-background-front-page-scraping.md):** a stale page requests one scraping run in the background and the response is the first search, without waiting or searching again.
 
+> **Superseded by [S10](S10-scheduled-scraping.md):** `/feed/home` only reads and never starts a scraping run, whatever the age of its newest feed; feeds are scraped on a schedule.
+
 > **Superseded by [I04](../improvements/I04-configuration.md):** the day comparison uses the business timezone (`TIMEZONE`, default `Europe/Madrid`), not the server's local time.
 
 - If scraping fails with a propagated error, the response is 500 (only 400 is mapped for this route).
