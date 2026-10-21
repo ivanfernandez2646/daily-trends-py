@@ -39,7 +39,8 @@ DESCRIPTION = (
     " scraped when the API starts and then every 2 hours by default (`SCRAPE_INTERVAL_SECONDS`),"
     " and `/feed/scrap` scrapes them on demand."
     " Creating, updating and deleting feeds and `/feed/scrap` need an administrator's bearer"
-    " access token, from `/auth/login`; reading feeds is public."
+    " access token, from `/auth/login`, and so does `/auth/me`, which answers who the token"
+    " belongs to and when it expires; reading feeds is public."
     ' Every error answers `{"error": "<message>"}`: 400 for an invalid request, 401 for missing'
     " or invalid credentials, 404 for a missing feed, 409 for an existing id, and 500 for"
     ' anything else, always with `{"error": "Internal server error"}`.'

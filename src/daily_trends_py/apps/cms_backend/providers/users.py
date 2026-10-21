@@ -14,6 +14,9 @@ from daily_trends_py.contexts.cms.users.application.authenticate.user_authentica
     UserAuthenticator,
 )
 from daily_trends_py.contexts.cms.users.application.create.user_creator import UserCreator
+from daily_trends_py.contexts.cms.users.application.find_session.admin_session_finder import (
+    AdminSessionFinder,
+)
 from daily_trends_py.contexts.cms.users.domain.access_token_issuer import AccessTokenIssuer
 from daily_trends_py.contexts.cms.users.domain.access_token_verifier import AccessTokenVerifier
 from daily_trends_py.contexts.cms.users.domain.password_hasher import PasswordHasher
@@ -28,7 +31,7 @@ from daily_trends_py.contexts.cms.users.infrastructure.tokens.jwt_access_tokens 
     JwtAccessTokens,
 )
 
-USER_USE_CASES = (UserCreator, UserAuthenticator)
+USER_USE_CASES = (UserCreator, UserAuthenticator, AdminSessionFinder)
 
 
 class UsersProvider(Provider):
@@ -41,6 +44,7 @@ class UsersProvider(Provider):
 
     user_creator = provide(UserCreator)
     user_authenticator = provide(UserAuthenticator)
+    admin_session_finder = provide(AdminSessionFinder)
 
     @provide
     def access_tokens(

@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import jwt
@@ -11,6 +11,7 @@ from daily_trends_py.contexts.cms.shared.domain.invalid_argument_error import (
 from daily_trends_py.contexts.cms.users.domain.access_token import AccessToken
 from daily_trends_py.contexts.cms.users.domain.errors import InvalidAccessToken
 from daily_trends_py.contexts.cms.users.domain.value_objects import UserId
+from daily_trends_py.contexts.cms.users.domain.verified_access_token import VerifiedAccessToken
 
 _ALGORITHM = "HS256"
 # PyJWT checks times against the system clock, so expiry is checked against `Clock` instead.
@@ -42,13 +43,15 @@ class JwtAccessTokens:
         }
         return AccessToken(_encode(claims, self._secret_key), self._ttl_seconds)
 
-    def verify(self, token: str) -> UserId:
+    def verify(self, token: str) -> VerifiedAccessToken:
         try:
             claims = _decode(token, self._secret_key)
             # PyJWT already rejects an `exp` that is not a number.
             if self._clock.now().timestamp() >= claims["exp"]:
                 raise InvalidAccessToken()
-            return UserId(claims["sub"])
+            return VerifiedAccessToken(
+                UserId(claims["sub"]), datetime.fromtimestamp(claims["exp"], UTC)
+            )
         except (jwt.InvalidTokenError, InvalidArgumentError) as error:
             raise InvalidAccessToken() from error
 

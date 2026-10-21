@@ -6,6 +6,7 @@ import jwt
 import pytest
 
 from daily_trends_py.contexts.cms.users.domain.errors import InvalidAccessToken
+from daily_trends_py.contexts.cms.users.domain.verified_access_token import VerifiedAccessToken
 from daily_trends_py.contexts.cms.users.infrastructure.tokens.jwt_access_tokens import (
     JwtAccessTokens,
 )
@@ -46,13 +47,16 @@ def valid_claims() -> dict[str, object]:
     }
 
 
-def test_a_token_verifies_back_to_the_user_it_was_issued_for() -> None:
-    tokens = tokens_at(FixedClock(ISSUED_AT))
+def test_a_token_verifies_back_to_its_user_and_its_expiry() -> None:
+    clock = FixedClock(ISSUED_AT)
+    tokens = tokens_at(clock)
     user_id = UserIdMother.random()
-
     token = tokens.issue(user_id)
 
-    assert tokens.verify(token.value) == user_id
+    clock.advance(timedelta(minutes=30))
+    verified = tokens.verify(token.value)
+
+    assert verified == VerifiedAccessToken(user_id, datetime(2026, 10, 21, 11, 0, 0, tzinfo=UTC))
 
 
 def test_a_token_carries_the_user_and_clock_based_issue_and_expiry_times() -> None:

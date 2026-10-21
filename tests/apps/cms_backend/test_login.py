@@ -41,7 +41,7 @@ def test_valid_credentials_answer_a_bearer_token_for_the_admin(
     assert body["token_type"] == "bearer"
     assert body["expires_in"] == settings.auth_token_ttl_seconds
     verifier = resolve(client, container, AccessTokenVerifier)
-    assert verifier.verify(body["access_token"]) == admin_id
+    assert verifier.verify(body["access_token"]).user_id == admin_id
 
 
 @pytest.mark.parametrize(

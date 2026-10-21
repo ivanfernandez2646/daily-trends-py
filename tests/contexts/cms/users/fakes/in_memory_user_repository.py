@@ -1,6 +1,6 @@
 from daily_trends_py.contexts.cms.users.domain.errors import UserAlreadyExists
 from daily_trends_py.contexts.cms.users.domain.user import User
-from daily_trends_py.contexts.cms.users.domain.value_objects import UserEmail
+from daily_trends_py.contexts.cms.users.domain.value_objects import UserEmail, UserId
 
 
 class InMemoryUserRepository:
@@ -16,3 +16,6 @@ class InMemoryUserRepository:
 
     async def find_by_email(self, email: UserEmail) -> User | None:
         return self._users.get(email.value)
+
+    async def find_by_id(self, id: UserId) -> User | None:
+        return next((user for user in self._users.values() if user.id == id), None)
