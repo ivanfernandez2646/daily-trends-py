@@ -8,6 +8,8 @@ Re-implement daily-trends in Python (FastAPI + Mongo) with the same observable b
 ## What the system is
 A news API ("feeds"). A feed is a headline with an author and an optional description. Sources: `CMS` (created by hand through the API), `EL_MUNDO`, `EL_ESPANOL`, `EL_CONFIDENCIAL`, `LA_RAZON` and `LA_VANGUARDIA` (obtained by scraping their front pages, see S06 and S08), and `EL_PAIS` (scraped by the original; no longer scraped, see S06).
 
+From S14, a web app in `web/` sits on top of the API: a public reader with the front page, a browse page and the detail of each feed, always crediting and linking to the original article, and from S15 a CMS for administrators. It lives in this repository so that an API change and its frontend change travel together.
+
 ## Bounded context
 A single one, `cms`, with the subdomain `feeds` and, from S11, `users`.
 

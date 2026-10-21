@@ -1,3 +1,4 @@
+import json
 import os
 import socket
 import subprocess
@@ -8,9 +9,14 @@ from pathlib import Path
 import pytest
 from pymongo import MongoClient
 
+from daily_trends_py.apps.cms_backend.container import create_container
+from daily_trends_py.apps.cms_backend.main import create_app, main
+from tests.apps.cms_backend.isolated_settings import IsolatedSettings
 from tests.mongo import TEST_MONGO_URL, fresh_database_name, mongo_url_for
 
 RUN_MAIN = "from daily_trends_py.apps.cms_backend.main import main; main()"
+
+RUN_OPENAPI = "from daily_trends_py.apps.cms_backend.main import main; main(['openapi'])"
 
 RUN_MAIN_WITH_FAILING_MIGRATION = """
 from daily_trends_py.apps.cms_backend.main import main
@@ -122,3 +128,25 @@ def test_exits_with_code_1_when_a_migration_fails(tmp_path: Path) -> None:
 
     assert result.returncode == 1
     assert "Migration m_test_fails failed" in result.stderr
+
+
+def test_openapi_prints_the_document_of_the_app(capsys: pytest.CaptureFixture[str]) -> None:
+    main(["openapi"])
+
+    printed = json.loads(capsys.readouterr().out)
+    app = create_app(create_container(IsolatedSettings(mongo_url=TEST_MONGO_URL)))
+    assert printed == app.openapi()
+
+
+def test_openapi_needs_neither_configuration_nor_mongo(tmp_path: Path) -> None:
+    without_required_settings = {
+        name: value
+        for name, value in os.environ.items()
+        if name not in {"MONGO_URL", "AUTH_SECRET_KEY"}
+    }
+    (tmp_path / ".env").write_text("TIMEZONE=Mars/Olympus\n")
+
+    result = run_main(tmp_path, without_required_settings, script=RUN_OPENAPI, ENV="production")
+
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["info"]["title"] == "Daily trends"

@@ -1,0 +1,87 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+@theme inline {
+  --color-*: initial;
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-canvas: var(--canvas);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-meta: var(--meta);
+  --color-rule: var(--rule);
+  --color-field-border: var(--field-border);
+  --color-accent: var(--accent);
+  --color-danger: var(--danger);
+  --color-success-bg: var(--success-bg);
+  --color-success-fg: var(--success-fg);
+  --color-error-bg: var(--error-bg);
+  --color-error-fg: var(--error-fg);
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --font-serif: "Newsreader Variable", Georgia, serif;
+  --font-sans: "Inter Variable", system-ui, sans-serif;
+
+  /* The larger styles grow from their mobile size to their desktop size. */
+  --text-masthead: clamp(2.5rem, 1.6rem + 3.6vw, 4rem);
+  --text-masthead--line-height: 1;
+  --text-masthead--letter-spacing: -0.025em;
+  --text-masthead--font-weight: 500;
+  --text-display: clamp(1.875rem, 1rem + 3.5vw, 3.5rem);
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.02em;
+  --text-display--font-weight: 500;
+  --text-title-1: clamp(2.25rem, 1.8rem + 1.8vw, 3rem);
+  --text-title-1--line-height: 1.1;
+  --text-title-1--letter-spacing: -0.015em;
+  --text-title-1--font-weight: 500;
+  --text-title-2: clamp(1.3125rem, 1.2rem + 0.45vw, 1.5rem);
+  --text-title-2--line-height: 1.2;
+  --text-title-2--font-weight: 500;
+  --text-lead: clamp(1.125rem, 0.95rem + 0.7vw, 1.4375rem);
+  --text-lead--line-height: 1.5;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.5;
+  /* The Meta style; `text-meta` is already the color. */
+  --text-caption: 0.8125rem;
+  --text-caption--line-height: 1.4;
+  --text-label: 0.6875rem;
+  --text-label--line-height: 1.2;
+  --text-label--letter-spacing: 0.1em;
+  --text-label--font-weight: 600;
+
+  --radius-field: 8px;
+  --radius-card: 12px;
+  --radius-dialog: 16px;
+
+  --container-content: 1200px;
+  --container-reading: 760px;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    /* biome-ignore lint/complexity/noImportantStyles: reduced motion must win over every utility. */
+    animation-duration: 0s !important;
+    /* biome-ignore lint/complexity/noImportantStyles: reduced motion must win over every utility. */
+    transition-duration: 0s !important;
+  }
+}

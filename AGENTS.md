@@ -87,3 +87,47 @@ uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run 
 
 After each coherent slice, run lint, type-check, and the relevant test suite. Before handing off a
 phase, run the full quality gate and fix errors introduced by the change.
+
+## Web
+
+The web app lives in `web/` (specs in `specs/web/`, its look in `specs/web/design-system.md`). It has
+its own toolchain: Node from `web/.nvmrc`, pnpm pinned through `packageManager` (run
+`corepack enable` once). The Python tooling never looks inside `web/`, and the web tooling never
+looks outside it, except `pnpm api:generate`.
+
+```bash
+cd web
+pnpm install                 # install
+pnpm dev                     # the app on http://localhost:5173, proxying the API on PORT
+pnpm api:generate            # after any route or schema change in the API
+pnpm lint                    # Biome
+pnpm typecheck               # tsc
+pnpm test                    # Vitest
+pnpm build                   # production build
+pnpm e2e                     # Playwright: the real API and Mongo with the built app
+```
+
+Web quality gate, from `web/`:
+
+```bash
+pnpm biome ci . && pnpm tsc --noEmit && pnpm vitest run && pnpm build && pnpm playwright test
+```
+
+- The API contract is generated: `pnpm api:generate` writes `web/openapi.json` (from
+  `uv run daily-trends-py openapi`) and `web/src/api/schema.gen.ts`. Commit both. CI fails when they
+  are out of date. Never edit generated files (`*.gen.ts`, `openapi.json`).
+- Layout of `web/src`: `api/` (generated types, client, one query module per resource),
+  `components/ui/` (Tinta components on shadcn/ui primitives), `features/<area>/` (screens and their
+  parts), `routes/` (TanStack Router file routes, thin), `lib/` (labels, dates and small helpers),
+  `styles/` (tokens and global styles).
+- Components never call `fetch`: they use the hooks of `src/api`, built on the typed client
+  (`src/api/client.ts`). Response types come from `schema.gen.ts`, never from hand-written
+  interfaces.
+- Tests use MSW as a fake API that answers like the real one (`src/test/server.ts`, feed mothers
+  in `src/test/`). No `vi.mock` or module mocking. A request without a handler fails the test.
+- End-to-end tests (`web/tests/e2e/`) run the real API with `ENV=test` and scheduled scraping off
+  against the `daily-trends-e2e` database, which each test empties and seeds through the `feeds`
+  fixture. They never call `/feed/scrap`: it reads the real newspapers.
+- TypeScript is `strict`. No `any` without a comment that justifies it.
+- The interface is in Spanish; code, comments, tests and commits stay in English.
+- Styles use the Tinta tokens, never raw colors.

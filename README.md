@@ -140,6 +140,42 @@ curl -s localhost:5000/auth/me -H 'Authorization: Bearer <jwt>'
 In Swagger UI (`/docs`), paste it in *Authorize*. An
 unknown email and a wrong password both answer 401 `{"error": "Invalid email or password"}`.
 
+## Web app
+
+The reader lives in [`web/`](web/) ([S14](specs/web/S14-web-reader.md)): Vite, React and TypeScript,
+with types generated from the API's OpenAPI document. Requirements: Node 24 (`web/.nvmrc`) and
+pnpm through Corepack.
+
+```bash
+corepack enable                   # once: provides the pnpm version pinned in web/package.json
+cd web && pnpm install
+pnpm dev                          # http://localhost:5173
+```
+
+Run the API at the same time (see [Getting started](#getting-started)). In development the app
+proxies `/feed/…`, `/auth/…` and `/status` to `http://localhost:<PORT>`, with `PORT` from the
+repository's `.env` (default `5000`), so the browser talks to a single origin. `VITE_API_BASE_URL`
+sets the API origin for a build.
+
+After changing a route or a schema in the API, regenerate the contract and commit it:
+
+```bash
+pnpm api:generate                 # runs `uv run daily-trends-py openapi` and regenerates the types
+```
+
+`uv run daily-trends-py openapi` prints the OpenAPI document without starting the API or reading
+any configuration. CI fails when `web/openapi.json` or `web/src/api/schema.gen.ts` are out of date.
+
+End-to-end tests need MongoDB (`docker compose up -d --wait mongo`) and Chromium
+(`pnpm exec playwright install chromium`, once). `pnpm e2e` starts the API on port 5199 against the
+`daily-trends-e2e` database, with scheduled scraping off, and the built app on port 4173.
+
+Web quality gate, from `web/`:
+
+```bash
+pnpm biome ci . && pnpm tsc --noEmit && pnpm vitest run && pnpm build && pnpm playwright test
+```
+
 ## Development
 
 ```bash
@@ -182,8 +218,17 @@ src/daily_trends_py/
     users/                    subdomain: administrators
     shared/                   shared kernel of the context
 tests/                        mirrors src/ (apps/cms_backend, contexts/cms/...)
+web/                          the web app: reader (S14), with its own toolchain
+  openapi.json                the API contract, generated
+  src/api/                    generated types, typed client, query hooks
+  src/components/ui/          Tinta design system components
+  src/features/feeds/         reader screens and their parts
+  src/routes/                 file routes
+  tests/e2e/                  Playwright against the real API and MongoDB
 specs/
-  feeds/                      functional specs (S00 to S07)
+  feeds/                      functional specs of the feeds subdomain, from S00
+  users/                      administrators and sessions (S11, S13)
+  web/                        the web app (S14, S15) and its design system
   improvements/               known defects, out of scope for the port
 .agents/                      agent skills and plans
 AGENTS.md                     agent guide (single source of truth)
