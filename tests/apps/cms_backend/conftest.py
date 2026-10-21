@@ -17,10 +17,12 @@ from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedCategory
 from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_client_factory import (  # noqa: E501
     MongoClient,
 )
+from daily_trends_py.contexts.cms.users.domain.access_token_issuer import AccessTokenIssuer
 from tests.apps.cms_backend.isolated_settings import IsolatedSettings
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
 from tests.contexts.cms.feeds.domain.feed_updated_at_mother import FeedUpdatedAtMother
+from tests.contexts.cms.users.domain.user_id_mother import UserIdMother
 from tests.mongo import TEST_MONGO_URL
 from tests.scrape_fixtures import FrontPagesTransport
 
@@ -66,7 +68,26 @@ def client(
         database = resolve_mongo_client(test_client, container).get_default_database()
         for collection in (database["feeds"], database["users"]):
             run_in_app(test_client, lambda collection=collection: collection.delete_many({}))
+        authenticate(test_client, container)
         yield test_client
+
+
+@pytest.fixture
+def anonymous_client(client: TestClient) -> TestClient:
+    """The same client, without the access token it sends by default."""
+    del client.headers["Authorization"]
+    return client
+
+
+def access_token_for(client: TestClient, container: AsyncContainer) -> str:
+    """A valid access token for some user: verifying one never reads the stored users."""
+    issuer = resolve(client, container, AccessTokenIssuer)
+    return issuer.issue(UserIdMother.random()).value
+
+
+def authenticate(client: TestClient, container: AsyncContainer) -> None:
+    """Send a valid access token with every request, as an administrator would."""
+    client.headers["Authorization"] = f"Bearer {access_token_for(client, container)}"
 
 
 def resolve[T](client: TestClient, container: AsyncContainer, dependency: type[T]) -> T:

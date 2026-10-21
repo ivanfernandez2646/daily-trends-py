@@ -7,7 +7,11 @@ created_at: '2026-10-21T09:19:25Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-21T12:00:00Z'
+updated_at: '2026-10-21T14:00:00Z'
+implemented_at: '2026-10-21T14:00:00Z'
+implemented_by:
+  tool: 'Claude Code'
+  model: 'claude-opus-5-5'
 ---
 
 # S11 · Authentication
@@ -384,7 +388,7 @@ The feed write routes and `/feed/scrap` require the bearer token, checked before
 
 ### Tests first
 
-- [ ] `tests/apps/cms_backend/test_authentication.py`, parametrized over the 4 protected routes:
+- [x] `tests/apps/cms_backend/test_authentication.py`, parametrized over the 4 protected routes:
   - **"Authentication required" 401:**
     - no header, an empty header, `Basic YWRtaW46c2VjcmV0` and `Bearer` with no token;
     - each carries `WWW-Authenticate: Bearer`.
@@ -394,34 +398,49 @@ The feed write routes and `/feed/scrap` require the bearer token, checked before
     - each carries the same header.
   - The scheme `bearer` in lowercase is accepted.
   - A valid token gives today's behavior: 201, 200, 204 and 200.
-- [ ] Order and side effects:
+- [x] Order and side effects:
   - `PUT /feed/{id}` without a token answers 401 for an invalid field, for malformed JSON and for a
     `text/plain` content type.
   - `DELETE` of a missing feed without a token answers 401.
   - `PATCH` with an invalid id without a token answers 401.
   - `GET /feed/scrap` without a token answers 401, and `front_pages_transport.requests` stays
     empty.
-- [ ] Public routes without a token: `/feed/list`, `/feed/home`, `GET /feed/{id}`, `/status`,
+- [x] Public routes without a token: `/feed/list`, `/feed/home`, `GET /feed/{id}`, `/status`,
   `/docs`, `/redoc` and `/openapi.json` all answer as today.
-- [ ] `test_openapi.py`:
+- [x] `test_openapi.py`:
   - The bearer scheme is declared.
   - `security` is on exactly the protected operations, and no other has it.
   - The protected routes add `401` to the expected error statuses.
-- [ ] Existing HTTP tests and BDD features pass unchanged through the authenticated `client`.
+- [x] Existing HTTP tests and BDD features pass unchanged through the authenticated `client`.
   `test_json_body_route.py` and `test_errors.py` keep working: they use their own routers or an
   authenticated client.
 
 ### Implementation
 
-- [ ] Add `authentication.py` and `AdminRoute`.
-- [ ] Split `feed.py` into `admin_router` and `router`, and set the registration order.
-- [ ] Add the 401 descriptions in `_ERROR_DESCRIPTIONS`.
-- [ ] Add the authenticated `client` fixture and `anonymous_client`.
-- [ ] Refactor without changing behavior.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+Notes from implementing it:
+
+- **401 response:** `admin_router` declares it once, with `responses=_errors(401)`. The route
+  decorators keep their own statuses.
+- **Expired tokens:** `access_token_for(client, container) -> str` takes no `at` parameter. The
+  expiry tests build `JwtAccessTokens` with the app's key and a `FixedClock` set in the past.
+- **Router test:** `test_feed_router.py` builds its own app, so it calls the shared
+  `authenticate(client, container)` helper.
+- **Extra 401 cases:** `Bearer ` with a blank token, an empty body on `PUT`, and a `Token` scheme
+  also answer 401 `Authentication required`.
+- **Docs:** the README API table marks the protected routes, and the OpenAPI description says
+  which routes need a token.
+
+
+- [x] Add `authentication.py` and `AdminRoute`.
+- [x] Split `feed.py` into `admin_router` and `router`, and set the registration order.
+- [x] Add the 401 descriptions in `_ERROR_DESCRIPTIONS`.
+- [x] Add the authenticated `client` fixture and `anonymous_client`.
+- [x] Refactor without changing behavior.
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ## Next step
 
-Phase 2 is implemented and waiting for review. After it is approved, run
-`/ai-project-implement-phase` in `/Users/ivanpersonal/Repos/daily-trends-py` to implement Phase 3.
+Every phase is implemented. After Phase 3 is reviewed and committed, push
+`feat/s11-authentication` with `--force-with-lease` (the remote branch still has an earlier draft
+of the spec) and open the pull request.

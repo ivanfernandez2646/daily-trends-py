@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from daily_trends_py.apps.cms_backend.container import create_container
 from daily_trends_py.apps.cms_backend.main import create_app
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
+from tests.apps.cms_backend.conftest import authenticate
 from tests.apps.cms_backend.fakes_provider import FakesProvider
 from tests.apps.cms_backend.isolated_settings import IsolatedSettings
 from tests.contexts.cms.feeds.domain.feed_description_mother import FeedDescriptionMother
@@ -34,6 +35,7 @@ def client(repository: InMemoryFeedRepository) -> Iterator[TestClient]:
         IsolatedSettings(mongo_url=TEST_MONGO_URL), FakesProvider(repository=repository)
     )
     with TestClient(create_app(container)) as test_client:
+        authenticate(test_client, container)
         yield test_client
 
 
