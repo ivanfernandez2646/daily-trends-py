@@ -55,12 +55,14 @@ def test_list_and_home_answer_feed_json(container: AsyncContainer, client: TestC
     repository = resolve(client, container, FeedRepository)
     run_in_app(client, lambda: repository.create(feed))
 
-    for path in ("/feed/list", "/feed/home"):
-        response = client.get(path)
+    listed = client.get("/feed/list")
+    home = client.get("/feed/home")
 
-        assert response.status_code == 200
-        [listed] = response.json()
-        _assert_is_feed_json(listed)
+    assert (listed.status_code, home.status_code) == (200, 200)
+    [listed_feed] = listed.json()["items"]
+    [home_feed] = home.json()
+    _assert_is_feed_json(listed_feed)
+    _assert_is_feed_json(home_feed)
 
 
 def test_scrape_answers_feed_json(client: TestClient) -> None:

@@ -14,7 +14,8 @@ Feature: List feed
     Then The response status code should be 200
     And The response should contains:
       """
-      [
+      {
+      "items": [
         {
             "id": "798516e0-ee38-4a64-a0be-f3af830d8815",
             "title": "Test Feed Find 4",
@@ -60,7 +61,9 @@ Feature: List feed
             "category": "POLITICS",
             "url": null
         }
-      ]
+      ],
+      "next_cursor": null
+      }
       """
 
   Scenario: When there are feeds of the requested category
@@ -73,7 +76,8 @@ Feature: List feed
     Then The response status code should be 200
     And The response should contains:
       """
-      [
+      {
+      "items": [
         {
             "id": "798516e0-ee38-4a64-a0be-f3af830d8815",
             "title": "Test Feed Find 4",
@@ -88,7 +92,9 @@ Feature: List feed
             "category": "SPORTS",
             "url": null
         }
-      ]
+      ],
+      "next_cursor": null
+      }
       """
 
   Scenario: When the category is not a known value
@@ -100,5 +106,64 @@ Feature: List feed
     Then The response status code should be 200
     And The response should be:
     """
-        []
+        {"items": [], "next_cursor": null}
     """
+
+  Scenario: Browsing the feeds page by page
+    Given There are feeds:
+      | id                                   | title  | description          | author | source   | createdAt                | category |
+      | 0b6c1a52-3d0e-4c1b-9d3e-0f3b7c1a2b01 | Feed 1 | Description - Feed 1 | Ivan   | CMS      | 2023-06-16T14:58:39.733Z | POLITICS |
+      | 0b6c1a52-3d0e-4c1b-9d3e-0f3b7c1a2b02 | Feed 2 | Description - Feed 2 | Ivan   | EL_MUNDO | 2023-06-17T14:58:39.733Z | SPORTS   |
+      | 0b6c1a52-3d0e-4c1b-9d3e-0f3b7c1a2b03 | Feed 3 | Description - Feed 3 | Ivan   | EL_PAIS  | 2023-06-18T14:58:39.733Z | CULTURE  |
+    When I send a GET request to "/feed/list?limit=2"
+    Then The response status code should be 200
+    And The response should contains:
+      """
+      {
+        "items": [
+          {"id": "0b6c1a52-3d0e-4c1b-9d3e-0f3b7c1a2b03", "title": "Feed 3"},
+          {"id": "0b6c1a52-3d0e-4c1b-9d3e-0f3b7c1a2b02", "title": "Feed 2"}
+        ]
+      }
+      """
+    When I request the next page
+    Then The response status code should be 200
+    And The response should contains:
+      """
+      {
+        "items": [
+          {"id": "0b6c1a52-3d0e-4c1b-9d3e-0f3b7c1a2b01", "title": "Feed 1"}
+        ],
+        "next_cursor": null
+      }
+      """
+
+  Scenario: Browsing the feeds of a category and a source that mention any of some words
+    Given There are feeds:
+      | id                                   | title                       | description | author | source   | createdAt                | category |
+      | 1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e01 | El Madrid gana la liga      | Crónica     | Ivan   | EL_MUNDO | 2023-06-16T14:58:39.733Z | SPORTS   |
+      | 1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e02 | El Barcelona ficha          | Crónica     | Ivan   | EL_MUNDO | 2023-06-17T14:58:39.733Z | SPORTS   |
+      | 1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e03 | El Sevilla empata           | Crónica     | Ivan   | EL_MUNDO | 2023-06-18T14:58:39.733Z | SPORTS   |
+      | 1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e04 | Madrid estrena un musical   | Estreno     | Ivan   | EL_MUNDO | 2023-06-19T14:58:39.733Z | CULTURE  |
+      | 1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e05 | El Madrid y el Barcelona    | Crónica     | Ivan   | EL_PAIS  | 2023-06-20T14:58:39.733Z | SPORTS   |
+    When I send a GET request to "/feed/list?category=SPORTS&source=EL_MUNDO&q=madrid%20barcelona&limit=1"
+    Then The response status code should be 200
+    And The response should contains:
+      """
+      {
+        "items": [
+          {"id": "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e02", "title": "El Barcelona ficha"}
+        ]
+      }
+      """
+    When I request the next page
+    Then The response status code should be 200
+    And The response should contains:
+      """
+      {
+        "items": [
+          {"id": "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e01", "title": "El Madrid gana la liga"}
+        ],
+        "next_cursor": null
+      }
+      """

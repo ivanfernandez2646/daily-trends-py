@@ -90,7 +90,7 @@ def test_a_feed_answers_with_the_feed_response(
     assert _response_schema(document, path, method, status) == _ref("FeedResponse")
 
 
-@pytest.mark.parametrize("path", ["/feed/list", "/feed/home", "/feed/scrap"])
+@pytest.mark.parametrize("path", ["/feed/home", "/feed/scrap"])
 def test_a_list_answers_with_feed_responses(document: Json, path: str) -> None:
     schema = cast(Json, _response_schema(document, path, "get", "200"))
 
@@ -218,15 +218,59 @@ def test_the_request_bodies_take_a_category(document: Json, schema: str, require
     assert "url" not in properties
 
 
-def test_the_list_takes_an_optional_category_query_parameter(document: Json) -> None:
-    [parameter] = cast(list[Json], _get(document, "paths", "/feed/list", "get", "parameters"))
+def test_the_list_answers_a_page_of_feed_responses_newest_first(document: Json) -> None:
+    page = cast(Json, _get(document, "components", "schemas", "FeedPageResponse"))
 
-    assert (parameter["name"], parameter["in"], parameter["required"]) == (
-        "category",
-        "query",
-        False,
+    assert _response_schema(document, "/feed/list", "get", "200") == _ref("FeedPageResponse")
+    assert _get(page, "properties", "items") == {
+        "items": _ref("FeedResponse"),
+        "type": "array",
+        "title": "Items",
+    }
+    assert cast(Json, _get(page, "properties", "next_cursor"))["anyOf"] == [
+        {"type": "string"},
+        {"type": "null"},
+    ]
+    assert page["required"] == ["items", "next_cursor"]
+    assert "newest first" in cast(str, _get(document, "paths", "/feed/list", "get", "description"))
+
+
+def test_the_list_takes_optional_query_parameters_with_their_bounds_and_values(
+    document: Json,
+) -> None:
+    parameters = {
+        cast(str, parameter["name"]): parameter
+        for parameter in cast(
+            list[Json], _get(document, "paths", "/feed/list", "get", "parameters")
+        )
+    }
+
+    assert list(parameters) == ["limit", "category", "source", "q", "cursor"]
+    assert all((p["in"], p["required"]) == ("query", False) for p in parameters.values())
+    limit = cast(Json, parameters["limit"]["schema"])
+    assert (limit["type"], limit["minimum"], limit["maximum"], limit["default"]) == (
+        "integer",
+        1,
+        100,
+        20,
     )
-    assert cast(Json, parameter["schema"])["anyOf"] == [_ref("FeedCategory"), {"type": "null"}]
+    assert cast(Json, parameters["category"]["schema"])["anyOf"] == [
+        _ref("FeedCategory"),
+        {"type": "null"},
+    ]
+    assert cast(Json, parameters["source"]["schema"])["anyOf"] == [
+        _ref("FeedSource"),
+        {"type": "null"},
+    ]
+    assert cast(Json, parameters["q"]["schema"])["anyOf"] == [
+        {"type": "string", "maxLength": 100},
+        {"type": "null"},
+    ]
+    assert "any of them" in cast(str, parameters["q"]["description"])
+    assert cast(Json, parameters["cursor"]["schema"])["anyOf"] == [
+        {"type": "string"},
+        {"type": "null"},
+    ]
 
 
 def test_documents_the_login_under_the_auth_tag(document: Json) -> None:

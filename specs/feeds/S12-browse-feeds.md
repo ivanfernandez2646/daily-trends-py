@@ -27,7 +27,7 @@ Replaces the response of S03; the `category` parameter keeps the rules of S09.
   framework's default (the last value wins) and is not part of the contract.
 - A `limit` that is not an integer, or out of range → 400. An empty or unknown `category` or `source`
   → 400. The messages follow the usual format (S01, I06), for example
-  `limit: Input should be less than or equal to 100`.
+  `query.limit: Input should be less than or equal to 100`.
 - Unknown parameters are ignored.
 
 ### Response
@@ -59,13 +59,13 @@ Replaces the response of S03; the `category` parameter keeps the rules of S09.
 - The cursor is opaque to clients: URL-safe base64 of a small JSON document, encoded and decoded in
   the HTTP layer (`apps/cms_backend`). The application and the domain only know the position.
 - A cursor that is not valid base64, not the expected JSON, has a date that is not an ISO-8601 UTC
-  instant or an `id` that is not a UUID → 400 `cursor: Invalid cursor`.
+  instant or an `id` that is not a UUID → 400 `query.cursor: Invalid cursor`.
 - A cursor carries no filters. Using a cursor with other filters than the page it came from is not
   an error: the answer is the feeds after that position that match the new filters.
 - A cursor whose feed was deleted still works: it is a position, not a reference to a stored feed.
 
 ### Text search
-- `q` is trimmed. Blank after trimming → 400 `q: Blank search`. Longer than 100 characters → 400.
+- `q` is trimmed. Blank after trimming → 400 `query.q: Blank search`. Longer than 100 characters → 400.
 - The search uses a MongoDB **text index** over `title` and `description` with the Spanish language:
   it ignores case and accents and matches word stems, so `elecciones` finds `elección` and
   `Sánchez` finds `sanchez`. It does not match fragments: `elec` finds nothing.
@@ -92,8 +92,9 @@ Replaces the response of S03; the `category` parameter keeps the rules of S09.
 - `/feed/home` (S08) is unchanged and does not use the position or the text.
 
 ## Persistence
-- A new migration (I07) replaces the list indexes so every filtered page is served by an index that
-  ends in `createdAt: -1, _id: -1`:
+- Two new migrations (I07): `m0004_feeds_list_indexes` replaces the list indexes so every filtered
+  page is served by an index that ends in `createdAt: -1, _id: -1`, and `m0005_feeds_text_index`
+  adds the text index:
 
   | Index | Serves | Replaces |
   |---|---|---|
@@ -103,7 +104,7 @@ Replaces the response of S03; the `category` parameter keeps the rules of S09.
   | text: `title`, `description`, `default_language: "spanish"` | `?q=` | — |
 
 - The deduplication index `source: 1, title: 1, createdAt: 1` (I02, I08) stays.
-- Running the migration twice changes nothing. Dropping an index that does not exist is not an error.
+- Running a migration twice changes nothing. Dropping an index that does not exist is not an error.
 - A search with `q` cannot use the date indexes for its order: MongoDB sorts the matches of the text
   index, bounded by `limit + 1`. This is acceptable for the expected volume (thousands of feeds).
 
@@ -120,9 +121,9 @@ Replaces the response of S03; the `category` parameter keeps the rules of S09.
 - 5 feeds of one batch with the same `created_at` and `limit=2` → pages of 2, 2 and 1 by `id`
   descending, every feed exactly once.
 - `?limit=0`, `?limit=101`, `?limit=abc` → 400.
-- `?cursor=abc` → 400 `cursor: Invalid cursor`.
+- `?cursor=abc` → 400 `query.cursor: Invalid cursor`.
 - `?source=CMS` → only the feeds created through the API.
-- `?q=%20%20` → 400 `q: Blank search`.
+- `?q=%20%20` → 400 `query.q: Blank search`.
 - `?q=futbol` finds a title with `Fútbol`; `?q=fut` finds nothing.
 - `?q=madrid barcelona` finds feeds that mention either city, newest first.
 - `?category=sports` → 400 (values are case-sensitive, S09).

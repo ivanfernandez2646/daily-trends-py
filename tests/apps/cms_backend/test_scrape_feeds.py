@@ -41,7 +41,7 @@ def test_scraped_feeds_keep_their_article_url_and_section_category(client: TestC
         feed for feed in scraped if feed["url"] == "https://www.larazon.es/deportes/futbol/123.html"
     ]
     assert (la_razon_sports["source"], la_razon_sports["category"]) == ("LA_RAZON", "SPORTS")
-    sports = client.get("/feed/list", params={"category": "SPORTS"}).json()
+    sports = client.get("/feed/list", params={"category": "SPORTS", "limit": 100}).json()["items"]
     assert la_razon_sports in sports
     assert {feed["source"] for feed in sports} == {
         "EL_MUNDO",
@@ -63,7 +63,7 @@ def test_scraping_stores_and_returns_the_other_sources_when_one_fails(
     scraped = response.json()
     assert len(scraped) == 20
     assert _sources(scraped) == sorted(OTHER_SOURCES_THAN_EL_MUNDO)
-    stored = client.get("/feed/list").json()
+    stored = client.get("/feed/list", params={"limit": 100}).json()["items"]
     assert sorted(feed["id"] for feed in stored) == sorted(feed["id"] for feed in scraped)
 
 
@@ -78,7 +78,7 @@ def test_scraping_answers_an_empty_array_and_stores_nothing_when_every_source_fa
 
     assert response.status_code == 200
     assert response.json() == []
-    assert client.get("/feed/list").json() == []
+    assert client.get("/feed/list").json()["items"] == []
 
 
 def test_scraping_identifies_itself_with_a_user_agent(

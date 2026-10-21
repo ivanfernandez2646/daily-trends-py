@@ -21,7 +21,7 @@ The port keeps the current behavior of the Node project (same routes, status cod
 | `GET /feed/{id}` | Get a feed | |
 | `PATCH /feed/{id}` | Update title and/or description | yes |
 | `DELETE /feed/{id}` | Delete a feed | yes |
-| `GET /feed/list` | List all feeds, newest first | |
+| `GET /feed/list` | Browse feeds newest first, a page at a time (`limit`, `cursor`); filter by `category`, `source` and Spanish words in `q` | |
 | `GET /feed/home` | Up to 10 stored scraped feeds: the 2 newest of each source, filled with the newest of any | |
 | `GET /feed/scrap` | Scrape every source now and store the results; waits for a scraping run in progress | yes |
 | `POST /auth/login` | Exchange an administrator's email and password for a bearer access token | |

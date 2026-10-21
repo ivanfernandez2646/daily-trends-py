@@ -10,24 +10,24 @@ Feature: Scrap feed
     When I send a GET request to "/feed/home"
     Then The response status code should be 200
     And The response is an array with length 0
-    When I send a GET request to "/feed/list"
+    When I send a GET request to "/feed/list?limit=100"
     Then The response status code should be 200
-    And The response is an array with length 2
+    And The response is a page with 2 items
     When I send a GET request to "/feed/scrap"
     Then The response status code should be 200
     And The response is an array with length 25
-    When I send a GET request to "/feed/list?category=SPORTS"
+    When I send a GET request to "/feed/list?limit=100&category=SPORTS"
     Then The response status code should be 200
-    And The response is an array with length 4
+    And The response is a page with 4 items
     When I send a GET request to "/feed/home"
     Then The response status code should be 200
     And The response is an array with length 10
-    When I send a GET request to "/feed/list"
+    When I send a GET request to "/feed/list?limit=100"
     Then The response status code should be 200
-    And The response is an array with length 27
+    And The response is a page with 27 items
     When I send a GET request to "/feed/scrap"
     Then The response status code should be 200
     And The response is an array with length 0
-    When I send a GET request to "/feed/list"
+    When I send a GET request to "/feed/list?limit=100"
     Then The response status code should be 200
-    And The response is an array with length 27
+    And The response is a page with 27 items

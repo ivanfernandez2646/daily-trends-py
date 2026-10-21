@@ -135,6 +135,13 @@ def send_get_request(client: TestClient, path: str) -> httpx2.Response:
     return client.get(path)
 
 
+@when("I request the next page", target_fixture="response")
+def request_the_next_page(client: TestClient, response: httpx2.Response) -> httpx2.Response:
+    """The same request as the previous one, from the `next_cursor` of its response."""
+    next_cursor = cast(dict[str, str], response.json())["next_cursor"]
+    return client.get(response.request.url.copy_set_param("cursor", next_cursor))
+
+
 @when(parsers.parse('I send a PUT request to "{path}" with body:'), target_fixture="response")
 def send_put_request_with_body(client: TestClient, path: str, docstring: str) -> httpx2.Response:
     return client.put(path, json=json.loads(docstring))
@@ -170,6 +177,12 @@ def response_is_an_array_with_length(response: httpx2.Response, length: int) -> 
     body: object = response.json()
     assert isinstance(body, list)
     assert len(cast(list[object], body)) == length
+
+
+@then(parsers.parse("The response is a page with {length:d} items"))
+def response_is_a_page_with_items(response: httpx2.Response, length: int) -> None:
+    page = cast(dict[str, list[object]], response.json())
+    assert len(page["items"]) == length
 
 
 def _matching_part(actual: object, expected: object) -> object:

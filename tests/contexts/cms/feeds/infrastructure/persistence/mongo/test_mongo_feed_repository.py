@@ -21,13 +21,18 @@ from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.mongo_f
     MongoFeedRepository,
 )
 from daily_trends_py.contexts.cms.shared.domain.criteria import Filter, Order
+from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.migrations.versions import (  # noqa: E501
+    m0005_feeds_text_index,
+)
 from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_client_factory import (  # noqa: E501
     MongoClient,
     MongoCollection,
 )
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
+from tests.contexts.cms.feeds.domain.feed_description_mother import FeedDescriptionMother
 from tests.contexts.cms.feeds.domain.feed_id_mother import FeedIdMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
+from tests.contexts.cms.feeds.domain.feed_title_mother import FeedTitleMother
 from tests.contexts.cms.feeds.domain.feed_updated_at_mother import FeedUpdatedAtMother
 from tests.contexts.cms.feeds.domain.feed_url_mother import FeedUrlMother
 from tests.contexts.cms.feeds.infrastructure.persistence.mongo.feed_document_mother import (
@@ -337,10 +342,51 @@ async def test_search_combines_filter_conditions_with_or(
     assert sorted(_ids(found)) == sorted(_ids(stored_feeds[3:]))
 
 
+async def test_search_combines_filters_on_different_fields_with_and(
+    repository: MongoFeedRepository,
+) -> None:
+    cms_sports = FeedMother.random(source=FeedSource.CMS, category=FeedCategory.SPORTS)
+    cms_culture = FeedMother.random(source=FeedSource.CMS, category=FeedCategory.CULTURE)
+    el_mundo_sports = FeedMother.random(source=FeedSource.EL_MUNDO, category=FeedCategory.SPORTS)
+    for feed in (cms_sports, cms_culture, el_mundo_sports):
+        await repository.create(feed)
+
+    found = await repository.search(
+        FeedCriteria(
+            filters=(Filter("source", FeedSource.CMS), Filter("category", FeedCategory.SPORTS))
+        )
+    )
+
+    assert _ids(found) == _ids([cms_sports])
+
+
+async def test_search_ors_filters_on_the_same_field_and_ands_them_with_other_fields(
+    repository: MongoFeedRepository,
+) -> None:
+    cms_sports = FeedMother.random(source=FeedSource.CMS, category=FeedCategory.SPORTS)
+    cms_culture = FeedMother.random(source=FeedSource.CMS, category=FeedCategory.CULTURE)
+    el_mundo_sports = FeedMother.random(source=FeedSource.EL_MUNDO, category=FeedCategory.SPORTS)
+    el_pais_sports = FeedMother.random(source=FeedSource.EL_PAIS, category=FeedCategory.SPORTS)
+    for feed in (cms_sports, cms_culture, el_mundo_sports, el_pais_sports):
+        await repository.create(feed)
+
+    found = await repository.search(
+        FeedCriteria(
+            filters=(
+                Filter("source", FeedSource.CMS),
+                Filter("category", FeedCategory.SPORTS),
+                Filter("source", FeedSource.EL_MUNDO),
+            )
+        )
+    )
+
+    assert sorted(_ids(found)) == sorted(_ids([cms_sports, el_mundo_sports]))
+
+
 async def test_search_sorts_feeds_by_creation_date_descending(
     repository: MongoFeedRepository, stored_feeds: list[Feed]
 ) -> None:
-    found = await repository.search(FeedCriteria(order=Order("created_at", "desc")))
+    found = await repository.search(FeedCriteria(orders=(Order("created_at", "desc"),)))
 
     assert _ids(found) == _ids(_newest_first(stored_feeds))
 
@@ -348,7 +394,7 @@ async def test_search_sorts_feeds_by_creation_date_descending(
 async def test_search_sorts_feeds_by_creation_date_ascending(
     repository: MongoFeedRepository, stored_feeds: list[Feed]
 ) -> None:
-    found = await repository.search(FeedCriteria(order=Order("created_at", "asc")))
+    found = await repository.search(FeedCriteria(orders=(Order("created_at", "asc"),)))
 
     assert _ids(found) == _ids(_newest_first(stored_feeds)[::-1])
 
@@ -356,7 +402,7 @@ async def test_search_sorts_feeds_by_creation_date_ascending(
 async def test_search_limits_the_number_of_feeds(
     repository: MongoFeedRepository, stored_feeds: list[Feed]
 ) -> None:
-    found = await repository.search(FeedCriteria(order=Order("created_at", "desc"), limit=2))
+    found = await repository.search(FeedCriteria(orders=(Order("created_at", "desc"),), limit=2))
 
     assert _ids(found) == _ids(_newest_first(stored_feeds)[:2])
 
@@ -372,7 +418,7 @@ async def test_search_sorts_creation_dates_chronologically_across_offsets(
     await repository.create(earlier)
     await repository.create(later)
 
-    found = await repository.search(FeedCriteria(order=Order("created_at", "desc")))
+    found = await repository.search(FeedCriteria(orders=(Order("created_at", "desc"),)))
 
     assert _ids(found) == [later.id.value, earlier.id.value]
 
@@ -380,7 +426,7 @@ async def test_search_sorts_creation_dates_chronologically_across_offsets(
 async def test_search_does_not_limit_feeds_without_a_limit(
     repository: MongoFeedRepository, stored_feeds: list[Feed]
 ) -> None:
-    found = await repository.search(FeedCriteria(order=Order("created_at", "desc")))
+    found = await repository.search(FeedCriteria(orders=(Order("created_at", "desc"),)))
 
     assert len(found) == len(stored_feeds)
 
@@ -499,7 +545,7 @@ async def test_search_returns_the_newest_feeds_of_one_source(
     found = await repository.search(
         FeedCriteria(
             filters=(Filter("source", FeedSource.LA_RAZON),),
-            order=Order("created_at", "desc"),
+            orders=(Order("created_at", "desc"),),
             limit=2,
         )
     )
@@ -524,8 +570,223 @@ async def test_search_returns_the_feeds_of_one_category_newest_first(
     found = await repository.search(
         FeedCriteria(
             filters=(Filter("category", FeedCategory.SPORTS),),
-            order=Order("created_at", "desc"),
+            orders=(Order("created_at", "desc"),),
         )
     )
 
     assert [found_feed.id for found_feed in found] == [newer.id, older.id]
+
+
+def _batch(created_at: str, *ids: str) -> list[Feed]:
+    return [
+        FeedMother.random(
+            id=FeedIdMother.create(id), created_at=FeedCreatedAtMother.create(created_at)
+        )
+        for id in ids
+    ]
+
+
+@pytest.fixture
+async def batches(repository: MongoFeedRepository) -> tuple[list[Feed], list[Feed]]:
+    """Two scraping runs of two feeds each, every feed of a run sharing its creation date."""
+    earlier = _batch(
+        "2026-10-20T08:00:00.000Z",
+        "11111111-1111-4111-8111-111111111111",
+        "33333333-3333-4333-8333-333333333333",
+    )
+    later = _batch(
+        "2026-10-20T10:00:00.000Z",
+        "22222222-2222-4222-8222-222222222222",
+        "44444444-4444-4444-8444-444444444444",
+    )
+    for feed in (*earlier, *later):
+        await repository.create(feed)
+    return earlier, later
+
+
+async def test_search_in_the_list_order_breaks_ties_on_the_creation_date_by_id(
+    repository: MongoFeedRepository, batches: tuple[list[Feed], list[Feed]]
+) -> None:
+    earlier, later = batches
+
+    found = await repository.search(FeedCriteria(orders=FeedCriteria.LIST_ORDER))
+
+    assert _ids(found) == _ids([later[1], later[0], earlier[1], earlier[0]])
+
+
+async def test_search_starts_strictly_after_the_position(
+    repository: MongoFeedRepository, batches: tuple[list[Feed], list[Feed]]
+) -> None:
+    earlier, later = batches
+
+    found = await repository.search(
+        FeedCriteria(
+            orders=FeedCriteria.LIST_ORDER,
+            after=(later[0].created_at.value, later[0].id.value),
+            limit=1,
+        )
+    )
+
+    assert _ids(found) == _ids([earlier[1]])
+
+
+async def test_search_starts_after_the_position_of_a_deleted_feed(
+    repository: MongoFeedRepository, batches: tuple[list[Feed], list[Feed]]
+) -> None:
+    earlier, later = batches
+    await repository.delete(later[0])
+
+    found = await repository.search(
+        FeedCriteria(
+            orders=FeedCriteria.LIST_ORDER,
+            after=(later[0].created_at.value, later[0].id.value),
+        )
+    )
+
+    assert _ids(found) == _ids([earlier[1], earlier[0]])
+
+
+async def test_search_starts_after_the_position_among_the_filtered_feeds(
+    repository: MongoFeedRepository,
+) -> None:
+    newest, newer, other_source, older = (
+        FeedMother.random(
+            source=source, created_at=FeedCreatedAtMother.create(f"2026-10-2{day}T10:00:00.000Z")
+        )
+        for day, source in (
+            (4, FeedSource.CMS),
+            (3, FeedSource.CMS),
+            (2, FeedSource.EL_MUNDO),
+            (1, FeedSource.CMS),
+        )
+    )
+    for feed in (newest, newer, other_source, older):
+        await repository.create(feed)
+
+    found = await repository.search(
+        FeedCriteria(
+            filters=(Filter("source", FeedSource.CMS),),
+            orders=FeedCriteria.LIST_ORDER,
+            after=(newest.created_at.value, newest.id.value),
+        )
+    )
+
+    assert _ids(found) == _ids([newer, older])
+
+
+@pytest.fixture
+async def text_repository(
+    repository: MongoFeedRepository, collection: MongoCollection
+) -> MongoFeedRepository:
+    """The repository over a collection with the text index that `?q=` needs."""
+    await m0005_feeds_text_index.up(collection.database)
+    return repository
+
+
+async def _store_headlines(repository: MongoFeedRepository, *headlines: str) -> list[Feed]:
+    """One feed per headline, a minute apart, the first one the oldest."""
+    feeds = [
+        FeedMother.random(
+            title=FeedTitleMother.create(headline),
+            description=FeedDescriptionMother.create(None),
+            created_at=FeedCreatedAtMother.create(
+                datetime(2026, 10, 20, tzinfo=UTC) + timedelta(minutes=minute)
+            ),
+        )
+        for minute, headline in enumerate(headlines)
+    ]
+    for feed in feeds:
+        await repository.create(feed)
+    return feeds
+
+
+async def _search_text(repository: MongoFeedRepository, text: str) -> list[Feed]:
+    return await repository.search(FeedCriteria(orders=FeedCriteria.LIST_ORDER, text=text))
+
+
+@pytest.mark.parametrize(
+    ("text", "headline"),
+    [
+        pytest.param("elecciones", "La elección del nuevo alcalde", id="stem"),
+        pytest.param("Sánchez", "Entrevista a sanchez", id="accents"),
+        pytest.param("FÚTBOL", "El fútbol vuelve", id="case"),
+    ],
+)
+async def test_search_finds_spanish_words_by_stem_ignoring_case_and_accents(
+    text_repository: MongoFeedRepository, text: str, headline: str
+) -> None:
+    feed, _ = await _store_headlines(text_repository, headline, "Noticias de Sevilla")
+
+    assert _ids(await _search_text(text_repository, text)) == _ids([feed])
+
+
+@pytest.mark.parametrize(
+    "text", [pytest.param("elec", id="fragment"), pytest.param("el de", id="stop words")]
+)
+async def test_search_finds_nothing_for_a_fragment_or_only_stop_words(
+    text_repository: MongoFeedRepository, text: str
+) -> None:
+    await _store_headlines(text_repository, "El día de las elecciones")
+
+    assert await _search_text(text_repository, text) == []
+
+
+async def test_search_finds_the_words_in_the_description(
+    text_repository: MongoFeedRepository,
+) -> None:
+    feed = FeedMother.random(
+        title=FeedTitleMother.create("Última hora"),
+        description=FeedDescriptionMother.create("Lluvias en Barcelona"),
+    )
+    await text_repository.create(feed)
+    await _store_headlines(text_repository, "Noticias de Sevilla")
+
+    assert _ids(await _search_text(text_repository, "barcelona")) == _ids([feed])
+
+
+async def test_search_finds_feeds_with_any_of_the_words_newest_first_not_by_relevance(
+    text_repository: MongoFeedRepository,
+) -> None:
+    both, _, madrid = await _store_headlines(
+        text_repository, "Madrid y Barcelona, Madrid otra vez", "Sevilla", "Madrid"
+    )
+
+    found = await _search_text(text_repository, "madrid barcelona")
+
+    assert _ids(found) == _ids([madrid, both])
+
+
+async def test_search_ands_the_text_with_the_filters_and_the_position(
+    text_repository: MongoFeedRepository,
+) -> None:
+    start = datetime(2026, 10, 20, tzinfo=UTC)
+    oldest, cms_sevilla, el_mundo, middle, newest = (
+        FeedMother.random(
+            source=source,
+            title=FeedTitleMother.create(title),
+            description=FeedDescriptionMother.create(None),
+            created_at=FeedCreatedAtMother.create(start + timedelta(minutes=minute)),
+        )
+        for minute, (source, title) in enumerate(
+            [
+                (FeedSource.CMS, "Madrid"),
+                (FeedSource.CMS, "Sevilla"),
+                (FeedSource.EL_MUNDO, "Madrid"),
+                (FeedSource.CMS, "Madrid"),
+                (FeedSource.CMS, "Madrid"),
+            ]
+        )
+    )
+    for feed in (oldest, cms_sevilla, el_mundo, middle, newest):
+        await text_repository.create(feed)
+
+    found = await text_repository.search(
+        FeedCriteria(
+            filters=(Filter("source", FeedSource.CMS),),
+            orders=FeedCriteria.LIST_ORDER,
+            after=(newest.created_at.value, newest.id.value),
+            text="madrid",
+        )
+    )
+
+    assert _ids(found) == _ids([middle, oldest])
