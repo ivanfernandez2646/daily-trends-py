@@ -1,3 +1,6 @@
+from datetime import UTC, datetime, timedelta
+from typing import cast
+
 import pytest
 from dishka import AsyncContainer
 from fastapi.testclient import TestClient
@@ -47,7 +50,9 @@ def test_lists_feeds_chronologically_with_utc_dates_and_a_fraction_only_when_not
     response = client.get("/feed/list")
 
     assert response.status_code == 200
-    assert [(feed["id"], feed["created_at"], feed["updated_at"]) for feed in response.json()] == [
+    assert [
+        (feed["id"], feed["created_at"], feed["updated_at"]) for feed in response.json()["items"]
+    ] == [
         (later.id.value, "2026-10-09T09:30:00Z", "2026-10-10T07:15:30.250000Z"),
         (earlier.id.value, "2026-10-09T08:00:00Z", None),
     ]
@@ -70,7 +75,7 @@ def test_lists_only_the_feeds_of_the_given_category_newest_first(
     response = client.get("/feed/list", params={"category": "SPORTS"})
 
     assert response.status_code == 200
-    assert [feed["id"] for feed in response.json()] == [newer.id.value, older.id.value]
+    assert [feed["id"] for feed in response.json()["items"]] == [newer.id.value, older.id.value]
 
 
 def test_lists_nothing_when_no_feed_has_the_category(
@@ -81,7 +86,7 @@ def test_lists_nothing_when_no_feed_has_the_category(
     response = client.get("/feed/list", params={"category": "HEALTH"})
 
     assert response.status_code == 200
-    assert response.json() == []
+    assert response.json() == {"items": [], "next_cursor": None}
 
 
 @pytest.mark.parametrize("category", ["nope", "sports", ""])
@@ -104,7 +109,7 @@ def test_lists_only_the_feeds_of_the_given_source(
     response = client.get("/feed/list", params={"source": "CMS"})
 
     assert response.status_code == 200
-    assert [feed["id"] for feed in response.json()] == [cms.id.value]
+    assert [feed["id"] for feed in response.json()["items"]] == [cms.id.value]
 
 
 def test_lists_only_the_feeds_that_match_both_the_category_and_the_source(
@@ -118,7 +123,7 @@ def test_lists_only_the_feeds_that_match_both_the_category_and_the_source(
     response = client.get("/feed/list", params={"category": "SPORTS", "source": "EL_MUNDO"})
 
     assert response.status_code == 200
-    assert [feed["id"] for feed in response.json()] == [el_mundo_sports.id.value]
+    assert [feed["id"] for feed in response.json()["items"]] == [el_mundo_sports.id.value]
 
 
 @pytest.mark.parametrize("source", ["nope", "el_mundo", ""])
@@ -127,3 +132,88 @@ def test_a_source_that_is_not_a_known_value_answers_400(client: TestClient, sour
 
     assert response.status_code == 400
     assert response.json() == {"error": UNKNOWN_SOURCE}
+
+
+def _feeds(count: int) -> list[Feed]:
+    """`count` feeds one minute apart, the newest first."""
+    start = datetime(2026, 10, 21, tzinfo=UTC)
+    return [
+        FeedMother.random(created_at=FeedCreatedAtMother.create(start - timedelta(minutes=minute)))
+        for minute in range(count)
+    ]
+
+
+def _ids(response_items: object) -> list[str]:
+    return [feed["id"] for feed in cast(list[dict[str, str]], response_items)]
+
+
+def test_answers_the_20_newest_feeds_and_a_cursor_by_default(
+    container: AsyncContainer, client: TestClient
+) -> None:
+    feeds = _feeds(21)
+    _store(container, client, *feeds)
+
+    response = client.get("/feed/list")
+
+    assert response.status_code == 200
+    assert _ids(response.json()["items"]) == [feed.id.value for feed in feeds[:20]]
+    assert isinstance(response.json()["next_cursor"], str)
+
+
+def test_the_next_cursor_answers_the_next_page_until_the_last_one(
+    container: AsyncContainer, client: TestClient
+) -> None:
+    feeds = _feeds(5)
+    _store(container, client, *feeds)
+
+    first = client.get("/feed/list", params={"limit": 2}).json()
+    second = client.get("/feed/list", params={"limit": 2, "cursor": first["next_cursor"]}).json()
+    third = client.get("/feed/list", params={"limit": 2, "cursor": second["next_cursor"]}).json()
+
+    assert [_ids(page["items"]) for page in (first, second, third)] == [
+        [feed.id.value for feed in feeds[:2]],
+        [feed.id.value for feed in feeds[2:4]],
+        [feeds[4].id.value],
+    ]
+    assert third["next_cursor"] is None
+
+
+def test_answers_an_empty_page_when_there_are_no_feeds(client: TestClient) -> None:
+    response = client.get("/feed/list")
+
+    assert response.status_code == 200
+    assert response.json() == {"items": [], "next_cursor": None}
+
+
+@pytest.mark.parametrize(
+    ("limit", "message"),
+    [
+        ("0", "query.limit: Input should be greater than or equal to 1"),
+        ("101", "query.limit: Input should be less than or equal to 100"),
+        (
+            "abc",
+            "query.limit: Input should be a valid integer, unable to parse string as an integer",
+        ),
+        ("", "query.limit: Input should be a valid integer, unable to parse string as an integer"),
+    ],
+)
+def test_a_limit_out_of_bounds_or_not_an_integer_answers_400(
+    client: TestClient, limit: str, message: str
+) -> None:
+    response = client.get("/feed/list", params={"limit": limit})
+
+    assert response.status_code == 400
+    assert response.json() == {"error": message}
+
+
+@pytest.mark.parametrize("limit", ["1", "100"])
+def test_accepts_the_bounds_of_the_limit(client: TestClient, limit: str) -> None:
+    assert client.get("/feed/list", params={"limit": limit}).status_code == 200
+
+
+@pytest.mark.parametrize("cursor", ["abc", ""])
+def test_an_invalid_cursor_answers_400(client: TestClient, cursor: str) -> None:
+    response = client.get("/feed/list", params={"cursor": cursor})
+
+    assert response.status_code == 400
+    assert response.json() == {"error": "query.cursor: Invalid cursor"}

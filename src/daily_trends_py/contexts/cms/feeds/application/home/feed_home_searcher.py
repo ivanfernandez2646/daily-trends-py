@@ -30,7 +30,7 @@ class FeedHomeSearcher:
                 self._repository.search(
                     FeedCriteria(
                         filters=(Filter("source", source),),
-                        order=_NEWEST_FIRST,
+                        orders=(_NEWEST_FIRST,),
                         limit=FEEDS_PER_SOURCE,
                     )
                 )
@@ -39,7 +39,7 @@ class FeedHomeSearcher:
             self._repository.search(
                 FeedCriteria(
                     filters=tuple(Filter("source", source) for source in HOME_SOURCES),
-                    order=_NEWEST_FIRST,
+                    orders=(_NEWEST_FIRST,),
                     limit=HOME_LIMIT,
                 )
             ),

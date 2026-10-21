@@ -7,7 +7,7 @@ created_at: '2026-10-21T16:00:00Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-21T17:00:00Z'
+updated_at: '2026-10-21T19:00:00Z'
 ---
 
 # S12 · Browse feeds
@@ -152,8 +152,10 @@ pages by keyset over `created_at desc, id desc`. A new migration gives each list
 - **`FeedCriteria`:**
   - `LIST_ORDER: ClassVar[tuple[Order, Order]] = (Order("created_at", "desc"), Order("id", "desc"))`.
   - `after` with any other `orders` → `ValueError`.
-- **Feeds domain:** `FeedPosition(created_at: datetime, id: FeedId)` in `domain/feed_position.py`,
-  frozen.
+- **Feeds domain:** `FeedPosition(created_at: FeedCreatedAt, id: FeedId)` in
+  `domain/feed_position.py`, frozen, with `FeedPosition.of(feed)`. *Implemented with the value
+  objects instead of a bare `datetime`: they reject a naive date and keep the millisecond precision
+  of storage.*
 - **Feeds application:**
   - `FeedPage(feeds: list[Feed], next: FeedPosition | None)` is a frozen dataclass next to the use
     case.
@@ -161,13 +163,16 @@ pages by keyset over `created_at desc, id desc`. A new migration gives each list
     | None = None, source: FeedSource | None = None) -> FeedPage`.
   - It asks for `limit + 1` with `LIST_ORDER`, and `next` is the position of the last returned feed
     only when more exist.
+  - A limit below 1 raises `ValueError`: it is a bug in the caller, never a 400.
 - **`MongoRepository._by_criteria`:** adds the keyset `$or` for `after`, and sorts by every order.
 - **HTTP:**
   - **`routes/feed_cursor.py`:**
     - `encode_cursor(position: FeedPosition) -> str`.
-    - `decode_cursor(value: str) -> FeedPosition`, which raises
-      `PydanticCustomError("invalid_cursor", "Invalid cursor")`.
-    - It is used through an `AfterValidator` on the `cursor` query parameter.
+    - `decode_cursor(value: str) -> FeedPosition`, which raises `ValueError("Invalid cursor")`.
+    - *Implemented as a route dependency, `_after(cursor: str | None) -> FeedPosition | None`,
+      instead of an `AfterValidator`: FastAPI rejects a query parameter whose type is not a scalar.
+      The dependency raises a `RequestValidationError` at `("query", "cursor")`, so the 400 has the
+      usual format.*
   - **`feed_schemas.FeedPageResponse`:** `items: list[FeedResponse]`, `next_cursor: str | None`.
   - **`GET /feed/list`:**
     - The parameters are `limit: Annotated[int, Query(ge=1, le=100)] = 20` and `cursor: str | None`
@@ -180,62 +185,71 @@ pages by keyset over `created_at desc, id desc`. A new migration gives each list
   - The existing scenarios read `items`.
   - A new scenario reads page 1 with `limit=2`, then the `next_cursor` page, and the last page has
     `next_cursor: null`.
-  - This needs a step that follows the previous `next_cursor`.
+  - This needs a step that follows the previous `next_cursor`: `When I request the next page`.
+- **Other readers of `/feed/list`:**
+  - `scrap-feed.feature` asks for `limit=100` and uses a new step, `The response is a page with
+    {n} items`, because it counts up to 27 feeds.
+  - `test_scrape_feeds.py` and `test_feed_json.py` read `items`.
 
 ### Tests first
 
-- [ ] `test_criteria.py`:
-  - [ ] multiple orders;
-  - [ ] `after` with the wrong length, or without orders → `ValueError`;
-  - [ ] an invalid limit still fails.
-- [ ] `test_feed_criteria.py`: `after` only with `LIST_ORDER`, and an unknown order field still
+- [x] `test_criteria.py`:
+  - [x] multiple orders;
+  - [x] `after` with the wrong length, or without orders → `ValueError`;
+  - [x] an invalid limit still fails.
+- [x] `test_feed_criteria.py`: `after` only with `LIST_ORDER`, and an unknown order field still
       fails.
-- [ ] `test_in_memory_feed_repository.py`:
-  - [ ] the order with ties broken by `id`;
-  - [ ] `after` answers strictly after the position;
-  - [ ] the position of a deleted feed still works.
-- [ ] `test_feed_searcher.py`, with the fake:
-  - [ ] 45 feeds and limit 20 → 20, 20 and 5, and only the last page has no `next`;
-  - [ ] exactly 40 feeds → the second page has no `next`;
-  - [ ] 5 feeds with the same `created_at` and limit 2 → pages of 2, 2 and 1 by `id` desc, each feed
+- [x] `test_in_memory_feed_repository.py`:
+  - [x] the order with ties broken by `id`;
+  - [x] `after` answers strictly after the position;
+  - [x] the position of a deleted feed still works.
+- [x] `test_feed_searcher.py`, with the fake:
+  - [x] 45 feeds and limit 20 → 20, 20 and 5, and only the last page has no `next`;
+  - [x] exactly 40 feeds → the second page has no `next`;
+  - [x] 5 feeds with the same `created_at` and limit 2 → pages of 2, 2 and 1 by `id` desc, each feed
         once;
-  - [ ] 25 feeds saved between page 2 and page 3 do not shift page 3;
-  - [ ] category and source with a position;
-  - [ ] the repository is asked for `limit + 1`. This uses a recording fake.
-- [ ] `test_mongo_feed_repository.py`: the order with ties, `after`, and each filter combined with
-      `after`.
-- [ ] `test_m0004_feeds_list_indexes.py`:
-  - [ ] the three new indexes exist and the three old ones are gone;
-  - [ ] the deduplication index stays;
-  - [ ] running it twice changes nothing;
-  - [ ] it runs on a database where the old indexes were never created;
-  - [ ] `explain()` uses `created_at_id_desc`, `category_created_at_id_desc` and
+  - [x] 25 feeds saved between page 2 and page 3 do not shift page 3;
+  - [x] category and source with a position;
+  - [x] the repository is asked for `limit + 1`. `InMemoryFeedRepository.searched_criteria` records
+        the criteria;
+  - [x] a limit below 1 raises `ValueError`.
+- [x] `test_mongo_feed_repository.py`: the order with ties, `after`, the position of a deleted
+      feed, and a filter combined with `after`.
+- [x] `test_m0004_feeds_list_indexes.py`:
+  - [x] the three new indexes exist and the three old ones are gone;
+  - [x] the deduplication index stays;
+  - [x] running it twice changes nothing;
+  - [x] it runs on a database where the old indexes were never created;
+  - [x] `explain()` uses `created_at_id_desc`, `category_created_at_id_desc` and
         `source_created_at_id_desc` for the list, `?category=` and `?source=` queries;
-  - [ ] the `MIGRATIONS` list test includes m0004.
-- [ ] `test_feed_cursor.py` (apps):
-  - [ ] the round trip;
-  - [ ] not base64, not JSON, missing keys, a naive date, a non-UTC offset or a non-UUID id → the
-        custom error.
-- [ ] `test_list_feeds.py`:
-  - [ ] the default limit of 20;
-  - [ ] `limit` set to 0, 101 or `abc` → 400 `query.limit: ...`;
-  - [ ] `next_cursor` round-trips to the next page;
-  - [ ] `?cursor=abc` → 400 `query.cursor: Invalid cursor`;
-  - [ ] an empty list → `{"items": [], "next_cursor": null}`;
-  - [ ] the existing tests are adapted to `items`.
-- [ ] `test_openapi.py`: `/feed/list` answers `FeedPageResponse`, and `limit` has a minimum of 1, a
-      maximum of 100 and a default of 20.
+  - [x] the `MIGRATIONS` list test includes m0004.
+- [x] `test_feed_cursor.py` (apps):
+  - [x] the round trip;
+  - [x] the encoded form is URL-safe base64 of the UTC date and the id;
+  - [x] not base64, not ASCII, not UTF-8, not JSON, not an object, missing keys, values that are not
+        strings, a naive date, a non-UTC offset or a non-UUID id → `ValueError("Invalid cursor")`.
+- [x] `test_list_feeds.py`:
+  - [x] the default limit of 20;
+  - [x] `limit` set to 0, 101, `abc` or empty → 400 `query.limit: ...`, and 1 and 100 are accepted;
+  - [x] `next_cursor` round-trips to the next page;
+  - [x] `?cursor=abc` and an empty cursor → 400 `query.cursor: Invalid cursor`;
+  - [x] an empty list → `{"items": [], "next_cursor": null}`;
+  - [x] the existing tests are adapted to `items`.
+- [x] `test_openapi.py`: `/feed/list` answers `FeedPageResponse` and says newest first, and `limit`
+      has a minimum of 1, a maximum of 100 and a default of 20. The four parameters are listed.
 
 ### Implementation
 
-- [ ] Change `order` to `orders` and add `after` in `Criteria`, then add the `FeedCriteria` rules.
-- [ ] Add the keyset and multi-order sort to `_by_criteria` and to the fake.
-- [ ] Add `FeedPosition`, `FeedPage` and the new `FeedSearcher.execute`.
-- [ ] Add the cursor codec, `FeedPageResponse` and the new `list_feeds` signature.
-- [ ] Add m0004 and register it.
-- [ ] Update `list-feed.feature`, and add the step that follows the cursor in `conftest.py`.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Change `order` to `orders` and add `after` in `Criteria`, then add the `FeedCriteria` rules.
+- [x] Add the keyset and multi-order sort to `_by_criteria` and to the fake.
+- [x] Add `FeedPosition`, `FeedPage` and the new `FeedSearcher.execute`.
+- [x] Add the cursor codec, `FeedPageResponse` and the new `list_feeds` signature.
+- [x] Add m0004 and register it.
+- [x] Update `list-feed.feature`, and add the step that follows the cursor in `conftest.py`.
+- [x] Adapt the other readers of `/feed/list`: `scrap-feed.feature`, `test_scrape_feeds.py` and
+      `test_feed_json.py`.
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ## Phase 3: Text search and docs
 
@@ -311,5 +325,5 @@ combines with every other filter and with the cursor. The docs follow.
 
 ## Next step
 
-Phase 1 is implemented. After review, run `/ai-project-implement-phase` for Phase 2 on
+Phases 1 and 2 are implemented. After review, run `/ai-project-implement-phase` for Phase 3 on
 `feat/s12-browse-feeds`.

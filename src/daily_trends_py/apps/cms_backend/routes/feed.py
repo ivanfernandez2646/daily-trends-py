@@ -1,12 +1,17 @@
+from typing import Annotated
+
 from dishka.integrations.fastapi import FromDishka
-from fastapi import APIRouter, Response, Security, status
+from fastapi import APIRouter, Depends, Query, Response, Security, status
+from fastapi.exceptions import RequestValidationError
 
 from daily_trends_py.apps.cms_backend.http.admin_route import AdminRoute
 from daily_trends_py.apps.cms_backend.http.authentication import BEARER
 from daily_trends_py.apps.cms_backend.http.json_body_route import JsonBodyRoute
+from daily_trends_py.apps.cms_backend.routes.feed_cursor import decode_cursor, encode_cursor
 from daily_trends_py.apps.cms_backend.routes.feed_schemas import (
     CreateFeedRequest,
     ErrorResponse,
+    FeedPageResponse,
     FeedResponse,
     UpdateFeedRequest,
 )
@@ -19,17 +24,14 @@ from daily_trends_py.contexts.cms.feeds.application.home.feed_home_searcher impo
 from daily_trends_py.contexts.cms.feeds.application.scrape.feed_scraper import FeedScraper
 from daily_trends_py.contexts.cms.feeds.application.search.feed_searcher import FeedSearcher
 from daily_trends_py.contexts.cms.feeds.application.update.feed_updater import FeedUpdater
-from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
+from daily_trends_py.contexts.cms.feeds.domain.feed_position import FeedPosition
 from daily_trends_py.contexts.cms.feeds.domain.value_objects import (
     FeedCategory,
     FeedId,
     FeedSource,
 )
-from daily_trends_py.contexts.cms.shared.domain.criteria import Filter, Order
 
 router = APIRouter(route_class=JsonBodyRoute, tags=["feeds"])
-
-NEWEST_FIRST = Order("created_at", "desc")
 
 _ERROR_DESCRIPTIONS = {
     status.HTTP_400_BAD_REQUEST: "Invalid request: the body, the id or a value",
@@ -56,20 +58,46 @@ admin_router = APIRouter(
 )
 
 
+def _after(
+    cursor: Annotated[
+        str | None, Query(description="The `next_cursor` of a previous page; absent for the first.")
+    ] = None,
+) -> FeedPosition | None:
+    if cursor is None:
+        return None
+    try:
+        return decode_cursor(cursor)
+    except ValueError:
+        raise RequestValidationError(
+            [
+                {
+                    "type": "invalid_cursor",
+                    "loc": ("query", "cursor"),
+                    "msg": "Invalid cursor",
+                    "input": cursor,
+                }
+            ]
+        ) from None
+
+
 @router.get("/feed/list", responses=_errors(400, 500))
 async def list_feeds(
     searcher: FromDishka[FeedSearcher],
+    after: Annotated[FeedPosition | None, Depends(_after)],
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
     category: FeedCategory | None = None,
     source: FeedSource | None = None,
-) -> list[FeedResponse]:
-    """Every feed, or only those of `category` and of `source`, newest first."""
-    filters = tuple(
-        Filter(field, value)
-        for field, value in (("category", category), ("source", source))
-        if value is not None
+) -> FeedPageResponse:
+    """A page of the feeds, or only those of `category` and of `source`, newest first.
+
+    Feeds that share their creation date are ordered by id. Feeds saved while a client browses
+    never shift its next pages: they appear on a new first page.
+    """
+    page = await searcher.execute(limit=limit, after=after, category=category, source=source)
+    return FeedPageResponse(
+        items=[FeedResponse.from_feed(feed) for feed in page.feeds],
+        next_cursor=None if page.next is None else encode_cursor(page.next),
     )
-    criteria = FeedCriteria(filters=filters, order=NEWEST_FIRST)
-    return [FeedResponse.from_feed(feed) for feed in await searcher.execute(criteria)]
 
 
 @admin_router.get("/feed/scrap", responses=_errors(500))

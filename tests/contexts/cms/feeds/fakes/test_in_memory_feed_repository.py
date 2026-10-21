@@ -6,6 +6,7 @@ from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
 from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedCategory, FeedSource
 from daily_trends_py.contexts.cms.shared.domain.criteria import Filter, Order
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
+from tests.contexts.cms.feeds.domain.feed_id_mother import FeedIdMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
 from tests.contexts.cms.feeds.domain.feed_updated_at_mother import FeedUpdatedAtMother
 from tests.contexts.cms.feeds.fakes.in_memory_feed_repository import InMemoryFeedRepository
@@ -108,8 +109,8 @@ async def test_search_filters_by_the_primitive_value_of_a_field() -> None:
 async def test_search_orders_by_a_field_in_both_directions() -> None:
     repository = InMemoryFeedRepository(FEEDS)
 
-    ascending = await repository.search(FeedCriteria(order=Order("created_at", "asc")))
-    descending = await repository.search(FeedCriteria(order=Order("created_at", "desc")))
+    ascending = await repository.search(FeedCriteria(orders=(Order("created_at", "asc"),)))
+    descending = await repository.search(FeedCriteria(orders=(Order("created_at", "desc"),)))
 
     assert ascending == [OLDEST, MIDDLE, NEWEST]
     assert descending == [NEWEST, MIDDLE, OLDEST]
@@ -120,7 +121,7 @@ async def test_search_orders_null_values_first_when_ascending() -> None:
     not_updated = FeedMother.random(updated_at=FeedUpdatedAtMother.create(None))
     repository = InMemoryFeedRepository([updated, not_updated])
 
-    found = await repository.search(FeedCriteria(order=Order("updated_at", "asc")))
+    found = await repository.search(FeedCriteria(orders=(Order("updated_at", "asc"),)))
 
     assert found == [not_updated, updated]
 
@@ -131,9 +132,67 @@ async def test_search_applies_filters_then_order_then_limit() -> None:
     found = await repository.search(
         FeedCriteria(
             filters=(Filter("source", FeedSource.EL_MUNDO), Filter("source", FeedSource.CMS)),
-            order=Order("created_at", "desc"),
+            orders=(Order("created_at", "desc"),),
             limit=1,
         )
     )
 
     assert found == [MIDDLE]
+
+
+def _batch(created_at: str, *ids: str) -> list[Feed]:
+    return [
+        FeedMother.random(
+            id=FeedIdMother.create(id), created_at=FeedCreatedAtMother.create(created_at)
+        )
+        for id in ids
+    ]
+
+
+EARLIER_BATCH = _batch(
+    "2026-10-20T08:00:00.000Z",
+    "11111111-1111-4111-8111-111111111111",
+    "33333333-3333-4333-8333-333333333333",
+)
+LATER_BATCH = _batch(
+    "2026-10-20T10:00:00.000Z",
+    "22222222-2222-4222-8222-222222222222",
+    "44444444-4444-4444-8444-444444444444",
+)
+
+
+async def test_search_in_the_list_order_breaks_ties_on_the_creation_date_by_id() -> None:
+    repository = InMemoryFeedRepository([*EARLIER_BATCH, *LATER_BATCH])
+
+    found = await repository.search(FeedCriteria(orders=FeedCriteria.LIST_ORDER))
+
+    assert found == [LATER_BATCH[1], LATER_BATCH[0], EARLIER_BATCH[1], EARLIER_BATCH[0]]
+
+
+async def test_search_starts_strictly_after_the_position() -> None:
+    repository = InMemoryFeedRepository([*EARLIER_BATCH, *LATER_BATCH])
+    position = LATER_BATCH[0]
+
+    found = await repository.search(
+        FeedCriteria(
+            orders=FeedCriteria.LIST_ORDER,
+            after=(position.created_at.value, position.id.value),
+        )
+    )
+
+    assert found == [EARLIER_BATCH[1], EARLIER_BATCH[0]]
+
+
+async def test_search_starts_after_the_position_of_a_deleted_feed() -> None:
+    repository = InMemoryFeedRepository([*EARLIER_BATCH, *LATER_BATCH])
+    position = LATER_BATCH[0]
+    await repository.delete(position)
+
+    found = await repository.search(
+        FeedCriteria(
+            orders=FeedCriteria.LIST_ORDER,
+            after=(position.created_at.value, position.id.value),
+        )
+    )
+
+    assert found == [EARLIER_BATCH[1], EARLIER_BATCH[0]]

@@ -1,4 +1,5 @@
-from collections.abc import Mapping
+import operator
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import TYPE_CHECKING, cast
 
@@ -6,6 +7,7 @@ from daily_trends_py.contexts.cms.feeds.domain.errors import FeedAlreadyExists, 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
 from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedId, FeedSource, FeedTitle
+from daily_trends_py.contexts.cms.shared.domain.criteria import Order
 
 if TYPE_CHECKING:
     from _typeshed import SupportsRichComparison
@@ -18,6 +20,7 @@ class InMemoryFeedRepository:
         self.updated: list[Feed] = []
         self.deleted: list[Feed] = []
         self.searched_ids: list[FeedId] = []
+        self.searched_criteria: list[FeedCriteria] = []
 
     async def create(self, feed: Feed) -> None:
         if feed.id.value in self._feeds:
@@ -40,18 +43,24 @@ class InMemoryFeedRepository:
         self.deleted.append(feed)
 
     async def search(self, criteria: FeedCriteria) -> list[Feed]:
+        self.searched_criteria.append(criteria)
         values_by_field = criteria.values_by_field()
         feeds = [
             feed
             for feed in self._feeds.values()
             if all(_value(feed, field) in values for field, values in values_by_field.items())
         ]
-        if criteria.order is not None:
-            field = criteria.order.field
+        if criteria.after is not None:
+            feeds = [feed for feed in feeds if _is_after(feed, criteria.orders, criteria.after)]
+        # A stable sort by each order from the last one sorts by all of them, the first one first.
+        for order in reversed(criteria.orders):
             # Like Mongo, a null value sorts before any other value in ascending order.
             feeds.sort(
-                key=lambda feed: (_value(feed, field) is not None, _sortable(feed, field)),
-                reverse=criteria.order.direction == "desc",
+                key=lambda feed, field=order.field: (
+                    _value(feed, field) is not None,
+                    _sortable(feed, field),
+                ),
+                reverse=order.direction == "desc",
             )
         return feeds if criteria.limit is None else feeds[: criteria.limit]
 
@@ -72,3 +81,12 @@ def _value(feed: Feed, field: str) -> object:
 def _sortable(feed: Feed, field: str) -> SupportsRichComparison:
     value = _value(feed, field)
     return cast("SupportsRichComparison", "" if value is None else value)
+
+
+def _is_after(feed: Feed, orders: Sequence[Order], after: Sequence[object]) -> bool:
+    for order, position in zip(orders, after, strict=True):
+        value = _sortable(feed, order.field)
+        bound = cast("SupportsRichComparison", position)
+        if value != bound:
+            return bool((operator.lt if order.direction == "desc" else operator.gt)(value, bound))
+    return False

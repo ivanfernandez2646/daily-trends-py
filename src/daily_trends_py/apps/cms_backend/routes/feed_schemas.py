@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated, NotRequired, Self, TypedDict
 
-from pydantic import BaseModel, ConfigDict, Strict, with_config
+from pydantic import BaseModel, ConfigDict, Field, Strict, with_config
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedCategory, FeedSource
@@ -56,6 +56,13 @@ class FeedResponse(BaseModel):
             created_at=feed.created_at.value,
             updated_at=feed.updated_at.value,
         )
+
+
+class FeedPageResponse(BaseModel):
+    items: list[FeedResponse]
+    next_cursor: str | None = Field(
+        description="Pass it as `cursor` to get the next page; `null` on the last page."
+    )
 
 
 class ErrorResponse(BaseModel):

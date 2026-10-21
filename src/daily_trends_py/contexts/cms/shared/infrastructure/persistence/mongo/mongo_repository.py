@@ -1,8 +1,8 @@
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping, Sequence
 
 from pymongo.errors import DuplicateKeyError
 
-from daily_trends_py.contexts.cms.shared.domain.criteria import Criteria
+from daily_trends_py.contexts.cms.shared.domain.criteria import Criteria, Order
 from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_client_factory import (  # noqa: E501
     MongoClient,
     MongoCollection,
@@ -50,13 +50,14 @@ class MongoRepository:
             stored(field): values[0] if len(values) == 1 else {"$in": list(values)}
             for field, values in criteria.values_by_field().items()
         }
-        sort = (
-            None
-            if criteria.order is None
-            else [(stored(criteria.order.field), 1 if criteria.order.direction == "asc" else -1)]
-        )
+        if criteria.after is not None:
+            query["$or"] = _after_position(criteria.orders, criteria.after, stored)
+        sort = [
+            (stored(order.field), 1 if order.direction == "asc" else -1)
+            for order in criteria.orders
+        ]
         # pymongo reads a limit of 0 as no limit.
-        cursor = self._collection.find(query, sort=sort, limit=criteria.limit or 0)
+        cursor = self._collection.find(query, sort=sort or None, limit=criteria.limit or 0)
         return [document async for document in cursor]
 
     async def _exists(self, query: MongoDocument) -> bool:
@@ -64,3 +65,20 @@ class MongoRepository:
 
     async def _remove(self, id: str) -> None:
         await self._collection.delete_one({"_id": id})
+
+
+def _after_position(
+    orders: Sequence[Order], after: Sequence[object], stored: Callable[[str], str]
+) -> list[MongoDocument]:
+    """The documents after `after` in `orders`: equal on the first fields, then past on the next."""
+    conditions: list[MongoDocument] = []
+    for index, order in enumerate(orders):
+        condition: MongoDocument = {
+            stored(earlier.field): value
+            for earlier, value in zip(orders[:index], after[:index], strict=True)
+        }
+        condition[stored(order.field)] = {
+            "$lt" if order.direction == "desc" else "$gt": after[index]
+        }
+        conditions.append(condition)
+    return conditions

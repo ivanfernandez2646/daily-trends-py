@@ -14,7 +14,8 @@ Feature: List feed
     Then The response status code should be 200
     And The response should contains:
       """
-      [
+      {
+      "items": [
         {
             "id": "798516e0-ee38-4a64-a0be-f3af830d8815",
             "title": "Test Feed Find 4",
@@ -60,7 +61,9 @@ Feature: List feed
             "category": "POLITICS",
             "url": null
         }
-      ]
+      ],
+      "next_cursor": null
+      }
       """
 
   Scenario: When there are feeds of the requested category
@@ -73,7 +76,8 @@ Feature: List feed
     Then The response status code should be 200
     And The response should contains:
       """
-      [
+      {
+      "items": [
         {
             "id": "798516e0-ee38-4a64-a0be-f3af830d8815",
             "title": "Test Feed Find 4",
@@ -88,7 +92,9 @@ Feature: List feed
             "category": "SPORTS",
             "url": null
         }
-      ]
+      ],
+      "next_cursor": null
+      }
       """
 
   Scenario: When the category is not a known value
@@ -100,5 +106,34 @@ Feature: List feed
     Then The response status code should be 200
     And The response should be:
     """
-        []
+        {"items": [], "next_cursor": null}
     """
+
+  Scenario: Browsing the feeds page by page
+    Given There are feeds:
+      | id                                   | title  | description          | author | source   | createdAt                | category |
+      | 0b6c1a52-3d0e-4c1b-9d3e-0f3b7c1a2b01 | Feed 1 | Description - Feed 1 | Ivan   | CMS      | 2023-06-16T14:58:39.733Z | POLITICS |
+      | 0b6c1a52-3d0e-4c1b-9d3e-0f3b7c1a2b02 | Feed 2 | Description - Feed 2 | Ivan   | EL_MUNDO | 2023-06-17T14:58:39.733Z | SPORTS   |
+      | 0b6c1a52-3d0e-4c1b-9d3e-0f3b7c1a2b03 | Feed 3 | Description - Feed 3 | Ivan   | EL_PAIS  | 2023-06-18T14:58:39.733Z | CULTURE  |
+    When I send a GET request to "/feed/list?limit=2"
+    Then The response status code should be 200
+    And The response should contains:
+      """
+      {
+        "items": [
+          {"id": "0b6c1a52-3d0e-4c1b-9d3e-0f3b7c1a2b03", "title": "Feed 3"},
+          {"id": "0b6c1a52-3d0e-4c1b-9d3e-0f3b7c1a2b02", "title": "Feed 2"}
+        ]
+      }
+      """
+    When I request the next page
+    Then The response status code should be 200
+    And The response should contains:
+      """
+      {
+        "items": [
+          {"id": "0b6c1a52-3d0e-4c1b-9d3e-0f3b7c1a2b01", "title": "Feed 1"}
+        ],
+        "next_cursor": null
+      }
+      """
