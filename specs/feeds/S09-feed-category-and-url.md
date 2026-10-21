@@ -71,8 +71,10 @@ A fixed enum, required on every feed (never `null`):
 ## Scraping
 
 ### Article URL
-- For each `article`, the URL is the `href` of the title element when it is a link, else of the first
-  link inside the title element, else of the first link inside the article.
+- For each `article`, the URL is the `href` of the title element when it is a link, else of the
+  closest link around the title element, else of the first link inside the title element, else of
+  the first link inside the article. Several front pages wrap the headline in its link, and a byline
+  can be a link that comes first.
 - A relative `href` is resolved against the front page URL after redirects (for example
   `https://www.elmundo.es/`).
 - An article without a usable link (none, blank, or not `http`/`https` after resolving) is
@@ -134,8 +136,8 @@ A fixed enum, required on every feed (never `null`):
   `http`/`https` and `null`, rejects relative, `ftp:` and blank; `update` changes the category and
   sets `updatedAt`, the same category is no change; `FeedMother` builds feeds with a category and a
   URL.
-- Front-page extraction tests with HTML fixtures: link from the title, from inside the title, from the
-  article; relative resolution against the final URL; an article without a usable link is skipped;
+- Front-page extraction tests with HTML fixtures: link from the title, around the title, from inside
+  the title, from the article (a byline link before a wrapped title is not taken); relative resolution against the final URL; an article without a usable link is skipped;
   the category lookup per table, case-insensitive on the segment, `OTHER` for unknown sections and an
   empty path.
 - One test per scraper that its table maps a sample of its sections (the table above is the source of

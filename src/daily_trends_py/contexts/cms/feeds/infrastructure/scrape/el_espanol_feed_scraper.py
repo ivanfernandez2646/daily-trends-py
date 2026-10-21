@@ -1,9 +1,10 @@
 import httpx
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
-from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedSource
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedCategory, FeedSource
 from daily_trends_py.contexts.cms.feeds.infrastructure.scrape.front_page import (
     ScrapeMapping,
+    categories_by_section,
     scrape_front_page,
 )
 from daily_trends_py.contexts.cms.shared.domain.clock import Clock
@@ -14,6 +15,27 @@ _MAPPING = ScrapeMapping(
     author_selector=".art__author",
     title_selector=".art__title",
     description_selector=".art__subtitle",
+    categories=categories_by_section(
+        {
+            FeedCategory.POLITICS: ("espana", "politica"),
+            FeedCategory.INTERNATIONAL: ("mundo",),
+            FeedCategory.ECONOMY: ("invertia",),
+            FeedCategory.SOCIETY: (
+                "sociedad",
+                "madrid",
+                "valencia",
+                "cataluna",
+                "andalucia",
+                "castilla-y-leon",
+            ),
+            FeedCategory.SPORTS: ("deportes",),
+            FeedCategory.CULTURE: ("cultura",),
+            FeedCategory.TECHNOLOGY: ("omicrono",),
+            FeedCategory.SCIENCE: ("ciencia",),
+            FeedCategory.HEALTH: ("salud",),
+            FeedCategory.OPINION: ("opinion",),
+        }
+    ),
 )
 
 

@@ -1,20 +1,24 @@
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed, FeedPrimitives
 from daily_trends_py.contexts.cms.feeds.domain.value_objects import (
     FeedAuthor,
+    FeedCategory,
     FeedCreatedAt,
     FeedDescription,
     FeedId,
     FeedSource,
     FeedTitle,
     FeedUpdatedAt,
+    FeedUrl,
 )
 from tests.contexts.cms.feeds.domain.feed_author_mother import FeedAuthorMother
+from tests.contexts.cms.feeds.domain.feed_category_mother import FeedCategoryMother
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_description_mother import FeedDescriptionMother
 from tests.contexts.cms.feeds.domain.feed_id_mother import FeedIdMother
 from tests.contexts.cms.feeds.domain.feed_source_mother import FeedSourceMother
 from tests.contexts.cms.feeds.domain.feed_title_mother import FeedTitleMother
 from tests.contexts.cms.feeds.domain.feed_updated_at_mother import FeedUpdatedAtMother
+from tests.contexts.cms.feeds.domain.feed_url_mother import FeedUrlMother
 
 
 class FeedMother:
@@ -26,6 +30,8 @@ class FeedMother:
         description: FeedDescription | None = None,
         author: FeedAuthor | None = None,
         source: FeedSource | None = None,
+        category: FeedCategory | None = None,
+        url: FeedUrl | None = None,
         created_at: FeedCreatedAt | None = None,
         updated_at: FeedUpdatedAt | None = None,
     ) -> Feed:
@@ -35,6 +41,8 @@ class FeedMother:
             description=description or FeedDescriptionMother.random(),
             author=author or FeedAuthorMother.random(),
             source=source or FeedSourceMother.random(),
+            category=category or FeedCategoryMother.random(),
+            url=url or FeedUrlMother.random(),
             created_at=created_at or FeedCreatedAtMother.random(),
             updated_at=updated_at or FeedUpdatedAtMother.random(),
         )

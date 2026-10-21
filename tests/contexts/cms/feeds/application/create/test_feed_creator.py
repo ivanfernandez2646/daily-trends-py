@@ -6,10 +6,11 @@ import pytest
 from daily_trends_py.contexts.cms.feeds.application.create.feed_creator import FeedCreator
 from daily_trends_py.contexts.cms.feeds.domain.errors import FeedAlreadyExists
 from daily_trends_py.contexts.cms.feeds.domain.events import FeedCreatedDomainEvent
-from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedSource
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedCategory, FeedSource
 from daily_trends_py.contexts.cms.shared.domain.invalid_argument_error import (
     InvalidArgumentError,
 )
+from tests.contexts.cms.feeds.domain.feed_category_mother import FeedCategoryMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
 from tests.contexts.cms.feeds.fakes.in_memory_feed_repository import InMemoryFeedRepository
 from tests.contexts.cms.shared.domain.mother_creator import MotherCreator
@@ -25,6 +26,7 @@ class FeedCreatorArguments(TypedDict):
     description: str | None
     author: str
     source: FeedSource
+    category: FeedCategory
 
 
 def random_arguments(**overrides: str | None) -> FeedCreatorArguments:
@@ -34,11 +36,12 @@ def random_arguments(**overrides: str | None) -> FeedCreatorArguments:
         "description": MotherCreator.sentence() if MotherCreator.boolean() else None,
         "author": MotherCreator.name(),
         "source": FeedSource.CMS,
+        "category": FeedCategoryMother.random(),
     }
     return arguments | overrides  # pyright: ignore[reportReturnType]
 
 
-async def test_creates_and_returns_a_new_feed_created_now_without_update_date() -> None:
+async def test_creates_and_returns_a_new_feed_created_now_without_update_date_or_url() -> None:
     repository = InMemoryFeedRepository()
     creator = FeedCreator(repository, RecordingEventBus(), FixedClock(NOW))
     arguments = random_arguments()
@@ -49,6 +52,7 @@ async def test_creates_and_returns_a_new_feed_created_now_without_update_date() 
     primitives = feed.to_primitives()
     assert {key: primitives[key] for key in arguments} == arguments
     assert primitives["updated_at"] is None
+    assert primitives["url"] is None
     assert primitives["created_at"] == NOW
 
 

@@ -11,7 +11,7 @@ scenarios("features/delete-feed.feature")
 
 def test_a_deleted_feed_is_no_longer_found(client: TestClient) -> None:
     id = MotherCreator.uuid()
-    client.put(f"/feed/{id}", json={"title": "A title", "author": "Ivan"})
+    client.put(f"/feed/{id}", json={"title": "A title", "author": "Ivan", "category": "OTHER"})
 
     assert client.delete(f"/feed/{id}").status_code == 204
 

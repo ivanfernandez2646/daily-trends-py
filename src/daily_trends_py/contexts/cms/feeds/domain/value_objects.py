@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Never
+from urllib.parse import urlsplit
 
 from daily_trends_py.contexts.cms.shared.domain.date_time_value_object import (
     DateTimeValueObject,
@@ -49,6 +50,39 @@ class FeedSource(StrEnum):
     def _missing_(cls, value: object) -> Never:
         # `Enum` raises what `_missing_` raises, so an unknown source is an invalid argument.
         raise InvalidArgumentError(f"<FeedSource> does not allow the value <{value}>")
+
+
+class FeedCategory(StrEnum):
+    POLITICS = "POLITICS"
+    INTERNATIONAL = "INTERNATIONAL"
+    ECONOMY = "ECONOMY"
+    SOCIETY = "SOCIETY"
+    SPORTS = "SPORTS"
+    CULTURE = "CULTURE"
+    TECHNOLOGY = "TECHNOLOGY"
+    SCIENCE = "SCIENCE"
+    HEALTH = "HEALTH"
+    OPINION = "OPINION"
+    OTHER = "OTHER"
+
+    @classmethod
+    def _missing_(cls, value: object) -> Never:
+        raise InvalidArgumentError(f"<FeedCategory> does not allow the value <{value}>")
+
+
+@dataclass(frozen=True)
+class FeedUrl(StringValueObject):
+    """The original article's absolute `http` or `https` URL, or `None` when there is none."""
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if self.value is not None and not _is_absolute_http_url(self.value):
+            raise InvalidArgumentError(f"<FeedUrl> does not allow the value <{self.value}>")
+
+
+def _is_absolute_http_url(value: str) -> bool:
+    parts = urlsplit(value)
+    return parts.scheme in ("http", "https") and parts.netloc != ""
 
 
 @dataclass(frozen=True)

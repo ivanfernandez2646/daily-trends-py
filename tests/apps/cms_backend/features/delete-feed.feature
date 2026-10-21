@@ -14,8 +14,8 @@ Feature: Delete feed
 
   Scenario: When a feed exists
     Given There are feeds:
-    | id                                   | title            | description                    | author | source |
-    | 90711cac-700b-4f44-b00e-407a901ea080 | Test Feed Delete | Description - Test Feed Delete | Ivan   | CMS    |
+    | id                                   | title            | description                    | author | source | category |
+    | 90711cac-700b-4f44-b00e-407a901ea080 | Test Feed Delete | Description - Test Feed Delete | Ivan   | CMS    | OTHER    |
     When I send a DELETE request to "/feed/90711cac-700b-4f44-b00e-407a901ea080"
     Then The response status code should be 204
     And The response should be empty

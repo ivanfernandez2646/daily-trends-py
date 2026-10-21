@@ -1,12 +1,13 @@
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
+from urllib.parse import urlsplit
 
 import httpx
 import pytest
 
 from daily_trends_py.contexts.cms.feeds.domain.events import FeedCreatedDomainEvent
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
-from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedSource
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedCategory, FeedSource
 from daily_trends_py.contexts.cms.feeds.infrastructure.scrape.el_espanol_feed_scraper import (
     ElEspanolFeedScraper,
 )
@@ -73,6 +74,54 @@ async def test_scrapes_nothing_from_a_page_that_blocks_the_request() -> None:
         assert await ElEspanolFeedScraper(client, FixedClock(NOW)).scrape() == []
 
 
+async def test_credits_each_feed_with_its_article_url_and_section_category(
+    client: httpx.AsyncClient,
+) -> None:
+    feeds = await ElEspanolFeedScraper(client, FixedClock(NOW)).scrape()
+
+    assert [(feed.url.value, feed.category) for feed in feeds] == [
+        (
+            "https://www.elespanol.com/espana/politica/20261020/obra-puente.html",
+            FeedCategory.POLITICS,
+        ),
+        ("https://www.elespanol.com/madrid/20261020/arboles-calles.html", FeedCategory.SOCIETY),
+        ("https://www.elespanol.com/reportajes/20261020/festival-cometas.html", FeedCategory.OTHER),
+        ("https://www.elespanol.com/invertia/20261020/carril-bici.html", FeedCategory.ECONOMY),
+        (
+            "https://www.elespanol.com/omicrono/20261020/panaderia-centenaria.html",
+            FeedCategory.TECHNOLOGY,
+        ),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("section", "category"),
+    [
+        ("politica", FeedCategory.POLITICS),
+        ("mundo", FeedCategory.INTERNATIONAL),
+        ("invertia", FeedCategory.ECONOMY),
+        ("valencia", FeedCategory.SOCIETY),
+        ("deportes", FeedCategory.SPORTS),
+        ("cultura", FeedCategory.CULTURE),
+        ("omicrono", FeedCategory.TECHNOLOGY),
+        ("ciencia", FeedCategory.SCIENCE),
+        ("salud", FeedCategory.HEALTH),
+        ("opinion", FeedCategory.OPINION),
+        ("reportajes", FeedCategory.OTHER),
+    ],
+)
+async def test_maps_its_sections_to_categories(section: str, category: FeedCategory) -> None:
+    page = (
+        "<article><h2 class='art__title'><a href='{href}'>A title</a></h2>"
+        "<span class='art__author'>Ana</span></article>"
+    ).format(href=f"/{section}/1.html")
+    transport = httpx.MockTransport(lambda _: httpx.Response(200, text=page))
+    async with httpx.AsyncClient(transport=transport) as client:
+        [feed] = await ElEspanolFeedScraper(client, FixedClock(NOW)).scrape()
+
+    assert feed.category == category
+
+
 @pytest.mark.network
 async def test_scrapes_five_feeds_from_the_real_front_page() -> None:
     async with httpx.AsyncClient(timeout=None, follow_redirects=True) as client:
@@ -81,6 +130,12 @@ async def test_scrapes_five_feeds_from_the_real_front_page() -> None:
     assert len(feeds) == 5
     for feed in feeds:
         assert feed.source == FeedSource.EL_ESPANOL
+        assert feed.url.value is not None
+        url = urlsplit(feed.url.value)
+        assert url.scheme in ("http", "https")
+        assert url.hostname is not None
+        assert url.hostname.endswith("elespanol.com")
+        assert isinstance(feed.category, FeedCategory)
         assert feed.author.value
         assert feed.title.value
         assert feed.description.value != ""

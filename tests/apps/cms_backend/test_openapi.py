@@ -113,10 +113,15 @@ def test_the_feed_response_lists_its_fields_in_order_with_dates(document: Json) 
         "description",
         "author",
         "source",
+        "category",
+        "url",
         "created_at",
         "updated_at",
     ]
     assert properties["created_at"]["format"] == "date-time"
+    assert properties["category"] == _ref("FeedCategory")
+    assert properties["url"]["anyOf"] == [{"type": "string"}, {"type": "null"}]
+    assert "url" in cast(list[str], schema["required"])
 
 
 @pytest.mark.parametrize(
@@ -126,7 +131,7 @@ def test_the_feed_response_lists_its_fields_in_order_with_dates(document: Json) 
         ("/feed/{id}", "get", {"400", "404", "500"}),
         ("/feed/{id}", "patch", {"400", "404", "500"}),
         ("/feed/{id}", "delete", {"400", "404", "500"}),
-        ("/feed/list", "get", {"500"}),
+        ("/feed/list", "get", {"400", "500"}),
         ("/feed/home", "get", {"500"}),
         ("/feed/scrap", "get", {"500"}),
     ],
@@ -173,3 +178,44 @@ def test_the_front_page_describes_its_per_source_selection(document: Json) -> No
     description = cast(str, _get(document, "paths", "/feed/home", "get", "description"))
 
     assert "2 newest feeds of each external source" in description
+
+
+def test_the_feed_category_lists_every_category(document: Json) -> None:
+    schema = cast(Json, _get(document, "components", "schemas", "FeedCategory"))
+
+    assert schema["enum"] == [
+        "POLITICS",
+        "INTERNATIONAL",
+        "ECONOMY",
+        "SOCIETY",
+        "SPORTS",
+        "CULTURE",
+        "TECHNOLOGY",
+        "SCIENCE",
+        "HEALTH",
+        "OPINION",
+        "OTHER",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("schema", "required"), [("CreateFeedRequest", True), ("UpdateFeedRequest", False)]
+)
+def test_the_request_bodies_take_a_category(document: Json, schema: str, required: bool) -> None:
+    body = cast(Json, _get(document, "components", "schemas", schema))
+    properties = cast(Json, body["properties"])
+
+    assert properties["category"] == _ref("FeedCategory")
+    assert ("category" in cast(list[str], body.get("required", []))) is required
+    assert "url" not in properties
+
+
+def test_the_list_takes_an_optional_category_query_parameter(document: Json) -> None:
+    [parameter] = cast(list[Json], _get(document, "paths", "/feed/list", "get", "parameters"))
+
+    assert (parameter["name"], parameter["in"], parameter["required"]) == (
+        "category",
+        "query",
+        False,
+    )
+    assert cast(Json, parameter["schema"])["anyOf"] == [_ref("FeedCategory"), {"type": "null"}]

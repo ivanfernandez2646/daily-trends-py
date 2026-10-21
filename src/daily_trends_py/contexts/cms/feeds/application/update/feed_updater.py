@@ -4,6 +4,7 @@ from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
 from daily_trends_py.contexts.cms.feeds.domain.find_feed import find_feed
 from daily_trends_py.contexts.cms.feeds.domain.value_objects import (
+    FeedCategory,
     FeedDescription,
     FeedId,
     FeedTitle,
@@ -16,6 +17,7 @@ class FeedChanges(TypedDict, total=False):
 
     title: str
     description: str | None
+    category: FeedCategory
 
 
 class FeedUpdater:
@@ -28,7 +30,12 @@ class FeedUpdater:
         title = FeedTitle(changes["title"]) if "title" in changes else None
         description = FeedDescription(changes["description"]) if "description" in changes else None
 
-        updated = feed.update(now=self._clock.now(), title=title, description=description)
+        updated = feed.update(
+            now=self._clock.now(),
+            title=title,
+            description=description,
+            category=changes.get("category"),
+        )
         if updated is None:
             return feed
 

@@ -13,7 +13,17 @@ from tests.contexts.cms.shared.domain.mother_creator import MotherCreator
 
 pytestmark = pytest.mark.integration
 
-FEED_KEYS = ["id", "title", "description", "author", "source", "created_at", "updated_at"]
+FEED_KEYS = [
+    "id",
+    "title",
+    "description",
+    "author",
+    "source",
+    "category",
+    "url",
+    "created_at",
+    "updated_at",
+]
 # Pydantic's format: UTC with `Z`, and six fractional digits only when the fraction is not zero.
 UTC_DATE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3}000)?Z")
 
@@ -30,7 +40,7 @@ def _assert_is_feed_json(feed: dict[str, object]) -> None:
 def test_create_find_and_update_answer_the_feed_json(client: TestClient) -> None:
     url = f"/feed/{MotherCreator.uuid()}"
 
-    created = client.put(url, json={"title": "A title", "author": "Ivan"})
+    created = client.put(url, json={"title": "A title", "author": "Ivan", "category": "OTHER"})
     found = client.get(url)
     updated = client.patch(url, json={"title": "Another title"})
 
@@ -61,3 +71,5 @@ def test_scrape_answers_feed_json(client: TestClient) -> None:
     assert scraped
     for feed in scraped:
         _assert_is_feed_json(feed)
+        assert isinstance(feed["url"], str)
+        assert isinstance(feed["category"], str)

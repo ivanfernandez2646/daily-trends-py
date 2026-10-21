@@ -1,12 +1,13 @@
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
+from urllib.parse import urlsplit
 
 import httpx
 import pytest
 
 from daily_trends_py.contexts.cms.feeds.domain.events import FeedCreatedDomainEvent
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
-from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedSource
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedCategory, FeedSource
 from daily_trends_py.contexts.cms.feeds.infrastructure.scrape.el_confidencial_feed_scraper import (
     ElConfidencialFeedScraper,
 )
@@ -65,6 +66,63 @@ async def test_scrapes_five_feeds_from_the_front_page(client: httpx.AsyncClient)
     _assert_each_feed_was_created_once_now(feeds)
 
 
+async def test_credits_each_feed_with_its_article_url_and_section_category(
+    client: httpx.AsyncClient,
+) -> None:
+    feeds = await ElConfidencialFeedScraper(client, FixedClock(NOW)).scrape()
+
+    assert [(feed.url.value, feed.category) for feed in feeds] == [
+        (
+            "https://www.elconfidencial.com/espana/2026-10-20/pleno-presupuestos_100001/",
+            FeedCategory.POLITICS,
+        ),
+        (
+            "https://www.elconfidencial.com/empresas/2026-10-20/mercado-domingos_100003/",
+            FeedCategory.ECONOMY,
+        ),
+        (
+            "https://www.elconfidencial.com/cultura/2026-10-20/biblioteca-verano_100005/",
+            FeedCategory.CULTURE,
+        ),
+        (
+            "https://www.elconfidencial.com/deportes/2026-10-20/ajedrez-torneo_100006/",
+            FeedCategory.SPORTS,
+        ),
+        (
+            "https://www.elconfidencial.com/motor/2026-10-20/huerto-urbano_100007/",
+            FeedCategory.OTHER,
+        ),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("section", "category"),
+    [
+        ("espana", FeedCategory.POLITICS),
+        ("mundo", FeedCategory.INTERNATIONAL),
+        ("mercados", FeedCategory.ECONOMY),
+        ("vivienda", FeedCategory.ECONOMY),
+        ("sociedad", FeedCategory.SOCIETY),
+        ("tecnologia", FeedCategory.TECHNOLOGY),
+        ("salud", FeedCategory.HEALTH),
+        ("opinion", FeedCategory.OPINION),
+        ("juridico", FeedCategory.OTHER),
+        ("motor", FeedCategory.OTHER),
+    ],
+)
+async def test_maps_its_sections_to_categories(section: str, category: FeedCategory) -> None:
+    page = (
+        "<article><a class='teaser__link' href='{href}'>"
+        "<h2 class='titleArticleEditable'>A title</h2></a>"
+        "<span class='articleByline__signature'>Ana</span></article>"
+    ).format(href=f"/{section}/1.html")
+    transport = httpx.MockTransport(lambda _: httpx.Response(200, text=page))
+    async with httpx.AsyncClient(transport=transport) as client:
+        [feed] = await ElConfidencialFeedScraper(client, FixedClock(NOW)).scrape()
+
+    assert feed.category == category
+
+
 @pytest.mark.network
 async def test_scrapes_five_feeds_from_the_real_front_page() -> None:
     # The site answers 403 to httpx's default User-Agent, so the test sends the app's.
@@ -76,6 +134,12 @@ async def test_scrapes_five_feeds_from_the_real_front_page() -> None:
     assert len(feeds) == 5
     for feed in feeds:
         assert feed.source == FeedSource.EL_CONFIDENCIAL
+        assert feed.url.value is not None
+        url = urlsplit(feed.url.value)
+        assert url.scheme in ("http", "https")
+        assert url.hostname is not None
+        assert url.hostname.endswith("elconfidencial.com")
+        assert isinstance(feed.category, FeedCategory)
         assert feed.author.value
         assert feed.title.value
         assert feed.description.value != ""

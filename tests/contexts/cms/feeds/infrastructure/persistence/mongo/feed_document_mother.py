@@ -22,6 +22,8 @@ class FeedDocumentMother:
             "description": primitives["description"],
             "author": primitives["author"],
             "source": primitives["source"].value,
+            "category": primitives["category"].value,
+            "url": primitives["url"],
             "createdAt": primitives["created_at"],
             "updatedAt": primitives["updated_at"],
         }

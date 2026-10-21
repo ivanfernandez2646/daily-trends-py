@@ -20,6 +20,10 @@ class MotherCreator:
         return _faker.sentence()
 
     @staticmethod
+    def url() -> str:
+        return f"{_faker.url(schemes=['https'])}{_faker.uri_path()}.html"
+
+    @staticmethod
     def name() -> str:
         return _faker.name()
 

@@ -8,7 +8,8 @@ Feature: Create feed
       {
         "title": "Example Title",
         "description": "Example Description",
-        "author": "Ivan"
+        "author": "Ivan",
+        "category": "SPORTS"
       }
       """
     Then The response status code should be 201
@@ -19,21 +20,24 @@ Feature: Create feed
         "title": "Example Title",
         "description": "Example Description",
         "author": "Ivan",
-        "source": "CMS"
+        "source": "CMS",
+        "category": "SPORTS",
+        "url": null
       }
       """
 
 
   Scenario: When a feed exists
     Given There are feeds:
-    | id                                   | title           | description           | author | source |
-    | 749dbded-bae2-43ac-9537-0d71bddb6f9a | Example Title 1 | Example Description 2 | Ivan   | CMS    |
+    | id                                   | title           | description           | author | source | category |
+    | 749dbded-bae2-43ac-9537-0d71bddb6f9a | Example Title 1 | Example Description 2 | Ivan   | CMS    | POLITICS |
     When I send a PUT request to "/feed/749dbded-bae2-43ac-9537-0d71bddb6f9a" with body:
       """
       {
         "title": "Example Title 3",
         "description": "Example Description 3",
-        "author": "Ivan"
+        "author": "Ivan",
+        "category": "CULTURE"
       }
       """
     Then The response status code should be 409
