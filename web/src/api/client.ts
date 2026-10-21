@@ -18,14 +18,17 @@ export class ApiError extends Error {
   }
 }
 
-type ApiResult<T> =
-  | { data: T; error?: never; response: Response }
-  | { data?: never; error: unknown; response: Response };
+type ApiResult = { data?: unknown; error?: unknown; response: Response };
 
-/** The body of a successful answer; any other answer throws an `ApiError`. */
-export async function unwrap<T>(request: Promise<ApiResult<T>>): Promise<T> {
+/**
+ * The body of a successful answer; any other answer throws an `ApiError`. Typed from the whole
+ * result: inferring the body from its union would add the error side's `undefined`.
+ */
+export async function unwrap<R extends ApiResult>(
+  request: Promise<R>,
+): Promise<NonNullable<R["data"]>> {
   const result = await request;
-  if (result.data !== undefined) {
+  if (result.data !== undefined && result.data !== null) {
     return result.data;
   }
   throw new ApiError(result.response.status, errorMessage(result.error, result.response));

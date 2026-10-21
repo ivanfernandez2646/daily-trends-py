@@ -7,7 +7,7 @@ created_at: '2026-10-21T13:00:00Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-21T19:00:00Z'
+updated_at: '2026-10-21T20:30:00Z'
 implemented_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -478,9 +478,9 @@ pages through `next_cursor`.
 
 ### Tests first
 
-- [ ] `use-debounced-value.test.ts`: with fake timers, the value changes once after 300 ms of
+- [x] `use-debounced-value.test.ts`: with fake timers, the value changes once after 300 ms of
   quiet.
-- [ ] `routes/feeds.index.test.tsx` (MSW):
+- [x] `routes/feeds.index.test.tsx` (MSW):
   - the first page renders 20 rows newest first, with *Hoy*, *Ayer* or the day, and the time;
   - *Cargar más* requests `cursor=<next_cursor>`, appends the rows, and disappears when
     `next_cursor` is `null`;
@@ -500,16 +500,53 @@ pages through `next_cursor`.
   - a 500 shows `LoadError`;
   - loading shows row skeletons;
   - the *Filtros* button shows the active count.
-- [ ] `web/tests/e2e/browse.spec.ts`: with 25 seeded feeds across categories, sources and words,
+- [x] `web/tests/e2e/browse.spec.ts`: with 25 seeded feeds across categories, sources and words,
   filtering by category, by newspaper and by a word shows only the matching ones, and *Cargar más*
   loads the second page.
 
 ### Implementation
 
-- [ ] Write the search validation, the hooks and the components. Back and forward restore the
+- [x] Write the search validation, the hooks and the components. Back and forward restore the
   filters through the router.
-- [ ] Run the web gate including `pnpm e2e`.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Run the web gate including `pnpm e2e`.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
+
+### Implementation notes
+
+- **URL rewrite:**
+  - The route's `search` also keeps the root's unvalidated params. TanStack Router merges them
+    into the validated ones, so `category=nope` survived the validation.
+  - `beforeLoad` therefore validates the raw `location.search`, and redirects with
+    `replace: true` when any raw param is dropped or changed. Unknown params are dropped too.
+- **`unwrap`:** it is typed on the whole result (`Promise<NonNullable<R["data"]>>`). Inferring the
+  body from openapi-fetch's union added the error side's `undefined` for `/feed/list`.
+- **Copy:**
+  - Filters are described as words: *Noticias con “madrid” en Deportes de El Mundo*, and the
+    empty state reads *No hay noticias con “ópera” en Cultura.* with *Limpiar filtros*.
+  - Without filters, the empty state reads *Todavía no hay noticias.*
+- **Components:**
+  - The summary line and the phone's *Filtros* toggle live in the route, not in their own
+    components.
+  - The *Filtros* button's accessible name counts the active filters, for example
+    *Filtros (2 activos)*.
+  - The chips are a `fieldset` with a hidden legend *Categoría*, and the search box sits in a
+    `<search>` element. These are Biome's semantic-element rules.
+  - The source select offers `EL_PAIS` only when the URL already names it.
+- **Search:**
+  - *Buscar* in the front-page header leads to `/feeds#buscar`, which focuses the search box.
+  - The box keeps the last applied search, so going back or clearing the filters updates the
+    text without applying the search again.
+- **Tests:**
+  - `src/test/fake-feed-list.ts` is a fake `GET /feed/list`. It filters by category, source and
+    whole words and pages with a cursor, it can delay answers to reorder them, and it records
+    each request's query.
+  - The debounce is tested with fake timers; the screen tests use real ones.
+- **E2E:**
+  - `browse.spec.ts` covers paging up to the last page and filtering by category, newspaper and
+    a word.
+  - The search for *elección* finds *elecciones* through the API's Spanish text index.
+- **Checked by hand with screenshots:** 1440 px in light, and 390 px in dark with the filters
+  open. There is no horizontal scroll at 360 px.
 
 ## Phase 5: Detail, not found and documentation
 
@@ -574,4 +611,4 @@ a *not found* page, and the docs are updated.
 
 ## Next step
 
-Phase 3 is implemented and awaits review. Then run `/ai-project-implement-phase` for Phase 4.
+Phase 4 is implemented and awaits review. Then run `/ai-project-implement-phase` for Phase 5.

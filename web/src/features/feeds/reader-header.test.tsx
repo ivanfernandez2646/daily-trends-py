@@ -28,7 +28,7 @@ describe("on the front page", () => {
     );
     expect(within(sections).getByRole("link", { name: "Buscar" })).toHaveAttribute(
       "href",
-      "/feeds",
+      "/feeds#buscar",
     );
   });
 

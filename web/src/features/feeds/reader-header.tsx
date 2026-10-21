@@ -98,7 +98,11 @@ function FrontHeader({ updatedAt }: { updatedAt?: string }) {
               </Link>
             </li>
           </ul>
-          <Link to="/feeds" className="inline-flex min-h-11 items-center gap-2 hover:text-accent">
+          <Link
+            to="/feeds"
+            hash="buscar"
+            className="inline-flex min-h-11 items-center gap-2 hover:text-accent"
+          >
             <Search aria-hidden="true" className="size-4" />
             Buscar
           </Link>
