@@ -9,7 +9,7 @@ Re-implement daily-trends in Python (FastAPI + Mongo) with the same observable b
 A news API ("feeds"). A feed is a headline with an author and an optional description. Sources: `CMS` (created by hand through the API), `EL_MUNDO`, `EL_ESPANOL`, `EL_CONFIDENCIAL`, `LA_RAZON` and `LA_VANGUARDIA` (obtained by scraping their front pages, see S06 and S08), and `EL_PAIS` (scraped by the original; no longer scraped, see S06).
 
 ## Bounded context
-A single one, `cms/feeds`.
+A single one, `cms`, with the subdomain `feeds` and, from S11, `users`.
 
 ## How the specs are organized
 Each spec is a **capability** and is self-contained: it holds its own HTTP contract, domain rules, persistence needs, edge cases and acceptance criteria, so tasks and vertical slices can be derived from it directly. A rule is defined in the first spec that needs it and referenced by the later ones.
@@ -24,6 +24,7 @@ Each spec is a **capability** and is self-contained: it holds its own HTTP contr
 | S06 | Scrape external sources | S02 |
 | S07 | Front page | S03, S06 |
 | S08 | More sources | S06, S07, I02, I03 |
+| S11 | Authentication (`cms/users`, in `specs/users/`) | S01, S02, S04, S05, S06, I04, I06, I07 |
 
 Implementation order is the table order. S04 and S05 are independent of each other, and so are S03 and S06.
 
@@ -31,10 +32,11 @@ Implementation order is the table order. S04 and S05 are independent of each oth
 - **Feed:** aggregate root. Fields: `id`, `title`, `description` (nullable), `author`, `source`, `createdAt`, `updatedAt` (nullable).
 - **Source:** `CMS` | `EL_PAIS` | `EL_MUNDO` | `EL_ESPANOL` | `EL_CONFIDENCIAL` | `LA_RAZON` | `LA_VANGUARDIA`.
 - **Front page (home):** up to 10 feeds from the scraped sources: the 2 most recent of each, filled with the most recent of any of them (see S08).
+- **Administrator:** a user who logs in to manage the CMS; every user is one (S11).
 - **Scrap:** acquiring headlines from the El Mundo, El Español, El Confidencial, La Razón and La Vanguardia front pages (El País in the original; see S06 and S08).
 
 ## Out of scope
-Authentication, scheduler, pagination, Django, production deployment. Known improvements are in `improvements/`.
+Scheduler, pagination, Django, production deployment. Known improvements are in `improvements/`.
 
 ## Source of truth for behavior
 The Node reference repo (`reference/daily-trends-node`): the `.feature` files under `tests/apps/cms/backend/controllers/**` and `docs/openapi.yml`. If a spec and a `.feature` disagree, the `.feature` wins and the discrepancy is noted.

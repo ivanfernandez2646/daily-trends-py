@@ -18,7 +18,7 @@ Each item is current behavior that the port **keeps**, with the proposed improve
 | 12 | Dates ordered as text | S02/S03 | Native date types in Mongo | [I05](I05-criteria-and-native-dates.md) |
 | 13 | Events without subscribers and an unused deserializer | S02 | Decide whether the bus stays | Kept: subscribers arrive in a later feature |
 | 14 | CI on Node 14/15 and Dockerfile without `CMD` | S01 | Already solved in the port | |
-| 15 | No authentication or pagination on `/feed/list` | S03 | Out of scope for now | |
+| 15 | No authentication or pagination on `/feed/list` | S03 | Authentication: admin users and bearer tokens on writes; pagination out of scope for now | Authentication: [S11](../users/S11-authentication.md) |
 | 16 | Date-time validation errors name `<Function>` instead of the value object | S02 | Use the class name | [I01](I01-http-contract-fixes.md) |
 | 17 | Concurrent `/feed/home` requests on a stale day each run the scraping and store duplicate batches | S07 | Single-flight lock, or solved by #5 | [I03](I03-background-front-page-scraping.md) |
 | 18 | "Today" for the front page depends on the server's timezone (`TZ`), usually UTC in containers | S07 | Explicit business timezone in settings | [I04](I04-configuration.md) |
