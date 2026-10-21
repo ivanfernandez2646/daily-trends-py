@@ -28,6 +28,10 @@ def raise_server_exceptions() -> bool:
             ({"title": MISSING}, "<FeedTitle> does not allow the value <None>"),
             id="missing title",
         ),
+        pytest.param(
+            ({"category": "WEATHER"}, "<FeedCategory> does not allow the value <WEATHER>"),
+            id="unknown category",
+        ),
     ]
 )
 def broken(request: pytest.FixtureRequest) -> tuple[dict[str, object], str]:
@@ -81,7 +85,10 @@ def test_an_invalid_stored_feed_answers_a_generic_500_and_logs_why(
 def test_creating_over_an_invalid_stored_feed_answers_409(
     client: TestClient, malformed_feed_id: str
 ) -> None:
-    response = client.put(f"/feed/{malformed_feed_id}", json={"title": "A title", "author": "Ivan"})
+    response = client.put(
+        f"/feed/{malformed_feed_id}",
+        json={"title": "A title", "author": "Ivan", "category": "OTHER"},
+    )
 
     assert response.status_code == 409
     assert response.json() == {"error": f"Feed with id <{malformed_feed_id}> already exists"}

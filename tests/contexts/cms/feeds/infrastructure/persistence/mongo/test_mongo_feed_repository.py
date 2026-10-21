@@ -28,6 +28,7 @@ from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAt
 from tests.contexts.cms.feeds.domain.feed_id_mother import FeedIdMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
 from tests.contexts.cms.feeds.domain.feed_updated_at_mother import FeedUpdatedAtMother
+from tests.contexts.cms.feeds.domain.feed_url_mother import FeedUrlMother
 from tests.contexts.cms.feeds.infrastructure.persistence.mongo.feed_document_mother import (
     MISSING,
     FeedDocumentMother,
@@ -53,7 +54,7 @@ def repository(mongo_client: MongoClient, collection: MongoCollection) -> MongoF
 
 
 async def test_creates_a_feed_that_can_be_found_by_id(repository: MongoFeedRepository) -> None:
-    feed = FeedMother.random()
+    feed = FeedMother.random(url=FeedUrlMother.create("https://www.elmundo.es/deportes/1.html"))
 
     await repository.create(feed)
 
@@ -65,7 +66,11 @@ async def test_creates_a_feed_that_can_be_found_by_id(repository: MongoFeedRepos
 async def test_stores_the_feed_document_under_its_id_keeping_nulls(
     repository: MongoFeedRepository, collection: MongoCollection
 ) -> None:
-    feed = FeedMother.random(description=FeedDescription(None), updated_at=FeedUpdatedAt(None))
+    feed = FeedMother.random(
+        description=FeedDescription(None),
+        url=FeedUrlMother.create(None),
+        updated_at=FeedUpdatedAt(None),
+    )
 
     await repository.create(feed)
 
@@ -76,6 +81,8 @@ async def test_stores_the_feed_document_under_its_id_keeping_nulls(
         "description": None,
         "author": primitives["author"],
         "source": primitives["source"].value,
+        "category": primitives["category"].value,
+        "url": None,
         "createdAt": primitives["created_at"],
         "updatedAt": None,
     }
@@ -194,6 +201,22 @@ BROKEN_DOCUMENTS = [
         "<FeedSource> does not allow the value <EL_PERIODICO>",
         id="unknown source",
     ),
+    pytest.param(
+        {"category": MISSING},
+        "<FeedCategory> does not allow the value <None>",
+        id="missing category",
+    ),
+    pytest.param(
+        {"category": "WEATHER"},
+        "<FeedCategory> does not allow the value <WEATHER>",
+        id="unknown category",
+    ),
+    pytest.param(
+        {"url": "/deportes/1.html"},
+        "<FeedUrl> does not allow the value </deportes/1.html>",
+        id="relative url",
+    ),
+    pytest.param({"url": 42}, "<FeedUrl> does not allow the value <42>", id="numeric url"),
     pytest.param({"title": 42}, "<FeedTitle> does not allow the value <42>", id="numeric title"),
     pytest.param(
         {"description": ["a"]},

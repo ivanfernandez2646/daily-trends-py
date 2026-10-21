@@ -11,10 +11,12 @@ from bs4.dammit import EncodingDetector
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.value_objects import (
     FeedAuthor,
+    FeedCategory,
     FeedDescription,
     FeedId,
     FeedSource,
     FeedTitle,
+    FeedUrl,
 )
 from daily_trends_py.contexts.cms.shared.domain.clock import Clock
 
@@ -82,6 +84,8 @@ def extract_feeds(html: str, mapping: ScrapeMapping, now: datetime) -> list[Feed
                 description=FeedDescription(description or None),
                 author=FeedAuthor(author),
                 source=mapping.source,
+                category=FeedCategory.OTHER,
+                url=FeedUrl(None),
                 now=now,
             )
         )

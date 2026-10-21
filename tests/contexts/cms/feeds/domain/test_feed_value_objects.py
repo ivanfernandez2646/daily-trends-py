@@ -2,12 +2,14 @@ import pytest
 
 from daily_trends_py.contexts.cms.feeds.domain.value_objects import (
     FeedAuthor,
+    FeedCategory,
     FeedCreatedAt,
     FeedDescription,
     FeedId,
     FeedSource,
     FeedTitle,
     FeedUpdatedAt,
+    FeedUrl,
 )
 from daily_trends_py.contexts.cms.shared.domain.invalid_argument_error import (
     InvalidArgumentError,
@@ -84,3 +86,67 @@ def test_feed_source_rejects_an_unknown_source(value: object, rendered: str) -> 
         FeedSource(value)
 
     assert str(error.value) == f"<FeedSource> does not allow the value <{rendered}>"
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "POLITICS",
+        "INTERNATIONAL",
+        "ECONOMY",
+        "SOCIETY",
+        "SPORTS",
+        "CULTURE",
+        "TECHNOLOGY",
+        "SCIENCE",
+        "HEALTH",
+        "OPINION",
+        "OTHER",
+    ],
+)
+def test_feed_category_keeps_a_known_category(value: str) -> None:
+    assert FeedCategory(value).value == value
+
+
+@pytest.mark.parametrize(
+    ("value", "rendered"),
+    [("WEATHER", "WEATHER"), ("sports", "sports"), ("", ""), (1, "1"), (None, "None")],
+)
+def test_feed_category_rejects_an_unknown_category(value: object, rendered: str) -> None:
+    with pytest.raises(InvalidArgumentError) as error:
+        FeedCategory(value)
+
+    assert str(error.value) == f"<FeedCategory> does not allow the value <{rendered}>"
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "https://www.elmundo.es/espana/2026/10/20/noticia.html",
+        "http://www.larazon.es/deportes/futbol/123.html",
+        "https://www.lavanguardia.com/local/valencia/1.html?utm=home#comments",
+        None,
+    ],
+)
+def test_feed_url_keeps_an_absolute_http_url_or_null(value: str | None) -> None:
+    assert FeedUrl(value).value == value
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "/deportes/futbol/123.html",
+        "www.elmundo.es/espana/",
+        "ftp://www.elmundo.es/espana/",
+        "mailto:redaccion@elmundo.es",
+        "https://",
+        "",
+        "   ",
+        1,
+    ],
+)
+def test_feed_url_rejects_a_value_that_is_not_an_absolute_http_url(value: object) -> None:
+    with pytest.raises(InvalidArgumentError) as error:
+        FeedUrl(value)  # pyright: ignore[reportArgumentType]
+
+    assert str(error.value) == f"<FeedUrl> does not allow the value <{value}>"

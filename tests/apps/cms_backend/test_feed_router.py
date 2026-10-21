@@ -87,7 +87,9 @@ def test_a_missing_feed_answers_404(
 def test_creating_an_existing_feed_answers_409(client: TestClient, existing_feed: Feed) -> None:
     id = existing_feed.id.value
 
-    response = client.put(f"/feed/{id}", json={"title": "A title", "author": "Ivan"})
+    response = client.put(
+        f"/feed/{id}", json={"title": "A title", "author": "Ivan", "category": "OTHER"}
+    )
 
     assert response.status_code == 409
     assert response.json() == {"error": f"Feed with id <{id}> already exists"}
@@ -96,7 +98,7 @@ def test_creating_an_existing_feed_answers_409(client: TestClient, existing_feed
 @pytest.mark.parametrize("method", ["GET", "DELETE", "PATCH", "PUT"])
 def test_an_id_that_is_not_a_uuid_answers_400(client: TestClient, method: str) -> None:
     response = client.request(
-        method, "/feed/not-a-uuid", json={"title": "A title", "author": "Ivan"}
+        method, "/feed/not-a-uuid", json={"title": "A title", "author": "Ivan", "category": "OTHER"}
     )
 
     assert response.status_code == 400

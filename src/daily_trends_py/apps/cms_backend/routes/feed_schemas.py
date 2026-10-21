@@ -1,14 +1,17 @@
 from datetime import datetime
-from typing import NotRequired, Self, TypedDict
+from typing import Annotated, NotRequired, Self, TypedDict
 
-from pydantic import BaseModel, ConfigDict, with_config
+from pydantic import BaseModel, ConfigDict, Strict, with_config
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
-from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedSource
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedCategory, FeedSource
 
 # Strict: a number, boolean, list or object is never coerced into a string. Unknown fields are
 # ignored, Pydantic's default.
 _STRICT = ConfigDict(strict=True)
+# Strict mode only takes enum instances, and the decoded body holds the category as a string.
+# Lax enum validation still accepts nothing but one of the values.
+_Category = Annotated[FeedCategory, Strict(False)]
 
 
 class CreateFeedRequest(BaseModel):
@@ -16,6 +19,7 @@ class CreateFeedRequest(BaseModel):
 
     title: str
     author: str
+    category: _Category
     description: str | None = None
 
 
@@ -25,6 +29,7 @@ class UpdateFeedRequest(TypedDict):
 
     title: NotRequired[str]
     description: NotRequired[str | None]
+    category: NotRequired[_Category]
 
 
 class FeedResponse(BaseModel):
@@ -33,6 +38,8 @@ class FeedResponse(BaseModel):
     description: str | None
     author: str
     source: FeedSource
+    category: FeedCategory
+    url: str | None
     created_at: datetime
     updated_at: datetime | None
 
@@ -44,6 +51,8 @@ class FeedResponse(BaseModel):
             description=feed.description.value,
             author=feed.author.value,
             source=feed.source,
+            category=feed.category,
+            url=feed.url.value,
             created_at=feed.created_at.value,
             updated_at=feed.updated_at.value,
         )

@@ -70,6 +70,7 @@ async def create_feed(
         description=body.description,
         author=body.author,
         source=FeedSource.CMS,
+        category=body.category,
     )
     return FeedResponse.from_feed(feed)
 

@@ -4,6 +4,7 @@ import pytest
 
 from daily_trends_py.contexts.cms.feeds.application.update.feed_updater import FeedUpdater
 from daily_trends_py.contexts.cms.feeds.domain.errors import FeedNotFound
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedCategory
 from daily_trends_py.contexts.cms.shared.domain.invalid_argument_error import (
     InvalidArgumentError,
 )
@@ -57,7 +58,10 @@ async def test_returns_the_stored_feed_without_writing_when_the_values_are_the_s
     repository = InMemoryFeedRepository([feed])
 
     result = await FeedUpdater(repository, FixedClock(NOW)).execute(
-        feed.id.value, title=feed.title.value, description=feed.description.value
+        feed.id.value,
+        title=feed.title.value,
+        description=feed.description.value,
+        category=feed.category,
     )
 
     assert result is feed
@@ -132,3 +136,30 @@ async def test_looks_for_the_feed_before_validating_the_title() -> None:
         await FeedUpdater(InMemoryFeedRepository(), FixedClock(NOW)).execute(
             FeedIdMother.random().value, title="   "
         )
+
+
+async def test_changes_the_category_and_keeps_the_other_fields() -> None:
+    feed = FeedMother.random(category=FeedCategory.OTHER)
+    repository = InMemoryFeedRepository([feed])
+
+    result = await FeedUpdater(repository, FixedClock(NOW)).execute(
+        feed.id.value, category=FeedCategory.SPORTS
+    )
+
+    assert repository.updated == [result]
+    assert result.to_primitives() == {
+        **feed.to_primitives(),
+        "category": FeedCategory.SPORTS,
+        "updated_at": NOW,
+    }
+
+
+async def test_an_absent_category_keeps_the_stored_one() -> None:
+    feed = FeedMother.random(category=FeedCategory.HEALTH)
+    repository = InMemoryFeedRepository([feed])
+
+    result = await FeedUpdater(repository, FixedClock(NOW)).execute(
+        feed.id.value, title="A new title"
+    )
+
+    assert result.category == FeedCategory.HEALTH

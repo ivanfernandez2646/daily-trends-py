@@ -85,6 +85,8 @@ def _to_feed(document: MongoDocument) -> Feed:
                 "description": field("description"),
                 "author": field("author"),
                 "source": field("source"),
+                "category": field("category"),
+                "url": field("url"),
                 "created_at": field("created_at"),
                 "updated_at": field("updated_at"),
             }

@@ -19,12 +19,13 @@ Feature: Update feed
 
   Scenario: When a feed exists
     Given There are feeds:
-      | id                                   | title          | description                  | author | source |
-      | b55334d0-7fe1-4350-9bd2-7a69b15eeca1 | Test Feed Find | Description - Test Feed Find | Ivan   | CMS    |
+      | id                                   | title          | description                  | author | source | category |
+      | b55334d0-7fe1-4350-9bd2-7a69b15eeca1 | Test Feed Find | Description - Test Feed Find | Ivan   | CMS    | OTHER    |
     When I send a PATCH request to "/feed/b55334d0-7fe1-4350-9bd2-7a69b15eeca1" with body:
       """
       {
-        "title": "Updated Feed Title Title"
+        "title": "Updated Feed Title Title",
+        "category": "SPORTS"
       }
       """
     Then The response status code should be 200
@@ -35,6 +36,8 @@ Feature: Update feed
         "title": "Updated Feed Title Title",
         "description": "Description - Test Feed Find",
         "author": "Ivan",
-        "source": "CMS"
+        "source": "CMS",
+        "category": "SPORTS",
+        "url": null
       }
       """
