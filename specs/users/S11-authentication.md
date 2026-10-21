@@ -139,7 +139,7 @@ uv run daily-trends-py create-admin [--email <email>]
 ## Persistence
 - Collection `users`; `_id` is the user UUID as a string, like feeds (S01). Fields: `email`,
   `password_hash`, `created_at` (BSON date, I05).
-- A new migration, `m0002_users_indexes`, creates a unique index on `email` (I07). The index is
+- A new migration, `m0003_users_indexes`, creates a unique index on `email` (I07). The index is
   what guarantees uniqueness; a duplicate-key error on insert is reported as `UserAlreadyExists`.
 - Reading a stored user that is not valid answers 500, like an invalid stored feed (I01, I09).
 
@@ -190,7 +190,7 @@ and setting the feed author from the logged-in user.
   adapter round-trips a user id and rejects an expired token, a bad signature, `alg: none`, another
   algorithm and a token without `sub`.
 - Repository integration tests against real Mongo: save and find by email, duplicate email, the
-  unique index from `m0002_users_indexes`, and an invalid stored user.
+  unique index from `m0003_users_indexes`, and an invalid stored user.
 - HTTP tests: `/auth/login` for 200, 400 and 401; for each protected route, 401 without a token, with
   another scheme, with an invalid and with an expired token, and the current behavior with a valid
   token; 401 wins over 400 and 404; `/feed/scrap` without a token runs no scraper; public routes
