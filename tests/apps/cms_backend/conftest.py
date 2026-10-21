@@ -63,9 +63,9 @@ def client(
     app: FastAPI, container: AsyncContainer, raise_server_exceptions: bool
 ) -> Iterator[TestClient]:
     with TestClient(app, raise_server_exceptions=raise_server_exceptions) as test_client:
-        mongo_client = resolve_mongo_client(test_client, container)
-        feeds = mongo_client.get_default_database()["feeds"]
-        run_in_app(test_client, lambda: feeds.delete_many({}))
+        database = resolve_mongo_client(test_client, container).get_default_database()
+        for collection in (database["feeds"], database["users"]):
+            run_in_app(test_client, lambda collection=collection: collection.delete_many({}))
         yield test_client
 
 

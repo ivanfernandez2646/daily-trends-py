@@ -73,6 +73,20 @@ def test_exits_with_code_1_without_mongo_url_in_production(tmp_path: Path) -> No
     assert "MONGO_URL" in result.stderr
 
 
+def test_exits_with_code_1_without_a_secret_key_in_production(tmp_path: Path) -> None:
+    without_secret_key = {
+        name: value for name, value in os.environ.items() if name != "AUTH_SECRET_KEY"
+    }
+
+    result = run_main(
+        tmp_path, without_secret_key, ENV="production", MONGO_URL="mongodb://mongo:27017/x"
+    )
+
+    assert result.returncode == 1
+    assert "Startup failed" in result.stderr
+    assert "AUTH_SECRET_KEY" in result.stderr
+
+
 def test_exits_with_code_1_when_mongo_is_unreachable(tmp_path: Path) -> None:
     result = run_main(
         tmp_path, MONGO_URL="mongodb://localhost:1/daily-trends?serverSelectionTimeoutMS=100"

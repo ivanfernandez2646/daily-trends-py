@@ -54,6 +54,7 @@ def test_lists_every_route(document: Json) -> None:
 
     assert {path: sorted(methods) for path, methods in paths.items()} == {
         "/status": ["get"],
+        "/auth/login": ["post"],
         "/feed/list": ["get"],
         "/feed/scrap": ["get"],
         "/feed/home": ["get"],
@@ -226,3 +227,29 @@ def test_the_list_takes_an_optional_category_query_parameter(document: Json) -> 
         False,
     )
     assert cast(Json, parameter["schema"])["anyOf"] == [_ref("FeedCategory"), {"type": "null"}]
+
+
+def test_documents_the_login_under_the_auth_tag(document: Json) -> None:
+    operation = cast(Json, _get(document, "paths", "/auth/login", "post"))
+    responses = cast(Json, operation["responses"])
+
+    assert operation["tags"] == ["auth"]
+    assert _get(operation, "requestBody", "content", "application/json", "schema") == _ref(
+        "LoginRequest"
+    )
+    assert _response_schema(document, "/auth/login", "post", "200") == _ref("AccessTokenResponse")
+    assert {status for status in responses if status.startswith(("4", "5"))} == {
+        "400",
+        "401",
+        "500",
+    }
+    for status in ("400", "401", "500"):
+        assert _response_schema(document, "/auth/login", "post", status) == _ref("ErrorResponse")
+
+
+def test_the_access_token_response_lists_its_fields(document: Json) -> None:
+    schema = cast(Json, _get(document, "components", "schemas", "AccessTokenResponse"))
+    properties = cast(dict[str, Json], schema["properties"])
+
+    assert list(properties) == ["access_token", "token_type", "expires_in"]
+    assert properties["token_type"]["const"] == "bearer"

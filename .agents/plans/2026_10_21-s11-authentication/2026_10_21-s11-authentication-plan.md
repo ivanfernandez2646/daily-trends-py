@@ -7,7 +7,7 @@ created_at: '2026-10-21T09:19:25Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-21T10:30:00Z'
+updated_at: '2026-10-21T12:00:00Z'
 ---
 
 # S11 · Authentication
@@ -278,14 +278,14 @@ public.
 
 ### Tests first
 
-- [ ] `test_user_authenticator.py`:
+- [x] `test_user_authenticator.py`:
   - Valid credentials give the issued token for the user's id.
   - Mixed-case or padded email input still logs in.
   - A wrong password raises `InvalidCredentials`, and so does an unknown email, which records
     `verify(password, None)`.
   - An invalid email raises `InvalidCredentials` and still verifies once.
   - Both failures have the same message.
-- [ ] `test_jwt_access_tokens.py`:
+- [x] `test_jwt_access_tokens.py`:
   - **Round trip:** an issued token verifies back to the user id.
   - **Claims:** `iat`/`exp` come from the clock and `exp - iat == ttl`; `expires_in_seconds == ttl`.
   - **Expiry:** valid at `exp - 1s`, rejected at `exp`.
@@ -294,17 +294,17 @@ public.
     - `alg: none`, or signed with HS512;
     - no `sub`, a `sub` that is not a UUID, or no `exp`;
     - garbage text.
-- [ ] `test_settings.py`:
+- [x] `test_settings.py`:
   - **Defaults:** the dev/test key and TTL 28800 apply.
   - **Required key:** production without the key fails naming `AUTH_SECRET_KEY`.
   - **Key length:** a 20-character key fails in production and in dev, and 32 characters pass.
   - **TTL:** `AUTH_TOKEN_TTL_SECONDS=0` or `-1` fails.
   - The secret never appears in the error.
-- [ ] `test_main.py`: `ENV=production` with `MONGO_URL` set and no `AUTH_SECRET_KEY` exits 1 and
+- [x] `test_main.py`: `ENV=production` with `MONGO_URL` set and no `AUTH_SECRET_KEY` exits 1 and
   names `AUTH_SECRET_KEY`.
-- [ ] `test_errors.py`: an `UnauthorizedError` answers 401 `{"error": …}` with
+- [x] `test_errors.py`: an `UnauthorizedError` answers 401 `{"error": …}` with
   `WWW-Authenticate: Bearer`.
-- [ ] `tests/apps/cms_backend/test_login.py` (integration, a user stored with the real hasher):
+- [x] `tests/apps/cms_backend/test_login.py` (integration, a user stored with the real hasher):
   - **200:**
     - The body has `token_type: bearer` and `expires_in` equal to the setting.
     - The returned `access_token` passes the app's verifier.
@@ -317,25 +317,38 @@ public.
   - **400:**
     - `{"email": "a@b.co"}` answers `password: Field required`;
     - a non-string `password` or a body that is not JSON also gives 400.
-- [ ] `test_openapi.py`:
+- [x] `test_openapi.py`:
   - `/auth/login` is listed under the `auth` tag with 400, 401 and 500.
   - `test_lists_every_route` includes `/auth/login`.
 
 ### Implementation
 
-- [ ] Add `UnauthorizedError` and its mapping with the header in `errors.py`.
-- [ ] Add the auth errors, `AccessToken` and the token ports.
-- [ ] Add `UserAuthenticator`.
-- [ ] Add `JwtAccessTokens`.
-- [ ] Add the settings fields and validation.
-- [ ] Add the provider wiring.
-- [ ] Add `routes/auth.py` and its schemas, and register it.
-- [ ] Add `.env.example` entries for `AUTH_SECRET_KEY` and `AUTH_TOKEN_TTL_SECONDS`, with the
+Notes from implementing it:
+
+- **PyJWT typing:** PyJWT types its keys with `cryptography` classes, which pyright cannot see
+  without that optional package. `JwtAccessTokens` wraps `jwt.encode`/`jwt.decode` in two typed
+  functions with a commented ignore. `_DECODE_OPTIONS` is a `jwt.types.Options`.
+- **Missing settings:** one `mode="before"` validator, `_defaults_for_env`, reports every variable
+  production is missing at once: `MONGO_URL and AUTH_SECRET_KEY are required when ENV is
+  production`. With one missing, it says `… is required …`.
+- **Fixtures:** the `client` fixture already clears `users` in this phase, because the login tests
+  store an admin.
+- **Error body:** `routes/auth.py` reuses `ErrorResponse` from `feed_schemas.py`.
+
+
+- [x] Add `UnauthorizedError` and its mapping with the header in `errors.py`.
+- [x] Add the auth errors, `AccessToken` and the token ports.
+- [x] Add `UserAuthenticator`.
+- [x] Add `JwtAccessTokens`.
+- [x] Add the settings fields and validation.
+- [x] Add the provider wiring.
+- [x] Add `routes/auth.py` and its schemas, and register it.
+- [x] Add `.env.example` entries for `AUTH_SECRET_KEY` and `AUTH_TOKEN_TTL_SECONDS`, with the
   key-generation command.
-- [ ] Add `README.md`: how to log in and use the token, and the new settings.
-- [ ] Refactor without changing behavior.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Add `README.md`: how to log in and use the token, and the new settings.
+- [x] Refactor without changing behavior.
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ## Phase 3: Protect the write routes
 
@@ -410,6 +423,5 @@ The feed write routes and `/feed/scrap` require the bearer token, checked before
 
 ## Next step
 
-Phase 1 is implemented and waiting for review. After it is approved, run
-`/ai-project-implement-phase` in `/Users/ivanpersonal/Repos/daily-trends-py-s11-auth` to implement
-Phase 2.
+Phase 2 is implemented and waiting for review. After it is approved, run
+`/ai-project-implement-phase` in `/Users/ivanpersonal/Repos/daily-trends-py` to implement Phase 3.

@@ -13,6 +13,7 @@ from daily_trends_py.contexts.cms.shared.domain.invalid_argument_error import (
     InvalidArgumentError,
 )
 from daily_trends_py.contexts.cms.shared.domain.not_found_error import NotFoundError
+from daily_trends_py.contexts.cms.shared.domain.unauthorized_error import UnauthorizedError
 
 
 class SomethingInvalid(InvalidArgumentError):
@@ -24,6 +25,10 @@ class SomethingNotFound(NotFoundError):
 
 
 class SomethingConflicting(ConflictError):
+    pass
+
+
+class SomethingUnauthorized(UnauthorizedError):
     pass
 
 
@@ -50,6 +55,7 @@ def request(error: Exception) -> httpx2.Response:
         pytest.param(SomethingInvalid("Invalid <x>"), 400, id="invalid argument"),
         pytest.param(SomethingNotFound("Missing <x>"), 404, id="not found"),
         pytest.param(SomethingConflicting("Clash <x>"), 409, id="conflict"),
+        pytest.param(SomethingUnauthorized("Who <x>"), 401, id="unauthorized"),
     ],
 )
 def test_maps_each_kind_of_domain_error_to_its_status(error: Exception, status_code: int) -> None:
@@ -57,6 +63,20 @@ def test_maps_each_kind_of_domain_error_to_its_status(error: Exception, status_c
 
     assert response.status_code == status_code
     assert response.json() == {"error": str(error)}
+
+
+def test_an_unauthorized_error_asks_for_a_bearer_token() -> None:
+    response = request(SomethingUnauthorized("Who <x>"))
+
+    assert response.headers["www-authenticate"] == "Bearer"
+
+
+@pytest.mark.parametrize(
+    "error",
+    [SomethingInvalid("x"), SomethingNotFound("x"), SomethingConflicting("x")],
+)
+def test_other_kinds_answer_without_an_authentication_challenge(error: Exception) -> None:
+    assert "www-authenticate" not in request(error).headers
 
 
 def test_a_conflict_answers_without_location() -> None:

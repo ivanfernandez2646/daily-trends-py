@@ -38,9 +38,10 @@ DESCRIPTION = (
     " El Mundo, El Español, El Confidencial, La Razón and La Vanguardia. The front pages are"
     " scraped when the API starts and then every 2 hours by default (`SCRAPE_INTERVAL_SECONDS`),"
     " and `/feed/scrap` scrapes them on demand."
-    ' Every error answers `{"error": "<message>"}`: 400 for an invalid'
-    " request, 404 for a missing feed, 409 for an existing id, and 500 for anything else, always"
-    ' with `{"error": "Internal server error"}`.'
+    " Administrators log in at `/auth/login` for a bearer access token."
+    ' Every error answers `{"error": "<message>"}`: 400 for an invalid request, 401 for missing'
+    " or invalid credentials, 404 for a missing feed, 409 for an existing id, and 500 for"
+    ' anything else, always with `{"error": "Internal server error"}`.'
 )
 
 
