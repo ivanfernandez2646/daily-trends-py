@@ -44,7 +44,7 @@ Implementation order is the table order. S04 and S05 are independent of each oth
 - **Scrap:** acquiring headlines from the El Mundo, El Español, El Confidencial, La Razón and La Vanguardia front pages (El País in the original; see S06 and S08).
 
 ## Out of scope
-Pagination, Django, production deployment. Known improvements are in `improvements/`.
+Django, production deployment. Known improvements are in `improvements/`.
 
 ## Source of truth for behavior
 The Node reference repo (`reference/daily-trends-node`): the `.feature` files under `tests/apps/cms/backend/controllers/**` and `docs/openapi.yml`. If a spec and a `.feature` disagree, the `.feature` wins and the discrepancy is noted.

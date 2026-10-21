@@ -1,7 +1,16 @@
 from datetime import datetime
 from typing import Annotated, NotRequired, Self, TypedDict
 
-from pydantic import BaseModel, ConfigDict, Field, Strict, with_config
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    Strict,
+    StringConstraints,
+    with_config,
+)
+from pydantic_core import PydanticCustomError
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedCategory, FeedSource
@@ -12,6 +21,18 @@ _STRICT = ConfigDict(strict=True)
 # Strict mode only takes enum instances, and the decoded body holds the category as a string.
 # Lax enum validation still accepts nothing but one of the values.
 _Category = Annotated[FeedCategory, Strict(False)]
+
+
+def _not_blank(text: str) -> str:
+    if not text:
+        raise PydanticCustomError("blank_search", "Blank search")
+    return text
+
+
+# Trimmed before its length is checked.
+SearchText = Annotated[
+    str, StringConstraints(strip_whitespace=True, max_length=100), AfterValidator(_not_blank)
+]
 
 
 class CreateFeedRequest(BaseModel):

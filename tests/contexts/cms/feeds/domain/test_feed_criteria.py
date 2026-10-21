@@ -43,3 +43,17 @@ def test_feed_criteria_rejects_a_position_in_another_order() -> None:
         )
 
     assert str(error.value) == "<FeedCriteria> only starts after a position in the list order"
+
+
+def test_feed_criteria_searches_text_in_the_title_and_the_description() -> None:
+    criteria = FeedCriteria(orders=FeedCriteria.LIST_ORDER, text="madrid")
+
+    assert frozenset({"title", "description"}) == FeedCriteria.TEXT_FIELDS
+    assert criteria.text == "madrid"
+
+
+def test_feed_criteria_rejects_a_text_in_another_order() -> None:
+    with pytest.raises(ValueError) as error:
+        FeedCriteria(orders=(Order("created_at", "desc"),), text="madrid")
+
+    assert str(error.value) == "<FeedCriteria> only searches text in the list order"

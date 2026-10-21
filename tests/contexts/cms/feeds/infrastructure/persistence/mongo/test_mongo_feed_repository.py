@@ -21,13 +21,18 @@ from daily_trends_py.contexts.cms.feeds.infrastructure.persistence.mongo.mongo_f
     MongoFeedRepository,
 )
 from daily_trends_py.contexts.cms.shared.domain.criteria import Filter, Order
+from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.migrations.versions import (  # noqa: E501
+    m0005_feeds_text_index,
+)
 from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_client_factory import (  # noqa: E501
     MongoClient,
     MongoCollection,
 )
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
+from tests.contexts.cms.feeds.domain.feed_description_mother import FeedDescriptionMother
 from tests.contexts.cms.feeds.domain.feed_id_mother import FeedIdMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
+from tests.contexts.cms.feeds.domain.feed_title_mother import FeedTitleMother
 from tests.contexts.cms.feeds.domain.feed_updated_at_mother import FeedUpdatedAtMother
 from tests.contexts.cms.feeds.domain.feed_url_mother import FeedUrlMother
 from tests.contexts.cms.feeds.infrastructure.persistence.mongo.feed_document_mother import (
@@ -667,3 +672,121 @@ async def test_search_starts_after_the_position_among_the_filtered_feeds(
     )
 
     assert _ids(found) == _ids([newer, older])
+
+
+@pytest.fixture
+async def text_repository(
+    repository: MongoFeedRepository, collection: MongoCollection
+) -> MongoFeedRepository:
+    """The repository over a collection with the text index that `?q=` needs."""
+    await m0005_feeds_text_index.up(collection.database)
+    return repository
+
+
+async def _store_headlines(repository: MongoFeedRepository, *headlines: str) -> list[Feed]:
+    """One feed per headline, a minute apart, the first one the oldest."""
+    feeds = [
+        FeedMother.random(
+            title=FeedTitleMother.create(headline),
+            description=FeedDescriptionMother.create(None),
+            created_at=FeedCreatedAtMother.create(
+                datetime(2026, 10, 20, tzinfo=UTC) + timedelta(minutes=minute)
+            ),
+        )
+        for minute, headline in enumerate(headlines)
+    ]
+    for feed in feeds:
+        await repository.create(feed)
+    return feeds
+
+
+async def _search_text(repository: MongoFeedRepository, text: str) -> list[Feed]:
+    return await repository.search(FeedCriteria(orders=FeedCriteria.LIST_ORDER, text=text))
+
+
+@pytest.mark.parametrize(
+    ("text", "headline"),
+    [
+        pytest.param("elecciones", "La elección del nuevo alcalde", id="stem"),
+        pytest.param("Sánchez", "Entrevista a sanchez", id="accents"),
+        pytest.param("FÚTBOL", "El fútbol vuelve", id="case"),
+    ],
+)
+async def test_search_finds_spanish_words_by_stem_ignoring_case_and_accents(
+    text_repository: MongoFeedRepository, text: str, headline: str
+) -> None:
+    feed, _ = await _store_headlines(text_repository, headline, "Noticias de Sevilla")
+
+    assert _ids(await _search_text(text_repository, text)) == _ids([feed])
+
+
+@pytest.mark.parametrize(
+    "text", [pytest.param("elec", id="fragment"), pytest.param("el de", id="stop words")]
+)
+async def test_search_finds_nothing_for_a_fragment_or_only_stop_words(
+    text_repository: MongoFeedRepository, text: str
+) -> None:
+    await _store_headlines(text_repository, "El día de las elecciones")
+
+    assert await _search_text(text_repository, text) == []
+
+
+async def test_search_finds_the_words_in_the_description(
+    text_repository: MongoFeedRepository,
+) -> None:
+    feed = FeedMother.random(
+        title=FeedTitleMother.create("Última hora"),
+        description=FeedDescriptionMother.create("Lluvias en Barcelona"),
+    )
+    await text_repository.create(feed)
+    await _store_headlines(text_repository, "Noticias de Sevilla")
+
+    assert _ids(await _search_text(text_repository, "barcelona")) == _ids([feed])
+
+
+async def test_search_finds_feeds_with_any_of_the_words_newest_first_not_by_relevance(
+    text_repository: MongoFeedRepository,
+) -> None:
+    both, _, madrid = await _store_headlines(
+        text_repository, "Madrid y Barcelona, Madrid otra vez", "Sevilla", "Madrid"
+    )
+
+    found = await _search_text(text_repository, "madrid barcelona")
+
+    assert _ids(found) == _ids([madrid, both])
+
+
+async def test_search_ands_the_text_with_the_filters_and_the_position(
+    text_repository: MongoFeedRepository,
+) -> None:
+    start = datetime(2026, 10, 20, tzinfo=UTC)
+    oldest, cms_sevilla, el_mundo, middle, newest = (
+        FeedMother.random(
+            source=source,
+            title=FeedTitleMother.create(title),
+            description=FeedDescriptionMother.create(None),
+            created_at=FeedCreatedAtMother.create(start + timedelta(minutes=minute)),
+        )
+        for minute, (source, title) in enumerate(
+            [
+                (FeedSource.CMS, "Madrid"),
+                (FeedSource.CMS, "Sevilla"),
+                (FeedSource.EL_MUNDO, "Madrid"),
+                (FeedSource.CMS, "Madrid"),
+                (FeedSource.CMS, "Madrid"),
+            ]
+        )
+    )
+    for feed in (oldest, cms_sevilla, el_mundo, middle, newest):
+        await text_repository.create(feed)
+
+    found = await text_repository.search(
+        FeedCriteria(
+            filters=(Filter("source", FeedSource.CMS),),
+            orders=FeedCriteria.LIST_ORDER,
+            after=(newest.created_at.value, newest.id.value),
+            text="madrid",
+        )
+    )
+
+    assert _ids(found) == _ids([middle, oldest])

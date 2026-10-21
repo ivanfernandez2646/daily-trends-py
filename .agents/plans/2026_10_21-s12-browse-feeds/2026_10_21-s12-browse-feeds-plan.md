@@ -7,7 +7,11 @@ created_at: '2026-10-21T16:00:00Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-21T19:00:00Z'
+updated_at: '2026-10-21T21:00:00Z'
+implemented_at: '2026-10-21T21:00:00Z'
+implemented_by:
+  tool: 'Claude Code'
+  model: 'claude-opus-5-5'
 ---
 
 # S12 · Browse feeds
@@ -77,11 +81,14 @@ an index that ends in `createdAt: -1, _id: -1`.
 - **Migration `m0004_feeds_list_indexes`:**
   - **Drops:** `created_at_desc`, `category_created_at_desc` and `source_created_at_desc`. An index
     that is already gone is ignored: catch `OperationFailure` code 27, `IndexNotFound`.
-  - **Creates:** `created_at_id_desc`, `category_created_at_id_desc`,
-    `source_created_at_id_desc` and, in phase 3, `title_description_text` with
-    `default_language="spanish"`.
+  - **Creates:** `created_at_id_desc`, `category_created_at_id_desc` and
+    `source_created_at_id_desc`.
   - **Keeps:** `source_title_created_at`, the deduplication index.
-  - **Editing it:** the migration is not on `main` yet, so phase 3 can add to it.
+  - **The text index, in `m0005_feeds_text_index` (changed in phase 3):** the plan was to add
+    `title_description_text` to m0004, since it is not on `main`. But the shared test database, and
+    any development database that ran phase 2, already records m0004 as applied, so editing it would
+    leave those databases without the text index. A new migration also follows the rule never to
+    edit an applied migration.
 - **Docs:**
   - `S00`: "Pagination" leaves the out-of-scope line.
   - `S03`: gets a "Superseded by S12" note on the response.
@@ -269,61 +276,69 @@ combines with every other filter and with the cursor. The docs follow.
   `TEXT_FIELDS`.
 - **`FeedSearcher.execute`:** gains `text: str | None = None`.
 - **`GET /feed/list`:**
-  - It gains `q: Annotated[str | None, StringConstraints(strip_whitespace=True, max_length=100),
-    AfterValidator(_not_blank)]`.
+  - It gains `q: Annotated[SearchText | None, Query(description=...)]`. `feed_schemas.SearchText`
+    is `Annotated[str, StringConstraints(strip_whitespace=True, max_length=100),
+    AfterValidator(_not_blank)]`, and `_not_blank` raises
+    `PydanticCustomError("blank_search", "Blank search")`.
   - A blank value → 400 `query.q: Blank search`.
   - More than 100 characters after trimming → 400 `query.q: String should have at most 100
     characters`.
-- **m0004:** also creates `title_description_text`: `[("title", TEXT), ("description", TEXT)]` with
-  `default_language="spanish"`.
+- **m0005_feeds_text_index** (instead of editing m0004, see Context): creates
+  `title_description_text`: `[("title", TEXT), ("description", TEXT)]` with
+  `default_language="spanish"`. It is appended to `MIGRATIONS`.
 - **`list-feed.feature`:** a new scenario browses with `category`, `source` and `q` together.
 - **Docs:**
   - `S00`: drop "Pagination" from out of scope.
-  - `S03`: add the "Superseded by S12" note.
+  - `S03`: add the "Superseded by S12" notes on the criteria and on the response.
+  - `S12`: the persistence section names the two migrations.
   - `README.md`: update the `/feed/list` row.
-  - `S12`: set the status if the workflow does so.
+  - Spec statuses stay `draft`, like every other spec.
 
 ### Tests first
 
-- [ ] `test_criteria.py` and `test_feed_criteria.py`:
-  - [ ] text without `TEXT_FIELDS` or with a blank value is rejected;
-  - [ ] text only with `LIST_ORDER`.
-- [ ] `test_in_memory_feed_repository.py`:
-  - [ ] `futbol` finds `Fútbol`;
-  - [ ] `fut` finds nothing;
-  - [ ] `madrid barcelona` finds either;
-  - [ ] the match covers the description;
-  - [ ] text is ANDed with the filters.
-- [ ] `test_feed_searcher.py`: text alone, with category and source, and with a position.
-- [ ] `test_mongo_feed_repository.py`:
-  - [ ] `elecciones` finds `elección`;
-  - [ ] `Sánchez` finds `sanchez`;
-  - [ ] `elec` finds nothing;
-  - [ ] `el de` finds nothing;
-  - [ ] any word matches;
-  - [ ] newest first, not by relevance;
-  - [ ] text combined with filters and with `after`.
-- [ ] `test_m0004_feeds_list_indexes.py`: the text index exists with the Spanish language, and
-      running the migration twice changes nothing.
-- [ ] `test_list_feeds.py`:
-  - [ ] `?q=%20%20` → 400 `query.q: Blank search`;
-  - [ ] 101 characters → 400;
-  - [ ] the value is trimmed;
-  - [ ] all filters combined.
-- [ ] `test_openapi.py`: the five parameters with their bounds and enums.
+- [x] `test_criteria.py` and `test_feed_criteria.py`:
+  - [x] text without `TEXT_FIELDS` or with a blank value is rejected;
+  - [x] text only with `LIST_ORDER`.
+- [x] `test_in_memory_feed_repository.py`:
+  - [x] `futbol` finds `Fútbol`;
+  - [x] `fut` finds nothing;
+  - [x] `madrid barcelona` finds either;
+  - [x] the match covers the description;
+  - [x] text is ANDed with the filters.
+- [x] `test_feed_searcher.py`: text alone, with category and source, and with a position.
+- [x] `test_mongo_feed_repository.py`:
+  - [x] `elecciones` finds `elección`;
+  - [x] `Sánchez` finds `sanchez`;
+  - [x] `elec` finds nothing;
+  - [x] `el de` finds nothing;
+  - [x] any word matches;
+  - [x] newest first, not by relevance;
+  - [x] the match covers the description;
+  - [x] text combined with filters and with `after`. These tests create the text index with
+        `m0005_feeds_text_index.up`.
+- [x] `test_m0005_feeds_text_index.py`: the text index covers the title and the description in
+      Spanish, and running the migration twice changes nothing. The `MIGRATIONS` list test includes
+      m0005.
+- [x] `test_list_feeds.py`:
+  - [x] `?q=%20%20` → 400 `query.q: Blank search`;
+  - [x] 101 characters → 400;
+  - [x] the value is trimmed;
+  - [x] all filters combined.
+- [x] `test_openapi.py`: the five parameters with their bounds and enums, and `q` has a maximum
+      length of 100.
 
 ### Implementation
 
-- [ ] Add `text` and `TEXT_FIELDS` to `Criteria`, and the `FeedCriteria` rule.
-- [ ] Add `$text` in `_by_criteria`, and word matching in the fake.
-- [ ] Thread `text` through `FeedSearcher` and the router, adding the `q` validator.
-- [ ] Add the text index to m0004.
-- [ ] Add the feature scenario.
-- [ ] Update S00, S03 and the README.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Add `text` and `TEXT_FIELDS` to `Criteria`, and the `FeedCriteria` rule.
+- [x] Add `$text` in `_by_criteria`, and word matching in the fake.
+- [x] Thread `text` through `FeedSearcher` and the router, adding the `q` validator.
+- [x] Add the text index in m0005 and register it.
+- [x] Add the feature scenario.
+- [x] Update S00, S03, S12 and the README.
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ## Next step
 
-Phases 1 and 2 are implemented. After review, run `/ai-project-implement-phase` for Phase 3 on
-`feat/s12-browse-feeds`.
+Every phase is implemented. After review, commit phase 3 and open a pull request from
+`feat/s12-browse-feeds` to `main`.

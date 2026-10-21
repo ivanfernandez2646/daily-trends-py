@@ -137,3 +137,33 @@ Feature: List feed
         "next_cursor": null
       }
       """
+
+  Scenario: Browsing the feeds of a category and a source that mention any of some words
+    Given There are feeds:
+      | id                                   | title                       | description | author | source   | createdAt                | category |
+      | 1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e01 | El Madrid gana la liga      | Crónica     | Ivan   | EL_MUNDO | 2023-06-16T14:58:39.733Z | SPORTS   |
+      | 1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e02 | El Barcelona ficha          | Crónica     | Ivan   | EL_MUNDO | 2023-06-17T14:58:39.733Z | SPORTS   |
+      | 1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e03 | El Sevilla empata           | Crónica     | Ivan   | EL_MUNDO | 2023-06-18T14:58:39.733Z | SPORTS   |
+      | 1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e04 | Madrid estrena un musical   | Estreno     | Ivan   | EL_MUNDO | 2023-06-19T14:58:39.733Z | CULTURE  |
+      | 1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e05 | El Madrid y el Barcelona    | Crónica     | Ivan   | EL_PAIS  | 2023-06-20T14:58:39.733Z | SPORTS   |
+    When I send a GET request to "/feed/list?category=SPORTS&source=EL_MUNDO&q=madrid%20barcelona&limit=1"
+    Then The response status code should be 200
+    And The response should contains:
+      """
+      {
+        "items": [
+          {"id": "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e02", "title": "El Barcelona ficha"}
+        ]
+      }
+      """
+    When I request the next page
+    Then The response status code should be 200
+    And The response should contains:
+      """
+      {
+        "items": [
+          {"id": "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e01", "title": "El Madrid gana la liga"}
+        ],
+        "next_cursor": null
+      }
+      """

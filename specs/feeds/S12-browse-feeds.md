@@ -92,8 +92,9 @@ Replaces the response of S03; the `category` parameter keeps the rules of S09.
 - `/feed/home` (S08) is unchanged and does not use the position or the text.
 
 ## Persistence
-- A new migration (I07) replaces the list indexes so every filtered page is served by an index that
-  ends in `createdAt: -1, _id: -1`:
+- Two new migrations (I07): `m0004_feeds_list_indexes` replaces the list indexes so every filtered
+  page is served by an index that ends in `createdAt: -1, _id: -1`, and `m0005_feeds_text_index`
+  adds the text index:
 
   | Index | Serves | Replaces |
   |---|---|---|
@@ -103,7 +104,7 @@ Replaces the response of S03; the `category` parameter keeps the rules of S09.
   | text: `title`, `description`, `default_language: "spanish"` | `?q=` | — |
 
 - The deduplication index `source: 1, title: 1, createdAt: 1` (I02, I08) stays.
-- Running the migration twice changes nothing. Dropping an index that does not exist is not an error.
+- Running a migration twice changes nothing. Dropping an index that does not exist is not an error.
 - A search with `q` cannot use the date indexes for its order: MongoDB sorts the matches of the text
   index, bounded by `limit + 1`. This is acceptable for the expected volume (thousands of feeds).
 

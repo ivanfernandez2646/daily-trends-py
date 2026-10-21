@@ -11,7 +11,9 @@ from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedReposi
 from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedCategory, FeedSource
 from tests.apps.cms_backend.conftest import resolve, run_in_app
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
+from tests.contexts.cms.feeds.domain.feed_description_mother import FeedDescriptionMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
+from tests.contexts.cms.feeds.domain.feed_title_mother import FeedTitleMother
 from tests.contexts.cms.feeds.domain.feed_updated_at_mother import FeedUpdatedAtMother
 
 pytestmark = pytest.mark.integration
@@ -217,3 +219,59 @@ def test_an_invalid_cursor_answers_400(client: TestClient, cursor: str) -> None:
 
     assert response.status_code == 400
     assert response.json() == {"error": "query.cursor: Invalid cursor"}
+
+
+def test_answers_only_the_feeds_that_match_every_filter_and_any_word(
+    container: AsyncContainer, client: TestClient
+) -> None:
+    start = datetime(2026, 10, 21, tzinfo=UTC)
+    newer, older, culture, el_pais, sevilla = (
+        FeedMother.random(
+            source=source,
+            category=category,
+            title=FeedTitleMother.create(title),
+            description=FeedDescriptionMother.create(None),
+            created_at=FeedCreatedAtMother.create(start - timedelta(minutes=minute)),
+        )
+        for minute, (source, category, title) in enumerate(
+            [
+                (FeedSource.EL_MUNDO, FeedCategory.SPORTS, "El Barcelona gana"),
+                (FeedSource.EL_MUNDO, FeedCategory.SPORTS, "El Madrid pierde"),
+                (FeedSource.EL_MUNDO, FeedCategory.CULTURE, "Madrid en el cine"),
+                (FeedSource.EL_PAIS, FeedCategory.SPORTS, "Madrid y Barcelona empatan"),
+                (FeedSource.EL_MUNDO, FeedCategory.SPORTS, "El Sevilla gana"),
+            ]
+        )
+    )
+    _store(container, client, newer, older, culture, el_pais, sevilla)
+    params = {"category": "SPORTS", "source": "EL_MUNDO", "q": "  madrid barcelona  ", "limit": 1}
+
+    first = client.get("/feed/list", params=params).json()
+    second = client.get("/feed/list", params={**params, "cursor": first["next_cursor"]}).json()
+
+    assert [_ids(page["items"]) for page in (first, second)] == [
+        [newer.id.value],
+        [older.id.value],
+    ]
+    assert second["next_cursor"] is None
+
+
+@pytest.mark.parametrize("q", ["", "   "])
+def test_a_blank_search_answers_400(client: TestClient, q: str) -> None:
+    response = client.get("/feed/list", params={"q": q})
+
+    assert response.status_code == 400
+    assert response.json() == {"error": "query.q: Blank search"}
+
+
+def test_a_search_longer_than_100_characters_answers_400(client: TestClient) -> None:
+    response = client.get("/feed/list", params={"q": "a" * 101})
+
+    assert response.status_code == 400
+    assert response.json() == {"error": "query.q: String should have at most 100 characters"}
+
+
+def test_a_search_is_trimmed_before_its_length_is_checked(client: TestClient) -> None:
+    response = client.get("/feed/list", params={"q": f"  {'a' * 100}  "})
+
+    assert response.status_code == 200

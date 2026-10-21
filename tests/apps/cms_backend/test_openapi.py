@@ -245,7 +245,7 @@ def test_the_list_takes_optional_query_parameters_with_their_bounds_and_values(
         )
     }
 
-    assert list(parameters) == ["limit", "category", "source", "cursor"]
+    assert list(parameters) == ["limit", "category", "source", "q", "cursor"]
     assert all((p["in"], p["required"]) == ("query", False) for p in parameters.values())
     limit = cast(Json, parameters["limit"]["schema"])
     assert (limit["type"], limit["minimum"], limit["maximum"], limit["default"]) == (
@@ -262,6 +262,11 @@ def test_the_list_takes_optional_query_parameters_with_their_bounds_and_values(
         _ref("FeedSource"),
         {"type": "null"},
     ]
+    assert cast(Json, parameters["q"]["schema"])["anyOf"] == [
+        {"type": "string", "maxLength": 100},
+        {"type": "null"},
+    ]
+    assert "any of them" in cast(str, parameters["q"]["description"])
     assert cast(Json, parameters["cursor"]["schema"])["anyOf"] == [
         {"type": "string"},
         {"type": "null"},

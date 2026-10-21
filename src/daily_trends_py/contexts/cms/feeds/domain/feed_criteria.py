@@ -9,6 +9,7 @@ from daily_trends_py.contexts.cms.shared.domain.criteria import Criteria, Order
 class FeedCriteria(Criteria):
     # Only constructor fields: the aggregate's own bookkeeping is not a feed field.
     FIELDS: ClassVar[frozenset[str]] = frozenset(field.name for field in fields(Feed) if field.init)
+    TEXT_FIELDS: ClassVar[frozenset[str]] = frozenset({"title", "description"})
     # Every feed of a scraping run shares its creation date, so the id keeps their order fixed.
     LIST_ORDER: ClassVar[tuple[Order, Order]] = (Order("created_at", "desc"), Order("id", "desc"))
 
@@ -18,3 +19,5 @@ class FeedCriteria(Criteria):
             raise ValueError(
                 f"<{type(self).__name__}> only starts after a position in the list order"
             )
+        if self.text is not None and self.orders != self.LIST_ORDER:
+            raise ValueError(f"<{type(self).__name__}> only searches text in the list order")

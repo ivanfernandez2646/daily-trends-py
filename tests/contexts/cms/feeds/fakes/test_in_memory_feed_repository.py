@@ -6,8 +6,10 @@ from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
 from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedCategory, FeedSource
 from daily_trends_py.contexts.cms.shared.domain.criteria import Filter, Order
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
+from tests.contexts.cms.feeds.domain.feed_description_mother import FeedDescriptionMother
 from tests.contexts.cms.feeds.domain.feed_id_mother import FeedIdMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
+from tests.contexts.cms.feeds.domain.feed_title_mother import FeedTitleMother
 from tests.contexts.cms.feeds.domain.feed_updated_at_mother import FeedUpdatedAtMother
 from tests.contexts.cms.feeds.fakes.in_memory_feed_repository import InMemoryFeedRepository
 
@@ -196,3 +198,66 @@ async def test_search_starts_after_the_position_of_a_deleted_feed() -> None:
     )
 
     assert found == [EARLIER_BATCH[1], EARLIER_BATCH[0]]
+
+
+def _headline(title: str, description: str | None = None) -> Feed:
+    return FeedMother.random(
+        title=FeedTitleMother.create(title),
+        description=FeedDescriptionMother.create(description),
+    )
+
+
+async def _search_text(repository: InMemoryFeedRepository, text: str) -> list[Feed]:
+    return await repository.search(FeedCriteria(orders=FeedCriteria.LIST_ORDER, text=text))
+
+
+async def test_search_finds_a_whole_word_ignoring_case_and_accents() -> None:
+    football = _headline("Fútbol: el Madrid gana")
+    repository = InMemoryFeedRepository([football, _headline("Elecciones generales")])
+
+    assert await _search_text(repository, "futbol") == [football]
+    assert await _search_text(repository, "MADRID") == [football]
+
+
+async def test_search_does_not_match_a_fragment_of_a_word() -> None:
+    repository = InMemoryFeedRepository([_headline("Fútbol: el Madrid gana")])
+
+    assert await _search_text(repository, "fut") == []
+
+
+async def test_search_finds_the_words_in_the_description() -> None:
+    feed = _headline("Última hora", "Lluvias en Barcelona")
+    repository = InMemoryFeedRepository([feed, _headline("Última hora", None)])
+
+    assert await _search_text(repository, "barcelona") == [feed]
+
+
+async def test_search_finds_feeds_with_any_of_the_words() -> None:
+    madrid = _headline("Madrid", None)
+    barcelona = _headline("Barcelona", None)
+    repository = InMemoryFeedRepository([madrid, barcelona, _headline("Sevilla", None)])
+
+    found = await _search_text(repository, "madrid barcelona")
+
+    assert {feed.id for feed in found} == {madrid.id, barcelona.id}
+
+
+async def test_search_ands_the_text_with_the_filters() -> None:
+    cms = FeedMother.random(source=FeedSource.CMS, title=FeedTitleMother.create("Madrid"))
+    el_mundo = FeedMother.random(source=FeedSource.EL_MUNDO, title=FeedTitleMother.create("Madrid"))
+    cms_sevilla = FeedMother.random(
+        source=FeedSource.CMS,
+        title=FeedTitleMother.create("Sevilla"),
+        description=FeedDescriptionMother.create(None),
+    )
+    repository = InMemoryFeedRepository([cms, el_mundo, cms_sevilla])
+
+    found = await repository.search(
+        FeedCriteria(
+            filters=(Filter("source", FeedSource.CMS),),
+            orders=FeedCriteria.LIST_ORDER,
+            text="madrid",
+        )
+    )
+
+    assert found == [cms]

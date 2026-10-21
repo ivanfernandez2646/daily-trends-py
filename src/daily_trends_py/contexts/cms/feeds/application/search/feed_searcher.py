@@ -26,8 +26,12 @@ class FeedSearcher:
         after: FeedPosition | None = None,
         category: FeedCategory | None = None,
         source: FeedSource | None = None,
+        text: str | None = None,
     ) -> FeedPage:
-        """Up to `limit` feeds after `after`, newest first, of `category` and of `source`."""
+        """Up to `limit` feeds after `after`, newest first, of `category` and of `source`.
+
+        With `text`, only the feeds whose title or description has any of its words.
+        """
         if limit < 1:
             raise ValueError(f"<{type(self).__name__}> does not allow the limit <{limit}>")
         filters = tuple(
@@ -42,6 +46,7 @@ class FeedSearcher:
                 orders=FeedCriteria.LIST_ORDER,
                 limit=limit + 1,
                 after=None if after is None else (after.created_at.value, after.id.value),
+                text=text,
             )
         )
         page = feeds[:limit]

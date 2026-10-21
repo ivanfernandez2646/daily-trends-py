@@ -13,6 +13,7 @@ from daily_trends_py.apps.cms_backend.routes.feed_schemas import (
     ErrorResponse,
     FeedPageResponse,
     FeedResponse,
+    SearchText,
     UpdateFeedRequest,
 )
 from daily_trends_py.contexts.cms.feeds.application.create.feed_creator import FeedCreator
@@ -87,13 +88,24 @@ async def list_feeds(
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     category: FeedCategory | None = None,
     source: FeedSource | None = None,
+    q: Annotated[
+        SearchText | None,
+        Query(
+            description="Words to look for in the title and the description, in Spanish: a feed"
+            " matches when it has any of them, ignoring case and accents, and matching their"
+            " stems but not fragments."
+        ),
+    ] = None,
 ) -> FeedPageResponse:
-    """A page of the feeds, or only those of `category` and of `source`, newest first.
+    """A page of the feeds, or only those of `category`, of `source` and with any word of `q`,
+    newest first.
 
     Feeds that share their creation date are ordered by id. Feeds saved while a client browses
     never shift its next pages: they appear on a new first page.
     """
-    page = await searcher.execute(limit=limit, after=after, category=category, source=source)
+    page = await searcher.execute(
+        limit=limit, after=after, category=category, source=source, text=q
+    )
     return FeedPageResponse(
         items=[FeedResponse.from_feed(feed) for feed in page.feeds],
         next_cursor=None if page.next is None else encode_cursor(page.next),

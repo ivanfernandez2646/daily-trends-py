@@ -50,6 +50,9 @@ class MongoRepository:
             stored(field): values[0] if len(values) == 1 else {"$in": list(values)}
             for field, values in criteria.values_by_field().items()
         }
+        if criteria.text is not None:
+            # The collection's text index decides the fields, the language and how words match.
+            query["$text"] = {"$search": criteria.text}
         if criteria.after is not None:
             query["$or"] = _after_position(criteria.orders, criteria.after, stored)
         sort = [

@@ -11,7 +11,9 @@ from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
 from daily_trends_py.contexts.cms.feeds.domain.feed_position import FeedPosition
 from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedCategory, FeedSource
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
+from tests.contexts.cms.feeds.domain.feed_description_mother import FeedDescriptionMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
+from tests.contexts.cms.feeds.domain.feed_title_mother import FeedTitleMother
 from tests.contexts.cms.feeds.fakes.in_memory_feed_repository import InMemoryFeedRepository
 
 START = datetime(2026, 10, 1, tzinfo=UTC)
@@ -142,3 +144,30 @@ async def test_rejects_a_limit_that_is_not_positive(limit: int) -> None:
         await searcher.execute(limit=limit)
 
     assert str(error.value) == f"<FeedSearcher> does not allow the limit <{limit}>"
+
+
+async def test_answers_the_pages_of_the_feeds_with_any_of_the_words() -> None:
+    madrid, sevilla, barcelona, other_source = (
+        FeedMother.random(
+            source=source,
+            title=FeedTitleMother.create(title),
+            description=FeedDescriptionMother.create(None),
+            created_at=FeedCreatedAtMother.create(START + timedelta(minutes=minute)),
+        )
+        for minute, (source, title) in enumerate(
+            [
+                (FeedSource.CMS, "Madrid"),
+                (FeedSource.CMS, "Sevilla"),
+                (FeedSource.CMS, "Barcelona"),
+                (FeedSource.EL_MUNDO, "Madrid"),
+            ]
+        )
+    )
+    searcher = FeedSearcher(InMemoryFeedRepository([madrid, sevilla, barcelona, other_source]))
+
+    first = await searcher.execute(limit=1, source=FeedSource.CMS, text="madrid barcelona")
+    second = await searcher.execute(
+        limit=1, after=first.next, source=FeedSource.CMS, text="madrid barcelona"
+    )
+
+    assert (first.feeds, second.feeds, second.next) == ([barcelona], [madrid], None)

@@ -17,6 +17,7 @@ def test_lists_the_migrations_in_the_order_they_are_applied() -> None:
         "m0002_feeds_category_and_url",
         "m0003_users_indexes",
         "m0004_feeds_list_indexes",
+        "m0005_feeds_text_index",
     ]
 
 

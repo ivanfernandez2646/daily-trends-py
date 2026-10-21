@@ -1,4 +1,6 @@
 import operator
+import re
+import unicodedata
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import TYPE_CHECKING, cast
@@ -50,6 +52,10 @@ class InMemoryFeedRepository:
             for feed in self._feeds.values()
             if all(_value(feed, field) in values for field, values in values_by_field.items())
         ]
+        if criteria.text is not None:
+            feeds = [
+                feed for feed in feeds if _has_any_word(feed, criteria.TEXT_FIELDS, criteria.text)
+            ]
         if criteria.after is not None:
             feeds = [feed for feed in feeds if _is_after(feed, criteria.orders, criteria.after)]
         # A stable sort by each order from the last one sorts by all of them, the first one first.
@@ -90,3 +96,16 @@ def _is_after(feed: Feed, orders: Sequence[Order], after: Sequence[object]) -> b
         if value != bound:
             return bool((operator.lt if order.direction == "desc" else operator.gt)(value, bound))
     return False
+
+
+def _has_any_word(feed: Feed, fields: frozenset[str], text: str) -> bool:
+    """Whole words, ignoring case and accents. Unlike Mongo, without stems or stop words."""
+    feed_words = {word for field in fields for word in _words(_value(feed, field))}
+    return not _words(text).isdisjoint(feed_words)
+
+
+def _words(value: object) -> set[str]:
+    if value is None:
+        return set()
+    decomposed = unicodedata.normalize("NFKD", str(value).casefold())
+    return set(re.findall(r"\w+", "".join(c for c in decomposed if not unicodedata.combining(c))))

@@ -93,3 +93,28 @@ def test_criteria_rejects_a_position_without_one_value_per_order(
         DummyCriteria(orders=orders, after=after)
 
     assert str(error.value) == f"<DummyCriteria> needs one value per order to start after <{after}>"
+
+
+@dataclass(frozen=True)
+class SearchableCriteria(Criteria):
+    FIELDS: ClassVar[frozenset[str]] = frozenset({"name", "bio"})
+    TEXT_FIELDS: ClassVar[frozenset[str]] = frozenset({"name", "bio"})
+
+
+def test_criteria_keeps_the_text_to_search_in_its_text_fields() -> None:
+    assert SearchableCriteria(text="madrid barcelona").text == "madrid barcelona"
+
+
+def test_criteria_rejects_a_text_when_it_has_no_text_fields() -> None:
+    with pytest.raises(ValueError) as error:
+        DummyCriteria(text="madrid")
+
+    assert str(error.value) == "<DummyCriteria> does not search text"
+
+
+@pytest.mark.parametrize("text", ["", "   "])
+def test_criteria_rejects_a_blank_text(text: str) -> None:
+    with pytest.raises(ValueError) as error:
+        SearchableCriteria(text=text)
+
+    assert str(error.value) == f"<SearchableCriteria> does not allow the text <{text}>"
