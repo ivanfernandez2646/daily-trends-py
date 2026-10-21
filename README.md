@@ -11,7 +11,7 @@ The port keeps the current behavior of the Node project (same routes, status cod
 - MongoDB (PyMongo async)
 - httpx and BeautifulSoup for scraping
 - ruff, pyright (strict), import-linter, pytest, pytest-asyncio, pytest-bdd
-- Hexagonal architecture with a single bounded context (`cms`, subdomain `feeds`)
+- Hexagonal architecture with a single bounded context (`cms`, subdomains `feeds` and `users`)
 
 ## API
 
@@ -93,6 +93,22 @@ settings stop the API at startup with exit code 1.
 | `SCRAPE_SCHEDULE_ENABLED` | `true` | Scrape every source at startup and then every `SCRAPE_INTERVAL_SECONDS`; `false` leaves only `/feed/scrap` |
 | `SCRAPE_INTERVAL_SECONDS` | `7200` | Time from the end of a scheduled run to the start of the next one, > 0 |
 
+### Administrators
+
+Administrators manage the CMS. There is no registration endpoint: create one from the command line,
+against the database of `MONGO_URL` (pending migrations are applied first, so an empty database
+works):
+
+```bash
+uv run daily-trends-py create-admin --email admin@example.com
+```
+
+The password is asked twice without echo and needs at least 12 characters. The email is asked
+for when `--email` is missing, and is stored trimmed and lowercased. The command exits with code 1
+and creates nothing for an invalid email, a short password, passwords that do not match or an
+email that already exists. Changing passwords and removing users are done directly in MongoDB
+([S11](specs/users/S11-authentication.md)).
+
 ## Development
 
 ```bash
@@ -132,6 +148,7 @@ src/daily_trends_py/
       application/            use cases
       domain/                 entities, value objects, ports
       infrastructure/         MongoDB and scraper adapters
+    users/                    subdomain: administrators
     shared/                   shared kernel of the context
 tests/                        mirrors src/ (apps/cms_backend, contexts/cms/...)
 specs/

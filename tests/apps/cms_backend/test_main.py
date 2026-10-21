@@ -21,7 +21,7 @@ from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.migrat
 async def up(db):
     raise RuntimeError("boom")
 
-main([migration.Migration("m_test_fails", up)])
+main([], migrations=[migration.Migration("m_test_fails", up)])
 """
 
 

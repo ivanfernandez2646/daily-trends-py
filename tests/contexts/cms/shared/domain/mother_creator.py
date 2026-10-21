@@ -28,6 +28,14 @@ class MotherCreator:
         return _faker.name()
 
     @staticmethod
+    def email() -> str:
+        return _faker.email()
+
+    @staticmethod
+    def password() -> str:
+        return _faker.password(length=16)
+
+    @staticmethod
     def boolean() -> bool:
         return _faker.boolean()
 

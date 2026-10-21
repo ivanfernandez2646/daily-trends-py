@@ -1,3 +1,6 @@
+import argparse
+import asyncio
+import getpass
 import logging
 import sys
 from collections.abc import AsyncGenerator, Sequence
@@ -13,6 +16,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from uvicorn.config import STARTUP_FAILURE
 
 from daily_trends_py.apps.cms_backend.api import CmsBackendApi
+from daily_trends_py.apps.cms_backend.cli import create_admin
 from daily_trends_py.apps.cms_backend.container import STARTUP_DEPENDENCIES, create_container
 from daily_trends_py.apps.cms_backend.errors import register_error_handling
 from daily_trends_py.apps.cms_backend.routes import register_routes
@@ -75,8 +79,47 @@ def create_app(container: AsyncContainer) -> FastAPI:
     return app
 
 
-def main(migrations: Sequence[Migration] = MIGRATIONS) -> None:
+CREATE_ADMIN = "create-admin"
+
+
+def main(
+    argv: Sequence[str] | None = None, *, migrations: Sequence[Migration] = MIGRATIONS
+) -> None:
+    """Run the API, or the subcommand given in `argv` (the command line by default)."""
+    arguments = _parser().parse_args(argv)
     logging.basicConfig(level=logging.INFO)
+    if arguments.command == CREATE_ADMIN:
+        sys.exit(_create_admin(arguments.email, migrations))
+    _serve(migrations)
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="daily-trends-py", description="Run the API.")
+    commands = parser.add_subparsers(dest="command")
+    create = commands.add_parser(
+        CREATE_ADMIN, help="Create an administrator; the password is asked twice, without echo."
+    )
+    create.add_argument("--email", help="Asked for when it is not given.")
+    return parser
+
+
+def _create_admin(email: str | None, migrations: Sequence[Migration]) -> int:
+    try:
+        return asyncio.run(
+            create_admin(
+                Settings(),
+                email=email,
+                prompt=input,
+                secret_prompt=getpass.getpass,
+                migrations=migrations,
+            )
+        )
+    except Exception:
+        logger.exception("Creating the admin failed")
+        return 1
+
+
+def _serve(migrations: Sequence[Migration]) -> None:
     try:
         settings = Settings()
         container = create_container(settings, migrations=migrations)
