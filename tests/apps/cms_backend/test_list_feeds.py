@@ -3,7 +3,9 @@ from dishka import AsyncContainer
 from fastapi.testclient import TestClient
 from pytest_bdd import scenarios
 
+from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedCategory
 from tests.apps.cms_backend.conftest import resolve, run_in_app
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
@@ -12,6 +14,17 @@ from tests.contexts.cms.feeds.domain.feed_updated_at_mother import FeedUpdatedAt
 pytestmark = pytest.mark.integration
 
 scenarios("features/list-feed.feature")
+
+UNKNOWN_CATEGORY = (
+    "query.category: Input should be 'POLITICS', 'INTERNATIONAL', 'ECONOMY', 'SOCIETY', 'SPORTS',"
+    " 'CULTURE', 'TECHNOLOGY', 'SCIENCE', 'HEALTH', 'OPINION' or 'OTHER'"
+)
+
+
+def _store(container: AsyncContainer, client: TestClient, *feeds: Feed) -> None:
+    repository = resolve(client, container, FeedRepository)
+    for feed in feeds:
+        run_in_app(client, lambda feed=feed: repository.create(feed))
 
 
 def test_lists_feeds_chronologically_with_utc_dates_and_a_fraction_only_when_not_zero(
@@ -25,9 +38,7 @@ def test_lists_feeds_chronologically_with_utc_dates_and_a_fraction_only_when_not
         created_at=FeedCreatedAtMother.create("2026-10-09T09:30:00.000Z"),
         updated_at=FeedUpdatedAtMother.create("2026-10-10T07:15:30.250+00:00"),
     )
-    repository = resolve(client, container, FeedRepository)
-    for feed in (earlier, later):
-        run_in_app(client, lambda feed=feed: repository.create(feed))
+    _store(container, client, earlier, later)
 
     response = client.get("/feed/list")
 
@@ -36,3 +47,44 @@ def test_lists_feeds_chronologically_with_utc_dates_and_a_fraction_only_when_not
         (later.id.value, "2026-10-09T09:30:00Z", "2026-10-10T07:15:30.250000Z"),
         (earlier.id.value, "2026-10-09T08:00:00Z", None),
     ]
+
+
+def test_lists_only_the_feeds_of_the_given_category_newest_first(
+    container: AsyncContainer, client: TestClient
+) -> None:
+    older = FeedMother.random(
+        category=FeedCategory.SPORTS,
+        created_at=FeedCreatedAtMother.create("2026-10-18T10:00:00.000Z"),
+    )
+    newer = FeedMother.random(
+        category=FeedCategory.SPORTS,
+        created_at=FeedCreatedAtMother.create("2026-10-20T10:00:00.000Z"),
+    )
+    culture = FeedMother.random(category=FeedCategory.CULTURE)
+    _store(container, client, older, culture, newer)
+
+    response = client.get("/feed/list", params={"category": "SPORTS"})
+
+    assert response.status_code == 200
+    assert [feed["id"] for feed in response.json()] == [newer.id.value, older.id.value]
+
+
+def test_lists_nothing_when_no_feed_has_the_category(
+    container: AsyncContainer, client: TestClient
+) -> None:
+    _store(container, client, FeedMother.random(category=FeedCategory.CULTURE))
+
+    response = client.get("/feed/list", params={"category": "HEALTH"})
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+@pytest.mark.parametrize("category", ["nope", "sports", ""])
+def test_a_category_that_is_not_a_known_value_answers_400(
+    client: TestClient, category: str
+) -> None:
+    response = client.get("/feed/list", params={"category": category})
+
+    assert response.status_code == 400
+    assert response.json() == {"error": UNKNOWN_CATEGORY}

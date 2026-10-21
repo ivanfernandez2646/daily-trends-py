@@ -18,12 +18,17 @@ from daily_trends_py.contexts.cms.feeds.application.scrape.feed_scraper import F
 from daily_trends_py.contexts.cms.feeds.application.search.feed_searcher import FeedSearcher
 from daily_trends_py.contexts.cms.feeds.application.update.feed_updater import FeedUpdater
 from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
-from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedId, FeedSource
-from daily_trends_py.contexts.cms.shared.domain.criteria import Order
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import (
+    FeedCategory,
+    FeedId,
+    FeedSource,
+)
+from daily_trends_py.contexts.cms.shared.domain.criteria import Filter, Order
 
 router = APIRouter(route_class=JsonBodyRoute, tags=["feeds"])
 
-LIST_CRITERIA = FeedCriteria(order=Order("created_at", "desc"))
+NEWEST_FIRST = Order("created_at", "desc")
+LIST_CRITERIA = FeedCriteria(order=NEWEST_FIRST)
 
 _ERROR_DESCRIPTIONS = {
     status.HTTP_400_BAD_REQUEST: "Invalid request: the body, the id or a value",
@@ -40,10 +45,17 @@ def _errors(*status_codes: int) -> dict[int | str, dict[str, object]]:
     }
 
 
-@router.get("/feed/list", responses=_errors(500))
-async def list_feeds(searcher: FromDishka[FeedSearcher]) -> list[FeedResponse]:
-    """Every feed, newest first."""
-    return [FeedResponse.from_feed(feed) for feed in await searcher.execute(LIST_CRITERIA)]
+@router.get("/feed/list", responses=_errors(400, 500))
+async def list_feeds(
+    searcher: FromDishka[FeedSearcher], category: FeedCategory | None = None
+) -> list[FeedResponse]:
+    """Every feed, or only those of `category`, newest first."""
+    criteria = (
+        LIST_CRITERIA
+        if category is None
+        else FeedCriteria(filters=(Filter("category", category),), order=NEWEST_FIRST)
+    )
+    return [FeedResponse.from_feed(feed) for feed in await searcher.execute(criteria)]
 
 
 @router.get("/feed/scrap", responses=_errors(500))

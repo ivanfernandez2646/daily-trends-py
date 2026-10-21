@@ -7,7 +7,7 @@ created_at: '2026-10-20T15:38:43Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-21T09:00:00Z'
+updated_at: '2026-10-21T10:00:00Z'
 implemented_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -197,28 +197,32 @@ parameter, the list is unchanged.
 
 ### Tests first
 
-- [ ] `test_feed_searcher.py` (in-memory fake): a category criteria returns only that category's
+- [x] `test_feed_searcher.py` (in-memory fake): a category criteria returns only that category's
       feeds, newest first.
-- [ ] `test_mongo_feed_repository.py` (integration): a category filter with `created_at`
+      This test and the Mongo one passed on the first run: `category` became filterable in
+      Phase 1, when it joined `Feed`'s fields. They pin the contract the route relies on.
+- [x] `test_mongo_feed_repository.py` (integration): a category filter with `created_at`
       descending returns only that category, newest first.
-- [ ] `test_list_feeds.py`:
+- [x] `test_list_feeds.py`:
   - `?category=SPORTS` filters;
   - `?category=nope`, `?category=sports` and `?category=` give 400;
   - no parameter returns every feed.
-- [ ] `list-feed.feature`: a scenario with mixed categories and `?category=SPORTS`.
-- [ ] `test_openapi.py`:
+- [x] `list-feed.feature`: a scenario with mixed categories and `?category=SPORTS`. A second scenario
+      checks that `?category=sports` answers 400.
+- [x] `test_openapi.py`:
   - `/feed/list` has a `category` query parameter referencing `FeedCategory`;
   - its error statuses are `{"400", "500"}`;
   - there is still no 422 or `HTTPValidationError`.
 
 ### Implementation
 
-- [ ] Add the query parameter and the criteria building to `list_feeds` in `routes/feed.py`.
-- [ ] Add 400 to the list route's `responses`, and confirm the 422 stripping covers query
+- [x] Add the query parameter and the criteria building to `list_feeds` in `routes/feed.py`. A
+      `NEWEST_FIRST` order is shared by `LIST_CRITERIA` and the category criteria.
+- [x] Add 400 to the list route's `responses`, and confirm the 422 stripping covers query
       parameters.
-- [ ] Refactor without changing behavior.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Refactor without changing behavior.
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ## Phase 3: Scraped article URL and category
 
@@ -288,5 +292,5 @@ source's table. Articles without a usable link are skipped. This replaces the Ph
 
 ## Next step
 
-Phase 1 is implemented. Review it, commit with `/ai-project-conventional-commit`, then run
-`/ai-project-implement-phase` for Phase 2.
+Phases 1 and 2 are implemented. Review Phase 2, commit with `/ai-project-conventional-commit`,
+then run `/ai-project-implement-phase` for Phase 3.

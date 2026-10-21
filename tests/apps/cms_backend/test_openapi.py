@@ -131,7 +131,7 @@ def test_the_feed_response_lists_its_fields_in_order_with_dates(document: Json) 
         ("/feed/{id}", "get", {"400", "404", "500"}),
         ("/feed/{id}", "patch", {"400", "404", "500"}),
         ("/feed/{id}", "delete", {"400", "404", "500"}),
-        ("/feed/list", "get", {"500"}),
+        ("/feed/list", "get", {"400", "500"}),
         ("/feed/home", "get", {"500"}),
         ("/feed/scrap", "get", {"500"}),
     ],
@@ -208,3 +208,14 @@ def test_the_request_bodies_take_a_category(document: Json, schema: str, require
     assert properties["category"] == _ref("FeedCategory")
     assert ("category" in cast(list[str], body.get("required", []))) is required
     assert "url" not in properties
+
+
+def test_the_list_takes_an_optional_category_query_parameter(document: Json) -> None:
+    [parameter] = cast(list[Json], _get(document, "paths", "/feed/list", "get", "parameters"))
+
+    assert (parameter["name"], parameter["in"], parameter["required"]) == (
+        "category",
+        "query",
+        False,
+    )
+    assert cast(Json, parameter["schema"])["anyOf"] == [_ref("FeedCategory"), {"type": "null"}]

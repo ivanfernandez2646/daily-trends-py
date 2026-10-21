@@ -1,6 +1,6 @@
 from daily_trends_py.contexts.cms.feeds.application.search.feed_searcher import FeedSearcher
 from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
-from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedSource
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedCategory, FeedSource
 from daily_trends_py.contexts.cms.shared.domain.criteria import Filter, Order
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
@@ -44,3 +44,25 @@ async def test_returns_nothing_when_there_are_no_feeds() -> None:
     searcher = FeedSearcher(InMemoryFeedRepository())
 
     assert await searcher.execute(FeedCriteria()) == []
+
+
+async def test_returns_the_feeds_of_one_category_newest_first() -> None:
+    older = FeedMother.random(
+        category=FeedCategory.SPORTS,
+        created_at=FeedCreatedAtMother.create("2026-10-18T10:00:00.000Z"),
+    )
+    newer = FeedMother.random(
+        category=FeedCategory.SPORTS,
+        created_at=FeedCreatedAtMother.create("2026-10-20T10:00:00.000Z"),
+    )
+    other_category = FeedMother.random(category=FeedCategory.CULTURE)
+    searcher = FeedSearcher(InMemoryFeedRepository([older, other_category, newer]))
+
+    result = await searcher.execute(
+        FeedCriteria(
+            filters=(Filter("category", FeedCategory.SPORTS),),
+            order=Order("created_at", "desc"),
+        )
+    )
+
+    assert result == [newer, older]

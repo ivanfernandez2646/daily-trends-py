@@ -8,6 +8,7 @@ from daily_trends_py.contexts.cms.feeds.domain.errors import FeedAlreadyExists, 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
 from daily_trends_py.contexts.cms.feeds.domain.value_objects import (
+    FeedCategory,
     FeedDescription,
     FeedSource,
     FeedTitle,
@@ -504,3 +505,27 @@ async def test_search_returns_the_newest_feeds_of_one_source(
     )
 
     assert _ids(found) == _ids([feeds[3], feeds[2]])
+
+
+async def test_search_returns_the_feeds_of_one_category_newest_first(
+    repository: MongoFeedRepository,
+) -> None:
+    def feed(category: FeedCategory, created_at: str) -> Feed:
+        return FeedMother.random(
+            category=category, created_at=FeedCreatedAtMother.create(created_at)
+        )
+
+    older = feed(FeedCategory.SPORTS, "2026-10-18T10:00:00.000Z")
+    newer = feed(FeedCategory.SPORTS, "2026-10-20T10:00:00.000Z")
+    other = feed(FeedCategory.CULTURE, "2026-10-19T10:00:00.000Z")
+    for stored in (older, other, newer):
+        await repository.create(stored)
+
+    found = await repository.search(
+        FeedCriteria(
+            filters=(Filter("category", FeedCategory.SPORTS),),
+            order=Order("created_at", "desc"),
+        )
+    )
+
+    assert [found_feed.id for found_feed in found] == [newer.id, older.id]

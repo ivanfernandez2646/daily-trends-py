@@ -63,6 +63,38 @@ Feature: List feed
       ]
       """
 
+  Scenario: When there are feeds of the requested category
+    Given There are feeds:
+      | id                                   | title            | description                    | author | source   | createdAt                | category | url                                                     |
+      | de32eacb-1ce8-408f-b07b-8c3b0e0437c0 | Test Feed Find   | Description - Test Feed Find   | Ivan   | CMS      | 2023-06-16T14:58:39.733Z | SPORTS   |                                                         |
+      | 2305ecd9-068d-45bc-ada8-c6778ecf863e | Test Feed Find 2 | Description - Test Feed Find 2 | Ivan   | CMS      | 2023-06-18T14:58:39.733Z | CULTURE  |                                                         |
+      | 798516e0-ee38-4a64-a0be-f3af830d8815 | Test Feed Find 4 | Description - Test Feed Find 4 | Ivan   | EL_MUNDO | 2023-06-20T14:58:39.733Z | SPORTS   | https://www.elmundo.es/deportes/2023/06/20/noticia.html |
+    When I send a GET request to "/feed/list?category=SPORTS"
+    Then The response status code should be 200
+    And The response should contains:
+      """
+      [
+        {
+            "id": "798516e0-ee38-4a64-a0be-f3af830d8815",
+            "title": "Test Feed Find 4",
+            "source": "EL_MUNDO",
+            "category": "SPORTS",
+            "url": "https://www.elmundo.es/deportes/2023/06/20/noticia.html"
+        },
+        {
+            "id": "de32eacb-1ce8-408f-b07b-8c3b0e0437c0",
+            "title": "Test Feed Find",
+            "source": "CMS",
+            "category": "SPORTS",
+            "url": null
+        }
+      ]
+      """
+
+  Scenario: When the category is not a known value
+    When I send a GET request to "/feed/list?category=sports"
+    Then The response status code should be 400
+
   Scenario: When there are not any feeds
     When I send a GET request to "/feed/list"
     Then The response status code should be 200
