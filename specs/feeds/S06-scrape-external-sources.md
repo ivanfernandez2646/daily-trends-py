@@ -15,6 +15,8 @@ source replacement described in "Deliberate divergences". Depends on S02.
 
 > **Superseded by [I02](../improvements/I02-scraper-robustness.md):** a missing or blank description is stored as `null`.
 
+> **Superseded by [S09](S09-feed-category-and-url.md):** an article without a usable `http(s)` link is skipped too; each feed stores the article URL and a category from the link's first path segment.
+
 - Every feed is saved. No content deduplication: each run inserts 5+5 new feeds even for the same headlines.
 
 > **Superseded by [I02](../improvements/I02-scraper-robustness.md):** a headline already stored with the same source and title on the same UTC day, or already saved in this run, is skipped.

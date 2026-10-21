@@ -16,6 +16,9 @@ Feature: Scrap feed
     When I send a GET request to "/feed/scrap"
     Then The response status code should be 200
     And The response is an array with length 25
+    When I send a GET request to "/feed/list?category=SPORTS"
+    Then The response status code should be 200
+    And The response is an array with length 4
     When I send a GET request to "/feed/home"
     Then The response status code should be 200
     And The response is an array with length 10

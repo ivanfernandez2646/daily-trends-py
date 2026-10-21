@@ -4,7 +4,11 @@ from datetime import UTC, datetime
 import httpx
 import pytest
 
-from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedId, FeedSource
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import (
+    FeedCategory,
+    FeedId,
+    FeedSource,
+)
 from daily_trends_py.contexts.cms.feeds.infrastructure.scrape.front_page import (
     ScrapeMapping,
     extract_feeds,
@@ -18,13 +22,21 @@ MAPPING = ScrapeMapping(
     author_selector=".author",
     title_selector=".title",
     description_selector=".description",
+    categories={"deportes": FeedCategory.SPORTS, "cultura": FeedCategory.CULTURE},
 )
+PAGE_URL = "https://news.example/"
 NOW = datetime(2026, 10, 20, 9, 30, tzinfo=UTC)
 
 
-def _article(author: str = "Ana", title: str = "A title", description: str = "") -> str:
+def _article(
+    author: str = "Ana",
+    title: str = "A title",
+    description: str = "",
+    href: str = "/deportes/1.html",
+) -> str:
     return (
-        f'<article><span class="author">{author}</span><h2 class="title">{title}</h2>'
+        f'<article><span class="author">{author}</span>'
+        f'<h2 class="title"><a href="{href}">{title}</a></h2>'
         f'<p class="description">{description}</p></article>'
     )
 
@@ -32,7 +44,7 @@ def _article(author: str = "Ana", title: str = "A title", description: str = "")
 def test_extracts_trimmed_new_feeds_in_document_order() -> None:
     html = _article(" Ana ", "\n First title ", "  A summary ") + _article("Luis", "Second")
 
-    feeds = extract_feeds(html, MAPPING, NOW)
+    feeds = extract_feeds(html, MAPPING, NOW, PAGE_URL)
 
     first, second = (feed.to_primitives() for feed in feeds)
     assert (first["author"], first["title"], first["description"]) == (
@@ -57,7 +69,7 @@ def test_skips_articles_without_author_or_title() -> None:
         + _article("Ana", "Kept")
     )
 
-    feeds = extract_feeds(html, MAPPING, NOW)
+    feeds = extract_feeds(html, MAPPING, NOW, PAGE_URL)
 
     assert [feed.title.value for feed in feeds] == ["Kept"]
 
@@ -65,18 +77,19 @@ def test_skips_articles_without_author_or_title() -> None:
 def test_stops_at_five_feeds() -> None:
     html = "".join(_article(title=f"Title {index}") for index in range(7))
 
-    feeds = extract_feeds(html, MAPPING, NOW)
+    feeds = extract_feeds(html, MAPPING, NOW, PAGE_URL)
 
     assert [feed.title.value for feed in feeds] == [f"Title {index}" for index in range(5)]
 
 
 def test_stores_a_missing_or_blank_description_as_null() -> None:
     html = (
-        "<article><span class='author'>Ana</span><h2 class='title'>No description</h2></article>"
+        "<article><span class='author'>Ana</span>"
+        "<h2 class='title'><a href='/1.html'>No description</a></h2></article>"
         + _article(title="Blank description", description="  \n ")
     )
 
-    feeds = extract_feeds(html, MAPPING, NOW)
+    feeds = extract_feeds(html, MAPPING, NOW, PAGE_URL)
 
     assert [feed.description.value for feed in feeds] == [None, None]
 
@@ -91,7 +104,7 @@ def test_cleans_the_description_before_creating_the_feed() -> None:
         title="Emptied", description="!"
     )
 
-    feeds = extract_feeds(html, mapping, NOW)
+    feeds = extract_feeds(html, mapping, NOW, PAGE_URL)
 
     assert [feed.description.value for feed in feeds] == ["Wow", None]
     assert [len(feed.pull_domain_events()) for feed in feeds] == [1, 1]
@@ -101,11 +114,12 @@ def test_takes_the_text_of_the_first_match_only() -> None:
     # A teaser can carry related headlines and their bylines after its own.
     html = (
         "<article><span class='author'>Ana</span> <span class='author'>Luis</span>"
-        "<h2 class='title'>A <b>bold</b> title</h2><h3 class='title'>A related story</h3>"
+        "<h2 class='title'><a href='/1.html'>A <b>bold</b> title</a></h2>"
+        "<h3 class='title'>A related story</h3>"
         "<p class='description'>The lead</p><p class='description'>Another lead</p></article>"
     )
 
-    [feed] = extract_feeds(html, MAPPING, NOW)
+    [feed] = extract_feeds(html, MAPPING, NOW, PAGE_URL)
 
     assert (feed.author.value, feed.title.value, feed.description.value) == (
         "Ana",
@@ -115,7 +129,131 @@ def test_takes_the_text_of_the_first_match_only() -> None:
 
 
 def test_extracts_nothing_from_a_page_without_articles() -> None:
-    assert extract_feeds("<html><p>Please enable JS</p></html>", MAPPING, NOW) == []
+    assert extract_feeds("<html><p>Please enable JS</p></html>", MAPPING, NOW, PAGE_URL) == []
+
+
+def _url_of(article: str, page_url: str = PAGE_URL) -> str | None:
+    [feed] = extract_feeds(article, MAPPING, NOW, page_url)
+    return feed.url.value
+
+
+@pytest.mark.parametrize(
+    ("article", "url"),
+    [
+        pytest.param(
+            "<article><span class='author'>Ana</span>"
+            "<a class='title' href='/title-is-the-link.html'>A title</a></article>",
+            "https://news.example/title-is-the-link.html",
+            id="the title is the link",
+        ),
+        pytest.param(
+            "<article><span class='author'>Ana</span>"
+            "<a href='/around-the-title.html'><h2 class='title'>A title</h2></a></article>",
+            "https://news.example/around-the-title.html",
+            id="a link around the title",
+        ),
+        pytest.param(
+            "<article><a href='/section/'>Section</a><span class='author'>Ana</span>"
+            "<h2 class='title'><a href='/inside-the-title.html'>A title</a></h2></article>",
+            "https://news.example/inside-the-title.html",
+            id="a link inside the title before an earlier one",
+        ),
+        pytest.param(
+            "<article><span class='author'>Ana</span><h2 class='title'>A title</h2>"
+            "<a href='/first-link.html'>Read more</a><a href='/second.html'>Share</a></article>",
+            "https://news.example/first-link.html",
+            id="the first link in the article",
+        ),
+    ],
+)
+def test_takes_the_article_link_from_the_title_first(article: str, url: str) -> None:
+    assert _url_of(article) == url
+
+
+def test_does_not_take_a_byline_link_before_a_title_wrapped_in_its_link() -> None:
+    article = (
+        "<article><a class='author' href='/autor/ana.html'>Ana</a>"
+        "<a href='/deportes/1.html'><h2 class='title'>A title</h2></a></article>"
+    )
+
+    assert _url_of(article) == "https://news.example/deportes/1.html"
+
+
+@pytest.mark.parametrize(
+    ("page_url", "href", "url"),
+    [
+        ("https://news.example/", "/deportes/1.html", "https://news.example/deportes/1.html"),
+        ("https://news.example/portada/", "1.html", "https://news.example/portada/1.html"),
+        ("https://news.example/", "//cdn.example/1.html", "https://cdn.example/1.html"),
+        (
+            "https://news.example/",
+            "https://other.example/deportes/1.html",
+            "https://other.example/deportes/1.html",
+        ),
+        (
+            "https://news.example/",
+            " /deportes/1.html?utm=home#comments ",
+            "https://news.example/deportes/1.html?utm=home#comments",
+        ),
+    ],
+)
+def test_resolves_the_link_against_the_page_and_keeps_query_and_fragment(
+    page_url: str, href: str, url: str
+) -> None:
+    assert _url_of(_article(href=href), page_url) == url
+
+
+def test_skips_articles_without_a_usable_link_and_tries_the_next_ones() -> None:
+    unusable = [
+        "<article><span class='author'>Ana</span><h2 class='title'>No link</h2></article>",
+        "<article><span class='author'>Ana</span><h2 class='title'><a>No href</a></h2></article>",
+        _article(title="Blank", href="  "),
+        _article(title="Mail", href="mailto:redaccion@news.example"),
+        _article(title="Script", href="javascript:void(0)"),
+        _article(title="Ftp", href="ftp://news.example/1.html"),
+    ]
+    html = "".join(unusable) + "".join(_article(title=f"Title {index}") for index in range(6))
+
+    feeds = extract_feeds(html, MAPPING, NOW, PAGE_URL)
+
+    assert [feed.title.value for feed in feeds] == [f"Title {index}" for index in range(5)]
+
+
+@pytest.mark.parametrize(
+    ("href", "category"),
+    [
+        pytest.param("/deportes/futbol/1.html", FeedCategory.SPORTS, id="first segment"),
+        pytest.param("/DEPORTES/1.html", FeedCategory.SPORTS, id="any case"),
+        pytest.param("/cultura", FeedCategory.CULTURE, id="a single segment"),
+        pytest.param("/juegos/crucigrama/", FeedCategory.OTHER, id="unknown section"),
+        pytest.param("/1/deportes/", FeedCategory.OTHER, id="only the first segment"),
+        pytest.param("/", FeedCategory.OTHER, id="an empty path"),
+        pytest.param("?deportes", FeedCategory.OTHER, id="only a query"),
+        pytest.param(
+            "https://other.example/cultura/1.html", FeedCategory.CULTURE, id="another host"
+        ),
+    ],
+)
+def test_takes_the_category_from_the_first_segment_of_the_link_path(
+    href: str, category: FeedCategory
+) -> None:
+    [feed] = extract_feeds(_article(href=href), MAPPING, NOW, PAGE_URL)
+
+    assert feed.category == category
+
+
+async def test_resolves_links_against_the_front_page_url_after_redirects() -> None:
+    def handle(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "news.example":
+            return httpx.Response(301, headers={"Location": "https://www.news.example/"})
+        return httpx.Response(200, content=_article(href="/cultura/1.html").encode())
+
+    transport = httpx.MockTransport(handle)
+    async with httpx.AsyncClient(transport=transport, follow_redirects=True) as client:
+        [feed] = await scrape_front_page(client, MAPPING, FixedClock(NOW))
+
+    assert feed.url.value == "https://www.news.example/cultura/1.html"
+    assert feed.category == FeedCategory.CULTURE
 
 
 def _page(title: str, meta_charset: str | None = None) -> str:

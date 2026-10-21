@@ -71,3 +71,5 @@ def test_scrape_answers_feed_json(client: TestClient) -> None:
     assert scraped
     for feed in scraped:
         _assert_is_feed_json(feed)
+        assert isinstance(feed["url"], str)
+        assert isinstance(feed["category"], str)

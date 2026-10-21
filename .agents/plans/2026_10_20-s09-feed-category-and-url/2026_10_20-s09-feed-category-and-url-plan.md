@@ -7,7 +7,8 @@ created_at: '2026-10-20T15:38:43Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-21T10:00:00Z'
+updated_at: '2026-10-21T12:00:00Z'
+implemented_at: '2026-10-21T12:00:00Z'
 implemented_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -232,8 +233,9 @@ source's table. Articles without a usable link are skipped. This replaces the Ph
 
 ### Public contracts
 
-- `ScrapeMapping` gains `categories: Mapping[str, FeedCategory]` (default: empty, so everything is
-  `OTHER`).
+- `ScrapeMapping` gains `categories: Mapping[str, FeedCategory]`. It is required: every scraper
+  has a table. `categories_by_section({FeedCategory.X: ("section", ...)})` builds it in the same
+  layout as the spec table.
 - `extract_feeds(html: str, mapping: ScrapeMapping, now: datetime, page_url: str) -> list[Feed]`.
   `scrape_front_page` passes `str(response.url)`, the URL after redirects.
 - Link rule, in this order:
@@ -250,7 +252,7 @@ source's table. Articles without a usable link are skipped. This replaces the Ph
 
 ### Tests first
 
-- [ ] `test_front_page.py` (inline HTML, `page_url="https://news.example/"`):
+- [x] `test_front_page.py` (inline HTML, `page_url="https://news.example/"`):
   - each link rule is covered: link on the title, around the title, inside the title, in the
     article;
   - a byline link before a wrapped title is not taken;
@@ -262,35 +264,38 @@ source's table. Articles without a usable link are skipped. This replaces the Ph
   - the category is found by the first segment, case-insensitive;
   - an unknown segment or an empty path gives `OTHER`;
   - `scrape_front_page` resolves against the final URL after a 301 redirect.
-- [ ] One test per scraper: a parametrized sample of its table (for example El Español
+- [x] One test per scraper: a parametrized sample of its table. These were written after the
+      tables, not red first: they pin the spec table, which the implementation copies (for example El Español
       `invertia → ECONOMY`, `omicrono → TECHNOLOGY`; La Vanguardia `local → SOCIETY`; El Mundo
       `juegos → OTHER`). The existing fixture tests also assert each feed's URL and category.
       Fixture hrefs get section paths, e.g. `/deportes/futbol/123.html`, and one article without
       a link.
-- [ ] Spec edge cases as tests:
+- [x] Spec edge cases as tests:
   - El Español `/espana/politica/…` gives `POLITICS`;
   - El Mundo `/juegos/crucigrama/` gives `OTHER` and is still saved;
   - La Razón relative `/deportes/futbol/123.html` gives `https://www.larazon.es/…`, `SPORTS`.
-- [ ] Network smoke tests (`@pytest.mark.network`): each feed has an `http(s)` URL on the source's
+- [x] Network smoke tests (`@pytest.mark.network`): each feed has an `http(s)` URL on the source's
       host and a `FeedCategory`.
-- [ ] `test_scrape_feeds.py` and `scrap-feed.feature`: the expected bodies include the scraped
-      `url` and `category`. Counts are unchanged unless a fixture loses an article to the link
-      rule.
+- [x] `test_scrape_feeds.py` and `scrap-feed.feature`: the expected bodies include the scraped
+      `url` and `category`. Counts are unchanged: each fixture's article without a usable link
+      sits before its fifth stored article, so the next one is taken. The feature also checks
+      `/feed/list?category=SPORTS` answers 4 after a run.
 
 ### Implementation
 
-- [ ] Add `categories` to `ScrapeMapping`, the `page_url` parameter, a `_link(article, mapping)`
+- [x] Add `categories` to `ScrapeMapping`, the `page_url` parameter, a `_link(article, mapping)`
       helper and a `_category(url, categories)` helper in `front_page.py`. Remove the interim
       `OTHER` / `None`.
-- [ ] Add the per-source tables to the five `*_feed_scraper.py` files.
-- [ ] Update the five HTML fixtures with section hrefs (keep El Mundo's ISO-8859-15 bytes).
-- [ ] Specs: S06 gets a "See S09" note on the link requirement.
-- [ ] Refactor without changing behavior.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures. Run `uv run pytest -m network` for
-      the five smoke tests.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Add the per-source tables to the five `*_feed_scraper.py` files.
+- [x] Update the five HTML fixtures with section hrefs (keep El Mundo's ISO-8859-15 bytes).
+- [x] Specs: S06 gets a "See S09" note on the link requirement.
+- [x] Refactor without changing behavior.
+- [x] Run the quality gate from `AGENTS.md` and fix failures. Run `uv run pytest -m network` for
+      the five smoke tests. All five pass. On 2026-10-21 the live front pages gave 24 of 25 feeds a
+      category; the other one was El Español `observatorio-defensa`, which is not in the spec
+      table, so it is `OTHER`.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ## Next step
 
-Phases 1 and 2 are implemented. Review Phase 2, commit with `/ai-project-conventional-commit`,
-then run `/ai-project-implement-phase` for Phase 3.
+Every phase is implemented. Review Phase 3 and commit it with `/ai-project-conventional-commit`.

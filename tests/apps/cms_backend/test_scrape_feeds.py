@@ -44,6 +44,24 @@ def test_scraping_reads_the_five_front_pages(
     assert _sources(scraped) == sorted([*OTHER_SOURCES_THAN_EL_MUNDO, "EL_MUNDO"])
 
 
+def test_scraped_feeds_keep_their_article_url_and_section_category(client: TestClient) -> None:
+    scraped = client.get("/feed/scrap").json()
+
+    assert all(str(feed["url"]).startswith("https://www.") for feed in scraped)
+    [la_razon_sports] = [
+        feed for feed in scraped if feed["url"] == "https://www.larazon.es/deportes/futbol/123.html"
+    ]
+    assert (la_razon_sports["source"], la_razon_sports["category"]) == ("LA_RAZON", "SPORTS")
+    sports = client.get("/feed/list", params={"category": "SPORTS"}).json()
+    assert la_razon_sports in sports
+    assert {feed["source"] for feed in sports} == {
+        "EL_MUNDO",
+        "EL_CONFIDENCIAL",
+        "LA_RAZON",
+        "LA_VANGUARDIA",
+    }
+
+
 @pytest.mark.parametrize(
     "front_pages_transport", [FrontPagesTransport(failing_hosts={"elmundo.es"})]
 )
