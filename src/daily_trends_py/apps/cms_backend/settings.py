@@ -19,7 +19,6 @@ class Settings(BaseSettings):
     port: int = 5000
     timezone: ZoneInfo = ZoneInfo("Europe/Madrid")
     scrape_timeout_seconds: float = Field(default=10, gt=0)
-    scrape_cooldown_seconds: float = Field(default=300, ge=0)
 
     @model_validator(mode="before")
     @classmethod

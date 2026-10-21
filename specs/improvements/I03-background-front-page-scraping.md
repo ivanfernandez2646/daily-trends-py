@@ -12,6 +12,10 @@ new background runs for a while, so failing sources are not retried on every req
 ## Changes
 
 ### `/feed/home` no longer scrapes inside the request (#5)
+
+> **Superseded by [S10](../feeds/S10-scheduled-scraping.md):** the staleness rule and the background
+> refresh are removed. `/feed/home` only reads, and feeds are scraped on a schedule.
+
 - The staleness rule from S07 is unchanged: the home search returns results and the **newest** is
   from a day before today (day-level comparison, server local time).
 - When the page is stale, `/feed/home` **requests a background refresh** and answers 200 at once with
@@ -33,6 +37,11 @@ new background runs for a while, so failing sources are not retried on every req
 - `/feed/scrap` keeps its error behavior: a save error answers 500.
 
 ### Cooldown between background runs (#4)
+
+> **Superseded by [S10](../feeds/S10-scheduled-scraping.md):** the cooldown and
+> `SCRAPE_COOLDOWN_SECONDS` are removed along with the background refresh. The single-flight guard
+> stays and is shared by scheduled runs and `/feed/scrap`.
+
 - A background refresh is **not started** if the previous background run **finished** less than
   **5 minutes** ago, whatever its outcome (feeds saved, nothing saved, every source failed, or an
   error).

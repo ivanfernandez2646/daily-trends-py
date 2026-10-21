@@ -90,7 +90,6 @@ settings stop the API at startup with exit code 1.
 | `PORT` | `5000` | HTTP port |
 | `TIMEZONE` | `Europe/Madrid` | IANA zone that decides when a business day starts; the server's `TZ` is ignored |
 | `SCRAPE_TIMEOUT_SECONDS` | `10` | Timeout of each request to a scraped site, > 0 |
-| `SCRAPE_COOLDOWN_SECONDS` | `300` | Minimum time between background front page refreshes, ≥ 0 (0 disables it) |
 
 ## Development
 

@@ -67,7 +67,7 @@ async def scrap_feeds(scraper: FromDishka[FeedScraper]) -> list[FeedResponse]:
 @router.get("/feed/home", responses=_errors(500))
 async def home_feeds(home_searcher: FromDishka[FeedHomeSearcher]) -> list[FeedResponse]:
     """The 2 newest feeds of each external source, filled with the newest of any of them up to 10,
-    newest first; a stale front page is refreshed in the background."""
+    newest first."""
     return [FeedResponse.from_feed(feed) for feed in await home_searcher.execute()]
 
 

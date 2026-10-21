@@ -1,6 +1,3 @@
-from collections.abc import AsyncIterator
-from datetime import timedelta
-
 import httpx
 
 # dishka types `provide` with an unparametrized `classmethod`; the providers below are typed.
@@ -14,9 +11,6 @@ from daily_trends_py.apps.cms_backend.settings import Settings
 from daily_trends_py.contexts.cms.feeds.application.create.feed_creator import FeedCreator
 from daily_trends_py.contexts.cms.feeds.application.delete.feed_deleter import FeedDeleter
 from daily_trends_py.contexts.cms.feeds.application.find.feed_finder import FeedFinder
-from daily_trends_py.contexts.cms.feeds.application.home.feed_home_refresher import (
-    FeedHomeRefresher,
-)
 from daily_trends_py.contexts.cms.feeds.application.home.feed_home_searcher import (
     FeedHomeSearcher,
 )
@@ -56,7 +50,7 @@ FEED_USE_CASES = (
 
 
 class FeedsProvider(Provider):
-    """The feeds subdomain: its repository, scrapers, background refresher and use cases."""
+    """The feeds subdomain: its repository, scrapers and use cases."""
 
     scope = Scope.APP
 
@@ -88,14 +82,3 @@ class FeedsProvider(Provider):
             ],
             settings.timezone,
         )
-
-    @provide
-    async def feed_home_refresher(
-        self, settings: Settings, scraper: FeedScraper, clock: Clock
-    ) -> AsyncIterator[FeedHomeRefresher]:
-        # A background run keeps using both clients, so it is closed before them.
-        refresher = FeedHomeRefresher(
-            scraper, clock, timedelta(seconds=settings.scrape_cooldown_seconds)
-        )
-        yield refresher
-        await refresher.aclose()

@@ -37,7 +37,6 @@ def test_uses_dev_defaults_when_environment_and_env_file_are_empty() -> None:
     assert settings.port == 5000
     assert settings.timezone == ZoneInfo("Europe/Madrid")
     assert settings.scrape_timeout_seconds == 10
-    assert settings.scrape_cooldown_seconds == 300
 
 
 def test_uses_the_test_database_by_default_when_env_is_test(
@@ -56,7 +55,6 @@ def test_reads_values_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("PORT", "8080")
     monkeypatch.setenv("TIMEZONE", "America/New_York")
     monkeypatch.setenv("SCRAPE_TIMEOUT_SECONDS", "2.5")
-    monkeypatch.setenv("SCRAPE_COOLDOWN_SECONDS", "60")
 
     settings = Settings()
 
@@ -65,7 +63,6 @@ def test_reads_values_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.port == 8080
     assert settings.timezone == ZoneInfo("America/New_York")
     assert settings.scrape_timeout_seconds == 2.5
-    assert settings.scrape_cooldown_seconds == 60
 
 
 def test_reads_lower_case_variable_names(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -143,7 +140,6 @@ def test_errors_never_show_the_mongo_url(monkeypatch: pytest.MonkeyPatch) -> Non
         ("PORT", "abc"),
         ("TIMEZONE", "Mars/Olympus"),
         ("SCRAPE_TIMEOUT_SECONDS", "0"),
-        ("SCRAPE_COOLDOWN_SECONDS", "-1"),
     ],
 )
 def test_rejects_invalid_values(monkeypatch: pytest.MonkeyPatch, name: str, value: str) -> None:
@@ -153,12 +149,20 @@ def test_rejects_invalid_values(monkeypatch: pytest.MonkeyPatch, name: str, valu
         Settings()
 
 
-def test_accepts_a_zero_cooldown(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("SCRAPE_COOLDOWN_SECONDS", "0")
+def test_ignores_a_leftover_cooldown_in_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SCRAPE_COOLDOWN_SECONDS", "-1")
 
     settings = Settings()
 
-    assert settings.scrape_cooldown_seconds == 0
+    assert not hasattr(settings, "scrape_cooldown_seconds")
+
+
+def test_ignores_a_leftover_cooldown_in_the_env_file() -> None:
+    write_env_file("SCRAPE_COOLDOWN_SECONDS=-1\n")
+
+    settings = Settings()
+
+    assert not hasattr(settings, "scrape_cooldown_seconds")
 
 
 def test_names_the_timezone_variable_when_it_is_unknown(monkeypatch: pytest.MonkeyPatch) -> None:

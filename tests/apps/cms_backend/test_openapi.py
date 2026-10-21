@@ -178,6 +178,7 @@ def test_the_front_page_describes_its_per_source_selection(document: Json) -> No
     description = cast(str, _get(document, "paths", "/feed/home", "get", "description"))
 
     assert "2 newest feeds of each external source" in description
+    assert "refresh" not in description
 
 
 def test_the_feed_category_lists_every_category(document: Json) -> None:

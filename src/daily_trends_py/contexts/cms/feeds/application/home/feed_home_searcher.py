@@ -1,13 +1,9 @@
 import asyncio
 
-from daily_trends_py.contexts.cms.feeds.application.home.feed_home_refresher import (
-    FeedHomeRefresher,
-)
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.feed_criteria import FeedCriteria
 from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
 from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedSource
-from daily_trends_py.contexts.cms.shared.domain.clock import Clock
 from daily_trends_py.contexts.cms.shared.domain.criteria import Filter, Order
 
 HOME_SOURCES = (
@@ -24,20 +20,10 @@ _NEWEST_FIRST = Order("created_at", "desc")
 
 
 class FeedHomeSearcher:
-    def __init__(
-        self, repository: FeedRepository, refresher: FeedHomeRefresher, clock: Clock
-    ) -> None:
+    def __init__(self, repository: FeedRepository) -> None:
         self._repository = repository
-        self._refresher = refresher
-        self._clock = clock
 
     async def execute(self) -> list[Feed]:
-        feeds = await self._search()
-        if feeds and self._is_from_a_previous_day(feeds[0]):
-            self._refresher.request()
-        return feeds
-
-    async def _search(self) -> list[Feed]:
         """The newest feeds of each home source, filled with the newest of any of them."""
         *per_source, newest = await asyncio.gather(
             *(
@@ -64,7 +50,3 @@ class FeedHomeSearcher:
         fill = [feed for feed in newest if feed.id not in picked_ids]
         feeds = [*picked, *fill[: HOME_LIMIT - len(picked)]]
         return sorted(feeds, key=lambda feed: feed.created_at.value, reverse=True)
-
-    def _is_from_a_previous_day(self, feed: Feed) -> bool:
-        now = self._clock.now()
-        return feed.created_at.value.astimezone(now.tzinfo).date() < now.date()
