@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import getpass
+import json
 import logging
 import sys
 from collections.abc import AsyncGenerator, Sequence
@@ -83,6 +84,7 @@ def create_app(container: AsyncContainer) -> FastAPI:
 
 
 CREATE_ADMIN = "create-admin"
+OPENAPI = "openapi"
 
 
 def main(
@@ -93,7 +95,17 @@ def main(
     logging.basicConfig(level=logging.INFO)
     if arguments.command == CREATE_ADMIN:
         sys.exit(_create_admin(arguments.email, migrations))
+    if arguments.command == OPENAPI:
+        print(json.dumps(openapi_document(), indent=2, ensure_ascii=False))
+        return
     _serve(migrations)
+
+
+def openapi_document() -> dict[str, object]:
+    """The OpenAPI document of the API, built without starting it or connecting to Mongo."""
+    # The document depends on no setting, so the environment and `.env` are not read: an
+    # incomplete production configuration still prints it.
+    return create_app(create_container(Settings.model_construct())).openapi()
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -103,6 +115,7 @@ def _parser() -> argparse.ArgumentParser:
         CREATE_ADMIN, help="Create an administrator; the password is asked twice, without echo."
     )
     create.add_argument("--email", help="Asked for when it is not given.")
+    commands.add_parser(OPENAPI, help="Print the OpenAPI document of the API, without starting it.")
     return parser
 
 

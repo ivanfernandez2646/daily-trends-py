@@ -45,3 +45,49 @@ jobs:
 
       - name: Test
         run: uv run pytest
+
+  web:
+    runs-on: ubuntu-22.04
+
+    defaults:
+      run:
+        working-directory: web
+
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.12.23"
+
+      - name: Install Python and dependencies
+        run: uv sync --frozen
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: web/.nvmrc
+
+      - name: Install pnpm and dependencies
+        run: corepack enable && pnpm install --frozen-lockfile
+
+      # A route or schema change that the app does not reflect fails here.
+      - name: Check the API contract
+        run: pnpm api:generate && git diff --exit-code -- openapi.json src/api/schema.gen.ts
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type-check
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Check the route tree
+        run: git diff --exit-code -- src/routeTree.gen.ts
