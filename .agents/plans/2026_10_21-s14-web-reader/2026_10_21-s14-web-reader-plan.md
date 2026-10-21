@@ -7,7 +7,7 @@ created_at: '2026-10-21T13:00:00Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-21T16:10:00Z'
+updated_at: '2026-10-21T17:30:00Z'
 implemented_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -251,7 +251,7 @@ consumers.
 
 ### Tests first
 
-- [ ] `web/src/styles/tokens.test.ts`: it parses `tokens.css` and checks that every text and
+- [x] `web/src/styles/tokens.test.ts`: it parses `tokens.css` and checks that every text and
   background pair passes 4.5:1, in both themes. The pairs:
   - `ink`, `ink-soft`, `meta` and `accent` on `paper`, `surface` and `canvas`;
   - `danger` on `surface`;
@@ -259,17 +259,17 @@ consumers.
   - `success-fg` on `success-bg` and `error-fg` on `error-bg`.
 
   It also checks that both themes define the same set of tokens.
-- [ ] `web/src/lib/labels.test.ts`:
+- [x] `web/src/lib/labels.test.ts`:
   - every category and source has its Spanish label, `EL_PAIS` included;
   - an unknown value answers itself;
   - the order of `CATEGORIES` and of `READER_SOURCES`.
-- [ ] `web/src/lib/dates.test.ts`:
+- [x] `web/src/lib/dates.test.ts`:
   - *ahora*, *hace 14 min*, *hace 2 h* and *hace 23 h*;
   - the switch to *20 oct* at 24 h, and the year outside the current year;
   - *Hoy* and *Ayer* decided by the Madrid calendar day, so `2026-10-20T22:30:00Z` is *Hoy* on
     the 21st in Madrid;
   - a date across the DST change (`2026-10-25`).
-- [ ] One `*.test.tsx` per component:
+- [x] One `*.test.tsx` per component:
   - its role and accessible name;
   - its states: a chip toggles `aria-pressed`, a button variant, a field's error linked by
     `aria-describedby`, a notice's role by tone;
@@ -279,11 +279,46 @@ consumers.
 
 ### Implementation
 
-- [ ] Add shadcn/ui (`components.json`, the `cn` helper) and copy only the primitives these
+- [x] Add shadcn/ui (`components.json`, the `cn` helper) and copy only the primitives these
   components use. Restyle them with the tokens: no raw hex outside `tokens.css`.
-- [ ] Write the tokens, the theme, the fonts and the helpers, then the components.
-- [ ] Run the web gate and fix failures (Python is unchanged).
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Write the tokens, the theme, the fonts and the helpers, then the components.
+- [x] Run the web gate and fix failures (Python is unchanged).
+- [x] STOP for user review. Suggest three Conventional Commit messages.
+
+### Implementation notes
+
+- **Tokens:**
+  - `tokens.css` holds the raw values as `--paper`, `--ink`… and `--category-<value>`.
+  - `global.css` maps them to Tailwind with `@theme inline` (`--color-paper: var(--paper)`), and
+    resets Tailwind's default palette (`--color-*: initial`), so no other color class exists.
+  - The contrast test reads `tokens.css` from disk, because Vitest does not process CSS imports.
+    It also covers `surface` on `danger` (the destructive button) and `error-fg` on the three
+    backgrounds (field errors).
+  - It was checked that a too-light accent makes the test fail.
+- **Type scale:**
+  - The Meta style is `text-caption`, because `text-meta` is already the color.
+  - `cn` extends `tailwind-merge` with the type scale. Otherwise `text-display` reads as a color
+    and is dropped next to `text-ink`.
+- **Dates:** `formatFullDate` uses ICU's Spanish format, *20 de octubre de 2026 a las 08:15*,
+  instead of the comma in the plan's example.
+- **Fonts:** Newsreader loads with the optical size axis (`opsz.css`). The build has no reference
+  to an external font host.
+- **Components:**
+  - `IconButton` requires a `label`, so an icon-only button always has a name.
+  - `SourceLink` has a `link` variant and a `button` variant, the primary pill of the detail's
+    source panel in the canvas. Its accessible name ends in *(se abre en una pestaña nueva)*.
+  - `CategoryLabel` has no `linked` prop yet. A typed link to `/feeds?category=…` needs the
+    browse route's search validation (phase 4), so the detail wraps it in a link in phase 5.
+  - The component files are kebab-case like shadcn's (`feed-card.tsx`, not `FeedCard.tsx`).
+  - Dialog is deferred to S15, as agreed.
+- **Detail route:** `src/routes/feeds.$id.tsx` exists as a stub, because the card's typed link
+  to `/feeds/$id` needs a registered route. Phase 5 fills it in.
+- **Tests:**
+  - Callbacks are checked with explicit recorders, not `vi.fn()`.
+  - The clock is faked with `vi.useFakeTimers({ toFake: ["Date"] })`.
+  - `renderWithRouter` renders a component that holds links inside a router of its own.
+- **Versions:** `lucide-react` is `1.60.0`, because `1.61.0` came out today and fails pnpm's
+  release-age policy.
 
 ## Phase 3: Reader layout, front page and E2E harness
 
@@ -501,4 +536,4 @@ a *not found* page, and the docs are updated.
 
 ## Next step
 
-Phase 1 is implemented and awaits review. Then run `/ai-project-implement-phase` for Phase 2.
+Phase 2 is implemented and awaits review. Then run `/ai-project-implement-phase` for Phase 3.

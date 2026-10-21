@@ -1,3 +1,7 @@
+import "@fontsource-variable/inter";
+// Optical size: the serif adapts its strokes from captions to the masthead.
+import "@fontsource-variable/newsreader/opsz.css";
+import "./styles/global.css";
 import { RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";

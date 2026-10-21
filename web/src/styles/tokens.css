@@ -1,0 +1,62 @@
+/* Tinta: the only place with color values. Tailwind exposes them through `@theme` in global.css. */
+:root {
+  --paper: #fbfbfa;
+  --surface: #ffffff;
+  --canvas: #f4f4f5;
+  --ink: #111113;
+  --ink-soft: #3f3f46;
+  --meta: #5c5c66;
+  --rule: #e4e4e7;
+  --field-border: #d4d4d8;
+  --accent: #c2361f;
+  --danger: #a3301b;
+  --success-bg: #eef7f0;
+  --success-fg: #1e5e2c;
+  --error-bg: #fdf1ef;
+  --error-fg: #8a2414;
+
+  --category-politics: #3a5ba0;
+  --category-international: #2f7f7a;
+  --category-economy: #a0702a;
+  --category-society: #7a4fa0;
+  --category-sports: #2e8540;
+  --category-culture: #b0476b;
+  --category-technology: #3e5bc2;
+  --category-science: #1f7aa8;
+  --category-health: #b04a3a;
+  --category-opinion: #52525b;
+  --category-other: #8a8a94;
+
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #0e0e10;
+    --surface: #17171a;
+    --canvas: #121214;
+    --ink: #ededef;
+    --ink-soft: #c4c4cc;
+    --meta: #a1a1aa;
+    --rule: #26262b;
+    --field-border: #3f3f46;
+    --accent: #ff6b52;
+    --danger: #ff7a66;
+    --success-bg: #13261a;
+    --success-fg: #8fd19e;
+    --error-bg: #2a1512;
+    --error-fg: #ffb4a6;
+
+    --category-politics: #7f9be0;
+    --category-international: #4fb3ac;
+    --category-economy: #d9a04a;
+    --category-society: #b48ad9;
+    --category-sports: #5dbb6e;
+    --category-culture: #e07fa0;
+    --category-technology: #7d94f0;
+    --category-science: #5db0dc;
+    --category-health: #e58a7a;
+    --category-opinion: #a1a1aa;
+    --category-other: #71717a;
+  }
+}

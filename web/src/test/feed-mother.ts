@@ -1,6 +1,4 @@
-import type { components } from "../api/schema.gen";
-
-type FeedResponse = components["schemas"]["FeedResponse"];
+import type { FeedResponse } from "../api/types";
 
 let sequence = 0;
 
