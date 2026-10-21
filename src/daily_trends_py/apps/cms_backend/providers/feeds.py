@@ -1,3 +1,6 @@
+from collections.abc import AsyncIterator
+from datetime import timedelta
+
 import httpx
 
 # dishka types `provide` with an unparametrized `classmethod`; the providers below are typed.
@@ -13,6 +16,9 @@ from daily_trends_py.contexts.cms.feeds.application.delete.feed_deleter import F
 from daily_trends_py.contexts.cms.feeds.application.find.feed_finder import FeedFinder
 from daily_trends_py.contexts.cms.feeds.application.home.feed_home_searcher import (
     FeedHomeSearcher,
+)
+from daily_trends_py.contexts.cms.feeds.application.scrape.feed_scrape_scheduler import (
+    FeedScrapeScheduler,
 )
 from daily_trends_py.contexts.cms.feeds.application.scrape.feed_scraper import FeedScraper
 from daily_trends_py.contexts.cms.feeds.application.search.feed_searcher import FeedSearcher
@@ -50,7 +56,7 @@ FEED_USE_CASES = (
 
 
 class FeedsProvider(Provider):
-    """The feeds subdomain: its repository, scrapers and use cases."""
+    """The feeds subdomain: its repository, scrapers, scrape scheduler and use cases."""
 
     scope = Scope.APP
 
@@ -82,3 +88,14 @@ class FeedsProvider(Provider):
             ],
             settings.timezone,
         )
+
+    @provide
+    async def feed_scrape_scheduler(
+        self, settings: Settings, scraper: FeedScraper
+    ) -> AsyncIterator[FeedScrapeScheduler]:
+        # A scheduled run keeps using both clients, so it is closed before them.
+        scheduler = FeedScrapeScheduler(
+            scraper, timedelta(seconds=settings.scrape_interval_seconds)
+        )
+        yield scheduler
+        await scheduler.aclose()

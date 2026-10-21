@@ -1,6 +1,6 @@
 # daily-trends-py
 
-Python port of [daily-trends](https://github.com/ivanfernandez2646/daily-trends): a small news API that stores feeds created through the API and scraped from the front pages of El Mundo and El Español (El País in the original, which now blocks scrapers; see [S06](specs/feeds/S06-scrape-external-sources.md)).
+Python port of [daily-trends](https://github.com/ivanfernandez2646/daily-trends): a small news API that stores feeds created through the API and scraped from the front pages of El Mundo, El Español, El Confidencial, La Razón and La Vanguardia (El País in the original, which now blocks scrapers; see [S06](specs/feeds/S06-scrape-external-sources.md)).
 
 The port keeps the current behavior of the Node project (same routes, status codes, bodies and data in MongoDB). Known defects are tracked in [`specs/improvements/`](specs/improvements/README.md) and are intentionally not fixed during the migration.
 
@@ -22,8 +22,8 @@ The port keeps the current behavior of the Node project (same routes, status cod
 | `PATCH /feed/{id}` | Update title and/or description |
 | `DELETE /feed/{id}` | Delete a feed |
 | `GET /feed/list` | List all feeds, newest first |
-| `GET /feed/home` | 10 newest scraped feeds; scrapes on demand if the newest is older than today |
-| `GET /feed/scrap` | Scrape El Mundo and El Español and store the results |
+| `GET /feed/home` | Up to 10 stored scraped feeds: the 2 newest of each source, filled with the newest of any |
+| `GET /feed/scrap` | Scrape every source now and store the results; waits for a scraping run in progress |
 | `GET /status` | Health check |
 
 FastAPI generates the OpenAPI document from the code: Swagger UI at `/docs`, ReDoc at `/redoc` and
@@ -90,6 +90,8 @@ settings stop the API at startup with exit code 1.
 | `PORT` | `5000` | HTTP port |
 | `TIMEZONE` | `Europe/Madrid` | IANA zone that decides when a business day starts; the server's `TZ` is ignored |
 | `SCRAPE_TIMEOUT_SECONDS` | `10` | Timeout of each request to a scraped site, > 0 |
+| `SCRAPE_SCHEDULE_ENABLED` | `true` | Scrape every source at startup and then every `SCRAPE_INTERVAL_SECONDS`; `false` leaves only `/feed/scrap` |
+| `SCRAPE_INTERVAL_SECONDS` | `7200` | Time from the end of a scheduled run to the start of the next one, > 0 |
 
 ## Development
 

@@ -7,7 +7,11 @@ created_at: '2026-10-21T09:09:30Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-21T09:40:00Z'
+updated_at: '2026-10-21T10:30:00Z'
+implemented_at: '2026-10-21T10:30:00Z'
+implemented_by:
+  tool: 'Claude Code'
+  model: 'claude-opus-5-5'
 ---
 
 # S10 · Scheduled scraping
@@ -134,50 +138,59 @@ shutdown, plus the OpenAPI copy and docs.
 
 ### Tests first
 
-- [ ] Fake `tests/contexts/cms/feeds/fakes/controlled_wait.py`: an async callable that records
+- [x] Fake `tests/contexts/cms/feeds/fakes/controlled_wait.py`: an async callable that records
       each interval and blocks until the test releases it, so no real sleeping happens.
-- [ ] `test_feed_scrape_scheduler.py` (`FeedScraper` over `StubFeedScrape`/`BlockingFeedScrape` and
+- [x] `test_feed_scrape_scheduler.py` (`FeedScraper` over `StubFeedScrape`/`BlockingFeedScrape` and
       `InMemoryFeedRepository`):
-  - [ ] `start()` runs at once, then waits the interval, and after the wait runs again. Each
+  - [x] `start()` runs at once, then waits the interval, and after the wait runs again. Each
         wait starts after the previous run finished.
-  - [ ] a run that is due while a manual `scraper.execute()` is in progress is skipped (no extra
+  - [x] a run that is due while a manual `scraper.execute()` is in progress is skipped (no extra
         scrape call), the skip is logged, and the next wait is one interval.
-  - [ ] a manual run during the wait does not end or restart the wait (still one recorded wait,
+  - [x] a manual run during the wait does not end or restart the wait (still one recorded wait,
         and the next scheduled run happens only on release).
-  - [ ] a run that raises (failing repository) is logged with its traceback and the schedule
+  - [x] a run that raises (failing repository) is logged with its traceback and the schedule
         continues to the next wait and run.
-  - [ ] each run logs the number of feeds it saved.
-  - [ ] `aclose()` while waiting ends the task and no further run starts. `aclose()` while
+  - [x] each run logs the number of feeds it saved.
+  - [x] `aclose()` while waiting ends the task and no further run starts. `aclose()` while
         running cancels the run, keeps the feeds already saved, and no further run starts.
-  - [ ] `start()` twice creates one task. `aclose()` without `start()` returns at once.
-- [ ] `test_settings.py`: defaults `scrape_schedule_enabled is True` and
+        The cancel-while-running test blocks inside the scrape, before any save, so it checks
+        that nothing is saved and nothing more runs. "Keeps the feeds already saved" would need a
+        repository that blocks in the middle of saving. It follows from S06 (no rollback) and is
+        not tested separately.
+  - [x] `start()` twice creates one task. `aclose()` without `start()` returns at once.
+- [x] `test_settings.py`: defaults `scrape_schedule_enabled is True` and
       `scrape_interval_seconds == 7200`. Both are read from the environment.
       `SCRAPE_INTERVAL_SECONDS` of `0` and `-1` is rejected.
-- [ ] `test_app.py` (an override provider builds `FeedScraper` over a `BlockingFeedScrape`):
-  - [ ] with the scheduler enabled, startup starts exactly one run and does not wait for it
+- [x] `test_app.py` (an override provider builds `FeedScraper` over a `BlockingFeedScrape`):
+  - [x] with the scheduler enabled, startup starts exactly one run and does not wait for it
         (`/status` answers while the scrape is blocked).
-  - [ ] shutdown cancels the task before the HTTP and Mongo clients close (the scrape sees
+  - [x] shutdown cancels the task before the HTTP and Mongo clients close (the scrape sees
         `CancelledError` while `http_client.is_closed` is still false).
-  - [ ] with it disabled (the test default), no run starts.
-- [ ] `test_container.py`: the scheduler resolves and closes before the HTTP client.
-- [ ] `test_openapi.py`: the `/feed/scrap` description mentions waiting for a run in progress.
+  - [x] with it disabled (the test default), no run starts.
+  - The tests use their own provider that overrides `FeedScraper`. It builds a scrape that blocks
+    until cancelled and records whether the HTTP client was still open at that point. Waiting
+    for the run to start has a 5 s timeout, so the red state fails instead of hanging.
+- [x] `test_container.py`: the scheduler resolves and closes before the HTTP client.
+- [x] `test_openapi.py`: the `/feed/scrap` description mentions waiting for a run in progress.
       The API description mentions scheduled scraping.
 
 ### Implementation
 
-- [ ] Add `FeedScrapeScheduler` with the minimum loop that makes the use-case tests pass.
-- [ ] Add the two settings and the `IsolatedSettings` default.
-- [ ] Add the provider. In `create_app`'s lifespan, start the scheduler when enabled.
-- [ ] Update the `/feed/scrap` docstring and `DESCRIPTION`.
-- [ ] Docs: in `S00`, remove "Scheduler" from out of scope and add S10 to the table if it is
+- [x] Add `FeedScrapeScheduler` with the minimum loop that makes the use-case tests pass.
+- [x] Add the two settings and the `IsolatedSettings` default.
+- [x] Add the provider. In `create_app`'s lifespan, start the scheduler when enabled.
+- [x] Update the `/feed/scrap` docstring and `DESCRIPTION`.
+- [x] Docs: in `S00`, remove "Scheduler" from out of scope and add S10 to the table if it is
       missing. Add `SCRAPE_SCHEDULE_ENABLED` and `SCRAPE_INTERVAL_SECONDS` to `README.md` and
-      `.env.example`. Set the S10 status to implemented.
-- [ ] Refactor without changing behavior.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures. `home-feed.feature` and
+      `.env.example`. Set the S10 status to implemented. The status stays `draft`, like S08 and
+      S09, which are implemented too. The README intro and endpoint table also had stale
+      text from before S08 (two sources, scraping on demand from `/feed/home`), and now name the
+      five sources and the S10 behavior.
+- [x] Refactor without changing behavior.
+- [x] Run the quality gate from `AGENTS.md` and fix failures. `home-feed.feature` and
       `scrap-feed.feature` pass with the scheduler disabled.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ## Next step
 
-Phase 1 is implemented. Review it and commit it with `/ai-project-conventional-commit`, then
-run `/ai-project-implement-phase` for Phase 2.
+Every phase is implemented. Review Phase 2 and commit it with `/ai-project-conventional-commit`.

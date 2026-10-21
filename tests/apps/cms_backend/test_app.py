@@ -1,9 +1,23 @@
+import asyncio
+from datetime import UTC
+
+import httpx
 import pytest
+
+# dishka types `provide` with an unparametrized `classmethod`; the providers below are typed.
+from dishka import (
+    Provider,
+    Scope,
+    provide,  # pyright: ignore[reportUnknownVariableType]
+)
 from fastapi import Response
 from fastapi.testclient import TestClient
 
 from daily_trends_py.apps.cms_backend.container import create_container
 from daily_trends_py.apps.cms_backend.main import create_app
+from daily_trends_py.contexts.cms.feeds.application.scrape.feed_scraper import FeedScraper
+from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
+from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
 from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.migrations.migration import (  # noqa: E501
     Migration,
 )
@@ -13,9 +27,50 @@ from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_
 from tests.apps.cms_backend.conftest import resolve_mongo_client, run_in_app
 from tests.apps.cms_backend.fakes_provider import FakesProvider
 from tests.apps.cms_backend.isolated_settings import IsolatedSettings
+from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
+from tests.contexts.cms.feeds.fakes.stub_feed_scrape import StubFeedScrape
 from tests.mongo import TEST_MONGO_URL, fresh_database_name, mongo_url_for
 
 pytestmark = pytest.mark.integration
+
+
+class ScrapeUntilCancelled:
+    """Never ends on its own; records whether the HTTP client was still open when cancelled."""
+
+    def __init__(self, http_client: httpx.AsyncClient) -> None:
+        self._http_client = http_client
+        self.started = asyncio.Event()
+        self.calls = 0
+        self.cancelled_with_an_open_http_client: bool | None = None
+
+    async def scrape(self) -> list[Feed]:
+        self.calls += 1
+        self.started.set()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            self.cancelled_with_an_open_http_client = not self._http_client.is_closed
+            raise
+        return []
+
+
+def _wait_until_started(client: TestClient, scrape: ScrapeUntilCancelled) -> None:
+    run_in_app(client, lambda: asyncio.wait_for(scrape.started.wait(), timeout=5))
+
+
+class ScrapeProvider(Provider):
+    """Builds the app's scraper over one fake scrape, made with the app's HTTP client."""
+
+    scope = Scope.APP
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.scrape: ScrapeUntilCancelled | None = None
+
+    @provide(override=True)
+    def scraper(self, repository: FeedRepository, http_client: httpx.AsyncClient) -> FeedScraper:
+        self.scrape = ScrapeUntilCancelled(http_client)
+        return FeedScraper(repository, [self.scrape], UTC)
 
 
 def test_unhandled_error_returns_a_generic_500_with_cors_headers_and_is_logged_once(
@@ -140,3 +195,59 @@ def test_no_longer_serves_the_hand_written_document(client: TestClient, path: st
     response = client.get(path)
 
     assert response.status_code == 404
+
+
+def test_starts_one_scheduled_run_at_startup_without_waiting_for_it() -> None:
+    scrape_provider = ScrapeProvider()
+    container = create_container(
+        IsolatedSettings(mongo_url=TEST_MONGO_URL, scrape_schedule_enabled=True),
+        FakesProvider(),
+        scrape_provider,
+    )
+
+    with TestClient(create_app(container)) as client:
+        scrape = scrape_provider.scrape
+        assert scrape is not None
+        _wait_until_started(client, scrape)
+        status = client.get("/status")
+
+    assert status.is_success
+    assert scrape.calls == 1
+
+
+def test_cancels_the_scheduled_run_before_closing_the_clients_at_shutdown() -> None:
+    scrape_provider = ScrapeProvider()
+    container = create_container(
+        IsolatedSettings(mongo_url=TEST_MONGO_URL, scrape_schedule_enabled=True),
+        FakesProvider(),
+        scrape_provider,
+    )
+
+    with TestClient(create_app(container)) as client:
+        scrape = scrape_provider.scrape
+        assert scrape is not None
+        _wait_until_started(client, scrape)
+
+    assert scrape.cancelled_with_an_open_http_client is True
+
+
+def test_starts_no_scheduled_run_when_the_schedule_is_disabled() -> None:
+    scrape = StubFeedScrape([FeedMother.random()])
+
+    class StubScrapeProvider(Provider):
+        scope = Scope.APP
+
+        @provide(override=True)
+        def scraper(self, repository: FeedRepository) -> FeedScraper:
+            return FeedScraper(repository, [scrape], UTC)
+
+    # The test settings disable the schedule.
+    container = create_container(
+        IsolatedSettings(mongo_url=TEST_MONGO_URL), FakesProvider(), StubScrapeProvider()
+    )
+
+    with TestClient(create_app(container)) as client:
+        # Lets a scheduled run, if one had been started, reach the scraper.
+        run_in_app(client, lambda: asyncio.sleep(0.1))
+
+    assert scrape.calls == 0

@@ -60,7 +60,9 @@ async def list_feeds(
 
 @router.get("/feed/scrap", responses=_errors(500))
 async def scrap_feeds(scraper: FromDishka[FeedScraper]) -> list[FeedResponse]:
-    """Scrape the external front pages and answer the feeds this run stored."""
+    """Scrape the external front pages and answer the feeds this run stored.
+    It first waits for a scraping run in progress, such as a scheduled one, and then usually stores
+    nothing new."""
     return [FeedResponse.from_feed(feed) for feed in await scraper.execute()]
 
 
