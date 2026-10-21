@@ -218,8 +218,17 @@ src/daily_trends_py/
     users/                    subdomain: administrators
     shared/                   shared kernel of the context
 tests/                        mirrors src/ (apps/cms_backend, contexts/cms/...)
+web/                          the web app: reader (S14), with its own toolchain
+  openapi.json                the API contract, generated
+  src/api/                    generated types, typed client, query hooks
+  src/components/ui/          Tinta design system components
+  src/features/feeds/         reader screens and their parts
+  src/routes/                 file routes
+  tests/e2e/                  Playwright against the real API and MongoDB
 specs/
-  feeds/                      functional specs (S00 to S07)
+  feeds/                      functional specs of the feeds subdomain, from S00
+  users/                      administrators and sessions (S11, S13)
+  web/                        the web app (S14, S15) and its design system
   improvements/               known defects, out of scope for the port
 .agents/                      agent skills and plans
 AGENTS.md                     agent guide (single source of truth)

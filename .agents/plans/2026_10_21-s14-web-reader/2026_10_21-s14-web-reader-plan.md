@@ -7,7 +7,8 @@ created_at: '2026-10-21T13:00:00Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-21T20:30:00Z'
+updated_at: '2026-10-21T22:00:00Z'
+implemented_at: '2026-10-21T22:00:00Z'
 implemented_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -581,9 +582,9 @@ a *not found* page, and the docs are updated.
 
 ### Tests first
 
-- [ ] `urls.test.ts`: the host without `www.`, a long path shortened, a short path kept, and an
+- [x] `urls.test.ts`: the host without `www.`, a long path shortened, a short path kept, and an
   invalid URL.
-- [ ] `routes/feeds.$id.test.tsx` (MSW):
+- [x] `routes/feeds.$id.test.tsx` (MSW):
   - a feed renders its fields, with *Editada* only when `updated_at` is set;
   - the source panel shows the host and the path, and *Leer en <newspaper>*;
   - a `CMS` feed has no panel;
@@ -593,22 +594,56 @@ a *not found* page, and the docs are updated.
   - a 500 renders `LoadError`;
   - loading shows skeletons;
   - there is one `h1`.
-- [ ] `routes/not-found.test.tsx`: an unknown route renders the *not found* page.
-- [ ] `web/tests/e2e/detail.spec.ts`:
+- [x] `routes/not-found.test.tsx`: an unknown route renders the *not found* page.
+- [x] `web/tests/e2e/detail.spec.ts`:
   - opening a seeded feed from the front page shows it and its related feeds of the same
     category;
   - `/feeds/<unknown uuid>` and `/feeds/nope` show the *not found* page.
 
 ### Implementation
 
-- [ ] Write the hooks, the detail route and the not-found page.
-- [ ] Update `S00`, `README.md`, `AGENTS.md` and the spec status.
-- [ ] Run the Python quality gate and the full web gate:
+- [x] Write the hooks, the detail route and the not-found page.
+- [x] Update `S00`, `README.md`, `AGENTS.md` and the spec status.
+- [x] Run the Python quality gate and the full web gate:
   `pnpm biome ci . && pnpm tsc --noEmit && pnpm vitest run && pnpm build && pnpm playwright test`.
-- [ ] Check the design system's acceptance criteria by hand: the screens at 1440 px and 390 px
+- [x] Check the design system's acceptance criteria by hand: the screens at 1440 px and 390 px
   against the canvas, in both themes, with no horizontal scroll at 360 px.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
+
+### Implementation notes
+
+- **Not found:**
+  - The copy depends on what is missing. The detail shows *No encontramos esta noticia.*, and the
+    router's `notFoundComponent` shows *No encontramos esta página.* Both link to *Volver a la
+    portada*.
+  - A 404 or a 400 from `GET /feed/{id}` shows it without a retry, because the query client
+    never retries a 4xx (phase 3).
+- **Detail:**
+  - It has *← Volver a Explorar*, as in the canvas.
+  - The category is a link to `/feeds?category=…`, made by wrapping `CategoryLabel` in a
+    `Link`.
+  - The source panel is a region named *Fuente original*.
+  - The related feeds are a list of headlines with *source · time*, under the heading *Más de
+    <category>*.
+- **Related feeds:** `useRelatedFeeds` uses `skipToken` until the feed's category is known.
+  Detail pages of the same category share the query, and each page leaves itself out with
+  `select`.
+- **Spec status:** the spec statuses stay *draft*. Every spec in the repository keeps that status
+  once implemented, so S14 and the design system follow the convention instead of changing to
+  `implemented`.
+- **Docs:**
+  - `S00` describes the web app under *What the system is*.
+  - The README layout lists `web/`, `specs/users/` and `specs/web/`.
+  - `AGENTS.md` describes the layout of `web/src`.
+- **E2E:** the *not found* scenarios use no fixture. A random UUID never exists, and Mongo rejects
+  an empty insert.
+- **Checked by hand with screenshots:**
+  - 1440 px in light and 390 px in dark match the canvas in layout and hierarchy for the three
+    screens.
+  - There is no horizontal scroll at 360 px on any screen, including *not found*.
+  - The dark source button reads `#EDEDEF` on `#17171A`. The washed-out look in one screenshot
+    was its 150 ms color transition, caught after switching themes.
 
 ## Next step
 
-Phase 4 is implemented and awaits review. Then run `/ai-project-implement-phase` for Phase 5.
+All phases are implemented. After review, commit Phase 5 and open the pull request for `feat/s14-web-reader`. S15 (the web CMS) builds on this harness and the design system.
