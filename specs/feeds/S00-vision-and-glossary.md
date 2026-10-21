@@ -31,6 +31,7 @@ Each spec is a **capability** and is self-contained: it holds its own HTTP contr
 | S13 | Administrator session (`GET /auth/me`, in `specs/users/`) | S11 |
 | S14 | Web app and reader (`web/`, in `specs/web/`, with the design system) | S07, S08, S09, S12 |
 | S15 | Web CMS (in `specs/web/`) | S11, S12, S13, S14 |
+| S16 | Deployment: Render, MongoDB Atlas and keep-alive (in `specs/ops/`) | S10, S11, S14 |
 
 Implementation order is the table order. S04 and S05 are independent of each other, and so are S03 and S06.
 
