@@ -1,0 +1,25 @@
+from typing import Literal, Self
+
+from pydantic import BaseModel, ConfigDict
+
+from daily_trends_py.contexts.cms.users.domain.access_token import AccessToken
+
+
+class LoginRequest(BaseModel):
+    # Strict: a number or a list is never coerced into a string.
+    model_config = ConfigDict(strict=True)
+
+    email: str
+    password: str
+
+
+class AccessTokenResponse(BaseModel):
+    access_token: str
+    token_type: Literal["bearer"]
+    expires_in: int
+
+    @classmethod
+    def from_access_token(cls, token: AccessToken) -> Self:
+        return cls(
+            access_token=token.value, token_type="bearer", expires_in=token.expires_in_seconds
+        )

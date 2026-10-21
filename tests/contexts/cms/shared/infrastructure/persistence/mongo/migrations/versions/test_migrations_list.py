@@ -15,6 +15,7 @@ def test_lists_the_migrations_in_the_order_they_are_applied() -> None:
     assert [migration.id for migration in MIGRATIONS] == [
         "m0001_feeds_indexes",
         "m0002_feeds_category_and_url",
+        "m0003_users_indexes",
     ]
 
 

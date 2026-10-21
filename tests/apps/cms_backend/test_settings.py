@@ -15,7 +15,11 @@ _VARIABLES = (
     "SCRAPE_SCHEDULE_ENABLED",
     "SCRAPE_INTERVAL_SECONDS",
     "SCRAPE_COOLDOWN_SECONDS",
+    "AUTH_SECRET_KEY",
+    "AUTH_TOKEN_TTL_SECONDS",
 )
+
+SECRET_KEY = "a-production-secret-key-of-48-characters-exactly"
 
 
 @pytest.fixture(autouse=True)
@@ -61,6 +65,8 @@ def test_reads_values_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SCRAPE_TIMEOUT_SECONDS", "2.5")
     monkeypatch.setenv("SCRAPE_SCHEDULE_ENABLED", "false")
     monkeypatch.setenv("SCRAPE_INTERVAL_SECONDS", "60")
+    monkeypatch.setenv("AUTH_SECRET_KEY", SECRET_KEY)
+    monkeypatch.setenv("AUTH_TOKEN_TTL_SECONDS", "3600")
 
     settings = Settings()
 
@@ -71,6 +77,8 @@ def test_reads_values_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.scrape_timeout_seconds == 2.5
     assert settings.scrape_schedule_enabled is False
     assert settings.scrape_interval_seconds == 60
+    assert settings.auth_secret_key.get_secret_value() == SECRET_KEY
+    assert settings.auth_token_ttl_seconds == 3600
 
 
 def test_reads_lower_case_variable_names(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -180,4 +188,75 @@ def test_names_the_timezone_variable_when_it_is_unknown(monkeypatch: pytest.Monk
     monkeypatch.setenv("TIMEZONE", "Mars/Olympus")
 
     with pytest.raises(ValidationError, match="timezone"):
+        Settings()
+
+
+@pytest.mark.parametrize("env", ["dev", "test"])
+def test_uses_a_fixed_development_secret_key_and_an_eight_hour_token_outside_production(
+    monkeypatch: pytest.MonkeyPatch, env: str
+) -> None:
+    monkeypatch.setenv("ENV", env)
+
+    settings = Settings()
+
+    assert len(settings.auth_secret_key.get_secret_value()) >= 32
+    assert settings.auth_secret_key == Settings().auth_secret_key
+    assert settings.auth_token_ttl_seconds == 28800
+
+
+def test_requires_the_secret_key_in_production(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ENV", "production")
+    monkeypatch.setenv("MONGO_URL", "mongodb://mongo:27017/daily-trends")
+
+    with pytest.raises(ValidationError, match="AUTH_SECRET_KEY is required when ENV is production"):
+        Settings()
+
+
+def test_names_every_variable_production_requires(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ENV", "production")
+
+    with pytest.raises(ValidationError, match="MONGO_URL and AUTH_SECRET_KEY are required"):
+        Settings()
+
+
+@pytest.mark.parametrize("env", ["production", "dev"])
+def test_rejects_a_secret_key_shorter_than_32_characters_without_showing_it(
+    monkeypatch: pytest.MonkeyPatch, env: str
+) -> None:
+    monkeypatch.setenv("ENV", env)
+    monkeypatch.setenv("MONGO_URL", "mongodb://mongo:27017/daily-trends")
+    monkeypatch.setenv("AUTH_SECRET_KEY", "twenty-char-secret!!")
+
+    with pytest.raises(ValidationError) as error:
+        Settings()
+
+    assert "AUTH_SECRET_KEY must have at least 32 characters" in str(error.value)
+    assert "twenty-char-secret!!" not in str(error.value)
+
+
+def test_accepts_a_secret_key_of_32_characters(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AUTH_SECRET_KEY", "k" * 32)
+
+    assert Settings().auth_secret_key.get_secret_value() == "k" * 32
+
+
+def test_never_shows_the_secret_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AUTH_SECRET_KEY", SECRET_KEY)
+    monkeypatch.setenv("PORT", "abc")
+
+    with pytest.raises(ValidationError) as error:
+        Settings()
+
+    assert SECRET_KEY not in str(error.value)
+    monkeypatch.delenv("PORT")
+    assert SECRET_KEY not in repr(Settings())
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "abc"])
+def test_rejects_a_token_ttl_that_is_not_a_positive_number_of_seconds(
+    monkeypatch: pytest.MonkeyPatch, value: str
+) -> None:
+    monkeypatch.setenv("AUTH_TOKEN_TTL_SECONDS", value)
+
+    with pytest.raises(ValidationError, match="auth_token_ttl_seconds"):
         Settings()

@@ -13,6 +13,7 @@ from daily_trends_py.contexts.cms.shared.domain.invalid_argument_error import (
     InvalidArgumentError,
 )
 from daily_trends_py.contexts.cms.shared.domain.not_found_error import NotFoundError
+from daily_trends_py.contexts.cms.shared.domain.unauthorized_error import UnauthorizedError
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,11 @@ _STATUS_BY_KIND: dict[type[Exception], int] = {
     InvalidArgumentError: status.HTTP_400_BAD_REQUEST,
     NotFoundError: status.HTTP_404_NOT_FOUND,
     ConflictError: status.HTTP_409_CONFLICT,
+    UnauthorizedError: status.HTTP_401_UNAUTHORIZED,
+}
+# A 401 names the scheme the client must authenticate with.
+_HEADERS_BY_KIND: dict[type[Exception], Mapping[str, str]] = {
+    UnauthorizedError: {"WWW-Authenticate": "Bearer"},
 }
 
 # A 5xx body never carries the error: it may show hosts, collections or stored data.
@@ -44,7 +50,7 @@ def register_error_handling(app: FastAPI) -> None:
     app.add_exception_handler(RequestValidationError, _handle_validation_error)
     app.add_exception_handler(HTTPException, _handle_http_exception)
     for kind, status_code in _STATUS_BY_KIND.items():
-        app.add_exception_handler(kind, _answer_with(status_code))
+        app.add_exception_handler(kind, _answer_with(status_code, _HEADERS_BY_KIND.get(kind)))
 
 
 class UnhandledErrorMiddleware:
@@ -109,8 +115,10 @@ def _location(problem: Mapping[str, object]) -> str:
     return ".".join(location)
 
 
-def _answer_with(status_code: int) -> Callable[[Request, Exception], Awaitable[Response]]:
+def _answer_with(
+    status_code: int, headers: Mapping[str, str] | None
+) -> Callable[[Request, Exception], Awaitable[Response]]:
     async def handle(_request: Request, error: Exception) -> Response:
-        return error_response(status_code, str(error))
+        return error_response(status_code, str(error), headers)
 
     return handle

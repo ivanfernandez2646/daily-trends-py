@@ -54,6 +54,7 @@ def test_lists_every_route(document: Json) -> None:
 
     assert {path: sorted(methods) for path, methods in paths.items()} == {
         "/status": ["get"],
+        "/auth/login": ["post"],
         "/feed/list": ["get"],
         "/feed/scrap": ["get"],
         "/feed/home": ["get"],
@@ -127,13 +128,13 @@ def test_the_feed_response_lists_its_fields_in_order_with_dates(document: Json) 
 @pytest.mark.parametrize(
     ("path", "method", "statuses"),
     [
-        ("/feed/{id}", "put", {"400", "409", "500"}),
+        ("/feed/{id}", "put", {"400", "401", "409", "500"}),
         ("/feed/{id}", "get", {"400", "404", "500"}),
-        ("/feed/{id}", "patch", {"400", "404", "500"}),
-        ("/feed/{id}", "delete", {"400", "404", "500"}),
+        ("/feed/{id}", "patch", {"400", "401", "404", "500"}),
+        ("/feed/{id}", "delete", {"400", "401", "404", "500"}),
         ("/feed/list", "get", {"400", "500"}),
         ("/feed/home", "get", {"500"}),
-        ("/feed/scrap", "get", {"500"}),
+        ("/feed/scrap", "get", {"401", "500"}),
     ],
 )
 def test_declares_the_error_responses_of_each_feed_route(
@@ -226,3 +227,58 @@ def test_the_list_takes_an_optional_category_query_parameter(document: Json) -> 
         False,
     )
     assert cast(Json, parameter["schema"])["anyOf"] == [_ref("FeedCategory"), {"type": "null"}]
+
+
+def test_documents_the_login_under_the_auth_tag(document: Json) -> None:
+    operation = cast(Json, _get(document, "paths", "/auth/login", "post"))
+    responses = cast(Json, operation["responses"])
+
+    assert operation["tags"] == ["auth"]
+    assert _get(operation, "requestBody", "content", "application/json", "schema") == _ref(
+        "LoginRequest"
+    )
+    assert _response_schema(document, "/auth/login", "post", "200") == _ref("AccessTokenResponse")
+    assert {status for status in responses if status.startswith(("4", "5"))} == {
+        "400",
+        "401",
+        "500",
+    }
+    for status in ("400", "401", "500"):
+        assert _response_schema(document, "/auth/login", "post", status) == _ref("ErrorResponse")
+
+
+def test_the_access_token_response_lists_its_fields(document: Json) -> None:
+    schema = cast(Json, _get(document, "components", "schemas", "AccessTokenResponse"))
+    properties = cast(dict[str, Json], schema["properties"])
+
+    assert list(properties) == ["access_token", "token_type", "expires_in"]
+    assert properties["token_type"]["const"] == "bearer"
+
+
+PROTECTED_OPERATIONS = {
+    ("/feed/{id}", "put"),
+    ("/feed/{id}", "patch"),
+    ("/feed/{id}", "delete"),
+    ("/feed/scrap", "get"),
+}
+
+
+def test_declares_a_bearer_security_scheme(document: Json) -> None:
+    schemes = cast(Json, _get(document, "components", "securitySchemes"))
+
+    assert schemes == {"bearer": {"type": "http", "scheme": "bearer"}}
+
+
+def test_requires_the_bearer_token_on_exactly_the_protected_operations(document: Json) -> None:
+    paths = cast(dict[str, dict[str, Json]], document["paths"])
+
+    secured = {
+        (path, method)
+        for path, operations in paths.items()
+        for method, operation in operations.items()
+        if "security" in operation
+    }
+
+    assert secured == PROTECTED_OPERATIONS
+    for path, method in PROTECTED_OPERATIONS:
+        assert _get(document, "paths", path, method, "security") == [{"bearer": []}]

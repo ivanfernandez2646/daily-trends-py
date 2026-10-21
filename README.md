@@ -11,20 +11,26 @@ The port keeps the current behavior of the Node project (same routes, status cod
 - MongoDB (PyMongo async)
 - httpx and BeautifulSoup for scraping
 - ruff, pyright (strict), import-linter, pytest, pytest-asyncio, pytest-bdd
-- Hexagonal architecture with a single bounded context (`cms`, subdomain `feeds`)
+- Hexagonal architecture with a single bounded context (`cms`, subdomains `feeds` and `users`)
 
 ## API
 
-| Method and path | Description |
-|---|---|
-| `PUT /feed/{id}` | Create a feed (source `CMS`) |
-| `GET /feed/{id}` | Get a feed |
-| `PATCH /feed/{id}` | Update title and/or description |
-| `DELETE /feed/{id}` | Delete a feed |
-| `GET /feed/list` | List all feeds, newest first |
-| `GET /feed/home` | Up to 10 stored scraped feeds: the 2 newest of each source, filled with the newest of any |
-| `GET /feed/scrap` | Scrape every source now and store the results; waits for a scraping run in progress |
-| `GET /status` | Health check |
+| Method and path | Description | Token |
+|---|---|---|
+| `PUT /feed/{id}` | Create a feed (source `CMS`) | yes |
+| `GET /feed/{id}` | Get a feed | |
+| `PATCH /feed/{id}` | Update title and/or description | yes |
+| `DELETE /feed/{id}` | Delete a feed | yes |
+| `GET /feed/list` | List all feeds, newest first | |
+| `GET /feed/home` | Up to 10 stored scraped feeds: the 2 newest of each source, filled with the newest of any | |
+| `GET /feed/scrap` | Scrape every source now and store the results; waits for a scraping run in progress | yes |
+| `POST /auth/login` | Exchange an administrator's email and password for a bearer access token | |
+| `GET /status` | Health check | |
+
+Routes marked *Token* need `Authorization: Bearer <token>` from `POST /auth/login` (see
+[Administrators](#administrators)). Without a token they answer 401
+`{"error": "Authentication required"}`, and with an invalid or expired one 401
+`{"error": "Invalid or expired access token"}`, before the body or the id is checked.
 
 FastAPI generates the OpenAPI document from the code: Swagger UI at `/docs`, ReDoc at `/redoc` and
 the document at `/openapi.json`. Feed JSON uses snake_case keys (`created_at`, `updated_at`), with
@@ -42,6 +48,7 @@ every route:
 | `InvalidArgumentError` (a blank title, an id that is not a UUID) | 400 |
 | `NotFoundError` (`FeedNotFound`) | 404 |
 | `ConflictError` (`FeedAlreadyExists`) | 409 |
+| `UnauthorizedError` (`InvalidCredentials`, `MissingAccessToken`, `InvalidAccessToken`), with `WWW-Authenticate: Bearer` | 401 |
 | Framework errors: unknown route, method not allowed, unreadable body | their status (404, 405, 400) |
 | Anything else | 500 `{"error": "Internal server error"}`, with the CORS headers, logged once with the method and path |
 
@@ -92,6 +99,35 @@ settings stop the API at startup with exit code 1.
 | `SCRAPE_TIMEOUT_SECONDS` | `10` | Timeout of each request to a scraped site, > 0 |
 | `SCRAPE_SCHEDULE_ENABLED` | `true` | Scrape every source at startup and then every `SCRAPE_INTERVAL_SECONDS`; `false` leaves only `/feed/scrap` |
 | `SCRAPE_INTERVAL_SECONDS` | `7200` | Time from the end of a scheduled run to the start of the next one, > 0 |
+| `AUTH_SECRET_KEY` | `dev` and `test`: a fixed development key, `production`: required | Signs the access tokens (HS256), at least 32 characters, never shown in errors or logs. Changing it invalidates every token. Generate one with `python -c "import secrets; print(secrets.token_urlsafe(48))"` |
+| `AUTH_TOKEN_TTL_SECONDS` | `28800` (8 hours) | How long an access token stays valid after login, > 0 |
+
+### Administrators
+
+Administrators manage the CMS. There is no registration endpoint: create one from the command line,
+against the database of `MONGO_URL` (pending migrations are applied first, so an empty database
+works):
+
+```bash
+uv run daily-trends-py create-admin --email admin@example.com
+```
+
+The password is asked twice without echo and needs at least 12 characters. The email is asked
+for when `--email` is missing, and is stored trimmed and lowercased. The command exits with code 1
+and creates nothing for an invalid email, a short password, passwords that do not match or an
+email that already exists. Changing passwords and removing users are done directly in MongoDB
+([S11](specs/users/S11-authentication.md)).
+
+Log in to get an access token:
+
+```bash
+curl -s localhost:5000/auth/login -H 'Content-Type: application/json' \
+  -d '{"email": "admin@example.com", "password": "<password>"}'
+# {"access_token": "<jwt>", "token_type": "bearer", "expires_in": 28800}
+```
+
+Send it as `Authorization: Bearer <jwt>`. In Swagger UI (`/docs`), paste it in *Authorize*. An
+unknown email and a wrong password both answer 401 `{"error": "Invalid email or password"}`.
 
 ## Development
 
@@ -132,6 +168,7 @@ src/daily_trends_py/
       application/            use cases
       domain/                 entities, value objects, ports
       infrastructure/         MongoDB and scraper adapters
+    users/                    subdomain: administrators
     shared/                   shared kernel of the context
 tests/                        mirrors src/ (apps/cms_backend, contexts/cms/...)
 specs/

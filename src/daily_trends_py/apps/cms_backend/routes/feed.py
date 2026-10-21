@@ -1,6 +1,8 @@
 from dishka.integrations.fastapi import FromDishka
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, Response, Security, status
 
+from daily_trends_py.apps.cms_backend.http.admin_route import AdminRoute
+from daily_trends_py.apps.cms_backend.http.authentication import BEARER
 from daily_trends_py.apps.cms_backend.http.json_body_route import JsonBodyRoute
 from daily_trends_py.apps.cms_backend.routes.feed_schemas import (
     CreateFeedRequest,
@@ -32,6 +34,7 @@ LIST_CRITERIA = FeedCriteria(order=NEWEST_FIRST)
 
 _ERROR_DESCRIPTIONS = {
     status.HTTP_400_BAD_REQUEST: "Invalid request: the body, the id or a value",
+    status.HTTP_401_UNAUTHORIZED: "Missing, invalid or expired access token",
     status.HTTP_404_NOT_FOUND: "No feed has this id",
     status.HTTP_409_CONFLICT: "A feed with this id already exists",
     status.HTTP_500_INTERNAL_SERVER_ERROR: "Unexpected error, such as an invalid stored feed",
@@ -43,6 +46,15 @@ def _errors(*status_codes: int) -> dict[int | str, dict[str, object]]:
         status_code: {"model": ErrorResponse, "description": _ERROR_DESCRIPTIONS[status_code]}
         for status_code in status_codes
     }
+
+
+# The routes that write feeds: only administrators, with a bearer access token, can call them.
+admin_router = APIRouter(
+    route_class=AdminRoute,
+    tags=["feeds"],
+    dependencies=[Security(BEARER)],
+    responses=_errors(status.HTTP_401_UNAUTHORIZED),
+)
 
 
 @router.get("/feed/list", responses=_errors(400, 500))
@@ -58,7 +70,7 @@ async def list_feeds(
     return [FeedResponse.from_feed(feed) for feed in await searcher.execute(criteria)]
 
 
-@router.get("/feed/scrap", responses=_errors(500))
+@admin_router.get("/feed/scrap", responses=_errors(500))
 async def scrap_feeds(scraper: FromDishka[FeedScraper]) -> list[FeedResponse]:
     """Scrape the external front pages and answer the feeds this run stored.
     It first waits for a scraping run in progress, such as a scheduled one, and then usually stores
@@ -73,7 +85,9 @@ async def home_feeds(home_searcher: FromDishka[FeedHomeSearcher]) -> list[FeedRe
     return [FeedResponse.from_feed(feed) for feed in await home_searcher.execute()]
 
 
-@router.put("/feed/{id}", status_code=status.HTTP_201_CREATED, responses=_errors(400, 409, 500))
+@admin_router.put(
+    "/feed/{id}", status_code=status.HTTP_201_CREATED, responses=_errors(400, 409, 500)
+)
 async def create_feed(
     id: str, body: CreateFeedRequest, creator: FromDishka[FeedCreator]
 ) -> FeedResponse:
@@ -94,7 +108,7 @@ async def find_feed(id: str, finder: FromDishka[FeedFinder]) -> FeedResponse:
     return FeedResponse.from_feed(await finder.execute(FeedId(id)))
 
 
-@router.delete(
+@admin_router.delete(
     "/feed/{id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
@@ -104,7 +118,7 @@ async def delete_feed(id: str, deleter: FromDishka[FeedDeleter]) -> None:
     await deleter.execute(FeedId(id))
 
 
-@router.patch("/feed/{id}", responses=_errors(400, 404, 500))
+@admin_router.patch("/feed/{id}", responses=_errors(400, 404, 500))
 async def update_feed(
     id: str, body: UpdateFeedRequest, updater: FromDishka[FeedUpdater]
 ) -> FeedResponse:

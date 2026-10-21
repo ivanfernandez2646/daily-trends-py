@@ -14,12 +14,15 @@ class MongoRepository:
     def __init__(self, client: MongoClient, collection_name: str) -> None:
         self._collection: MongoCollection = client.get_default_database()[collection_name]
 
-    async def _insert(self, document: MongoDocument) -> bool:
-        """Insert a new document; `False` when one with its `_id` already exists."""
+    async def _insert(self, document: MongoDocument, unique_key: str = "_id") -> bool:
+        """Insert a new document; `False` when one with the same `unique_key` already exists.
+
+        A duplicate on any other unique index is still raised.
+        """
         try:
             await self._collection.insert_one(document)
         except DuplicateKeyError as error:
-            if (error.details or {}).get("keyPattern") != {"_id": 1}:
+            if (error.details or {}).get("keyPattern") != {unique_key: 1}:
                 raise
             return False
         return True
@@ -31,6 +34,9 @@ class MongoRepository:
 
     async def _by_id(self, id: str) -> MongoDocument | None:
         return await self._collection.find_one({"_id": id})
+
+    async def _find_one(self, query: MongoDocument) -> MongoDocument | None:
+        return await self._collection.find_one(query)
 
     async def _by_criteria(
         self, criteria: Criteria, storage_fields: Mapping[str, str]
