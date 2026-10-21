@@ -4,15 +4,15 @@ from fastapi.security import HTTPBearer
 
 from daily_trends_py.contexts.cms.users.domain.access_token_verifier import AccessTokenVerifier
 from daily_trends_py.contexts.cms.users.domain.errors import MissingAccessToken
-from daily_trends_py.contexts.cms.users.domain.value_objects import UserId
+from daily_trends_py.contexts.cms.users.domain.verified_access_token import VerifiedAccessToken
 
 # Reads `Authorization: Bearer <token>`, ignoring the case of the scheme, and declares the scheme
 # in OpenAPI. It answers `None` instead of failing, so the app answers its own 401.
 BEARER = HTTPBearer(auto_error=False, scheme_name="bearer")
 
 
-async def authenticate(request: Request) -> UserId:
-    """The administrator behind the request's access token.
+async def authenticate(request: Request) -> VerifiedAccessToken:
+    """The administrator behind the request's access token, and when the token expires.
 
     Raises `MissingAccessToken` without a bearer token, and `InvalidAccessToken` for a token that
     is not valid or has expired.

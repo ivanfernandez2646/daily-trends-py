@@ -55,6 +55,7 @@ def test_lists_every_route(document: Json) -> None:
     assert {path: sorted(methods) for path, methods in paths.items()} == {
         "/status": ["get"],
         "/auth/login": ["post"],
+        "/auth/me": ["get"],
         "/feed/list": ["get"],
         "/feed/scrap": ["get"],
         "/feed/home": ["get"],
@@ -299,11 +300,32 @@ def test_the_access_token_response_lists_its_fields(document: Json) -> None:
     assert properties["token_type"]["const"] == "bearer"
 
 
+def test_documents_the_admin_session_under_the_auth_tag(document: Json) -> None:
+    operation = cast(Json, _get(document, "paths", "/auth/me", "get"))
+    responses = cast(Json, operation["responses"])
+
+    assert operation["tags"] == ["auth"]
+    assert _response_schema(document, "/auth/me", "get", "200") == _ref("AdminSessionResponse")
+    assert {status for status in responses if status.startswith(("4", "5"))} == {"401", "500"}
+    for status in ("401", "500"):
+        assert _response_schema(document, "/auth/me", "get", status) == _ref("ErrorResponse")
+
+
+def test_the_admin_session_response_lists_its_fields_with_dates(document: Json) -> None:
+    schema = cast(Json, _get(document, "components", "schemas", "AdminSessionResponse"))
+    properties = cast(dict[str, Json], schema["properties"])
+
+    assert list(properties) == ["id", "email", "created_at", "token_expires_at"]
+    assert properties["created_at"]["format"] == "date-time"
+    assert properties["token_expires_at"]["format"] == "date-time"
+
+
 PROTECTED_OPERATIONS = {
     ("/feed/{id}", "put"),
     ("/feed/{id}", "patch"),
     ("/feed/{id}", "delete"),
     ("/feed/scrap", "get"),
+    ("/auth/me", "get"),
 }
 
 

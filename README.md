@@ -25,12 +25,15 @@ The port keeps the current behavior of the Node project (same routes, status cod
 | `GET /feed/home` | Up to 10 stored scraped feeds: the 2 newest of each source, filled with the newest of any | |
 | `GET /feed/scrap` | Scrape every source now and store the results; waits for a scraping run in progress | yes |
 | `POST /auth/login` | Exchange an administrator's email and password for a bearer access token | |
+| `GET /auth/me` | The administrator behind the token and when the token expires | yes |
 | `GET /status` | Health check | |
 
 Routes marked *Token* need `Authorization: Bearer <token>` from `POST /auth/login` (see
 [Administrators](#administrators)). Without a token they answer 401
 `{"error": "Authentication required"}`, and with an invalid or expired one 401
 `{"error": "Invalid or expired access token"}`, before the body or the id is checked.
+`GET /auth/me` also answers 401 `{"error": "Invalid or expired access token"}` when the token's
+user no longer exists ([S13](specs/users/S13-admin-session.md)).
 
 FastAPI generates the OpenAPI document from the code: Swagger UI at `/docs`, ReDoc at `/redoc` and
 the document at `/openapi.json`. Feed JSON uses snake_case keys (`created_at`, `updated_at`), with
@@ -126,7 +129,15 @@ curl -s localhost:5000/auth/login -H 'Content-Type: application/json' \
 # {"access_token": "<jwt>", "token_type": "bearer", "expires_in": 28800}
 ```
 
-Send it as `Authorization: Bearer <jwt>`. In Swagger UI (`/docs`), paste it in *Authorize*. An
+Send it as `Authorization: Bearer <jwt>`. `GET /auth/me` answers who the token belongs to and
+when it expires:
+
+```bash
+curl -s localhost:5000/auth/me -H 'Authorization: Bearer <jwt>'
+# {"id": "<uuid>", "email": "admin@example.com", "created_at": "…Z", "token_expires_at": "…Z"}
+```
+
+In Swagger UI (`/docs`), paste it in *Authorize*. An
 unknown email and a wrong password both answer 401 `{"error": "Invalid email or password"}`.
 
 ## Development

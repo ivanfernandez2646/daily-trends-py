@@ -20,6 +20,7 @@ from daily_trends_py.contexts.cms.users.infrastructure.persistence.mongo.mongo_u
 from tests.contexts.cms.feeds.infrastructure.persistence.mongo.feed_document_mother import MISSING
 from tests.contexts.cms.users.domain.user_created_at_mother import UserCreatedAtMother
 from tests.contexts.cms.users.domain.user_email_mother import UserEmailMother
+from tests.contexts.cms.users.domain.user_id_mother import UserIdMother
 from tests.contexts.cms.users.domain.user_mother import UserMother
 from tests.contexts.cms.users.infrastructure.persistence.mongo.user_document_mother import (
     UserDocumentMother,
@@ -59,6 +60,32 @@ async def test_find_by_email_returns_none_for_an_unknown_email(
     await repository.create(UserMother.random())
 
     assert await repository.find_by_email(UserEmailMother.random()) is None
+
+
+async def test_finds_a_created_user_by_id(repository: MongoUserRepository) -> None:
+    user = UserMother.random()
+    await repository.create(user)
+
+    found = await repository.find_by_id(user.id)
+
+    assert found is not None
+    assert found.to_primitives() == user.to_primitives()
+
+
+async def test_find_by_id_returns_none_for_an_unknown_id(repository: MongoUserRepository) -> None:
+    await repository.create(UserMother.random())
+
+    assert await repository.find_by_id(UserIdMother.random()) is None
+
+
+async def test_find_by_id_raises_invalid_stored_user_for_a_broken_document(
+    repository: MongoUserRepository, collection: MongoCollection
+) -> None:
+    document = UserDocumentMother.random(password_hash="")
+    await collection.insert_one(document)
+
+    with pytest.raises(InvalidStoredUser):
+        await repository.find_by_id(UserIdMother.create(str(document["_id"])))
 
 
 async def test_stores_the_user_document_under_its_id_with_a_native_utc_date(

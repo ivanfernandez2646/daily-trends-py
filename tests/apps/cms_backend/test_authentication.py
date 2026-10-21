@@ -21,6 +21,7 @@ PROTECTED = [
     pytest.param("PATCH", "/feed/{id}", {"title": "Another title"}, id="PATCH /feed/{id}"),
     pytest.param("DELETE", "/feed/{id}", None, id="DELETE /feed/{id}"),
     pytest.param("GET", "/feed/scrap", None, id="GET /feed/scrap"),
+    pytest.param("GET", "/auth/me", None, id="GET /auth/me"),
 ]
 AUTHENTICATION_REQUIRED = {"error": "Authentication required"}
 INVALID_TOKEN = {"error": "Invalid or expired access token"}

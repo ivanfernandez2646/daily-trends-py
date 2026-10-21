@@ -13,7 +13,7 @@ from daily_trends_py.contexts.cms.shared.infrastructure.persistence.mongo.mongo_
 )
 from daily_trends_py.contexts.cms.users.domain.errors import UserAlreadyExists
 from daily_trends_py.contexts.cms.users.domain.user import User
-from daily_trends_py.contexts.cms.users.domain.value_objects import UserEmail
+from daily_trends_py.contexts.cms.users.domain.value_objects import UserEmail, UserId
 from daily_trends_py.contexts.cms.users.infrastructure.persistence.mongo.invalid_stored_user import (  # noqa: E501
     InvalidStoredUser,
 )
@@ -36,6 +36,12 @@ class MongoUserRepository(MongoRepository):
 
     async def find_by_email(self, email: UserEmail) -> User | None:
         document = await self._find_one({"email": email.value})
+        if document is None:
+            return None
+        return _to_user(document)
+
+    async def find_by_id(self, id: UserId) -> User | None:
+        document = await self._find_one({"_id": id.value})
         if document is None:
             return None
         return _to_user(document)

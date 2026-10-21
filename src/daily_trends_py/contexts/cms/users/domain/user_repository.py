@@ -1,7 +1,7 @@
 from typing import Protocol
 
 from daily_trends_py.contexts.cms.users.domain.user import User
-from daily_trends_py.contexts.cms.users.domain.value_objects import UserEmail
+from daily_trends_py.contexts.cms.users.domain.value_objects import UserEmail, UserId
 
 
 class UserRepository(Protocol):
@@ -10,3 +10,5 @@ class UserRepository(Protocol):
         ...
 
     async def find_by_email(self, email: UserEmail) -> User | None: ...
+
+    async def find_by_id(self, id: UserId) -> User | None: ...
