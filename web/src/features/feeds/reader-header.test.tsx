@@ -1,7 +1,9 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import { fakeAuth } from "../../test/fake-auth";
 import { renderWithRouter } from "../../test/render";
+import { createSession } from "../session/session";
 import { ReaderHeader } from "./reader-header";
 
 describe("on the front page", () => {
@@ -98,4 +100,37 @@ describe("on other pages", () => {
     expect(screen.getByRole("link", { name: "Daily Trends" })).toHaveAttribute("href", "/");
     expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
   });
+});
+
+describe("the way to the CMS", () => {
+  async function aRestoredSession() {
+    fakeAuth().signedIn();
+    const session = createSession({ storage: sessionStorage });
+    await session.restore();
+    return session;
+  }
+
+  it.each(["front", "compact"] as const)(
+    "offers to log in without a session, on the %s header",
+    async (variant) => {
+      renderWithRouter(<ReaderHeader variant={variant} />);
+
+      expect(await screen.findByRole("link", { name: "Acceder" })).toHaveAttribute(
+        "href",
+        "/login",
+      );
+      expect(screen.queryByRole("link", { name: "CMS" })).not.toBeInTheDocument();
+    },
+  );
+
+  it.each(["front", "compact"] as const)(
+    "leads to the CMS with a session, on the %s header",
+    async (variant) => {
+      const session = await aRestoredSession();
+      renderWithRouter(<ReaderHeader variant={variant} />, { session });
+
+      expect(await screen.findByRole("link", { name: "CMS" })).toHaveAttribute("href", "/admin");
+      expect(screen.queryByRole("link", { name: "Acceder" })).not.toBeInTheDocument();
+    },
+  );
 });

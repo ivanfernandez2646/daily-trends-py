@@ -91,10 +91,14 @@ def main(
     argv: Sequence[str] | None = None, *, migrations: Sequence[Migration] = MIGRATIONS
 ) -> None:
     """Run the API, or the subcommand given in `argv` (the command line by default)."""
-    arguments = _parser().parse_args(argv)
+    parser = _parser()
+    arguments = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO)
     if arguments.command == CREATE_ADMIN:
-        sys.exit(_create_admin(arguments.email, migrations))
+        # The email prompt would read standard input too, before the password.
+        if arguments.password_stdin and arguments.email is None:
+            parser.error("--password-stdin requires --email")
+        sys.exit(_create_admin(arguments.email, arguments.password_stdin, migrations))
     if arguments.command == OPENAPI:
         print(json.dumps(openapi_document(), indent=2, ensure_ascii=False))
         return
@@ -112,14 +116,23 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="daily-trends-py", description="Run the API.")
     commands = parser.add_subparsers(dest="command")
     create = commands.add_parser(
-        CREATE_ADMIN, help="Create an administrator; the password is asked twice, without echo."
+        CREATE_ADMIN,
+        help=(
+            "Create an administrator; the password is asked twice, without echo, unless"
+            " --password-stdin is given."
+        ),
     )
     create.add_argument("--email", help="Asked for when it is not given.")
+    create.add_argument(
+        "--password-stdin",
+        action="store_true",
+        help="Read the password from the first line of standard input.",
+    )
     commands.add_parser(OPENAPI, help="Print the OpenAPI document of the API, without starting it.")
     return parser
 
 
-def _create_admin(email: str | None, migrations: Sequence[Migration]) -> int:
+def _create_admin(email: str | None, password_stdin: bool, migrations: Sequence[Migration]) -> int:
     try:
         return asyncio.run(
             create_admin(
@@ -128,6 +141,7 @@ def _create_admin(email: str | None, migrations: Sequence[Migration]) -> int:
                 prompt=input,
                 secret_prompt=getpass.getpass,
                 migrations=migrations,
+                password_from=sys.stdin if password_stdin else None,
             )
         )
     except Exception:

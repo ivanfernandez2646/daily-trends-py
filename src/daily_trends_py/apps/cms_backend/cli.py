@@ -1,5 +1,6 @@
 import sys
 from collections.abc import Callable, Sequence
+from typing import TextIO
 
 from daily_trends_py.apps.cms_backend.container import create_container
 from daily_trends_py.apps.cms_backend.settings import Settings
@@ -25,13 +26,20 @@ async def create_admin(
     prompt: Prompt,
     secret_prompt: Prompt,
     migrations: Sequence[Migration] = MIGRATIONS,
+    password_from: TextIO | None = None,
 ) -> int:
-    """Create an administrator and answer the exit code; the password is never printed."""
+    """Create an administrator and answer the exit code; the password is never printed.
+
+    With `password_from`, the password is its first line, read once, for scripts.
+    """
     email = email if email is not None else prompt("Email: ")
-    password = secret_prompt("Password: ")
-    if secret_prompt("Repeat password: ") != password:
-        print("Passwords do not match", file=sys.stderr)
-        return 1
+    if password_from is not None:
+        password = password_from.readline().rstrip("\r\n")
+    else:
+        password = secret_prompt("Password: ")
+        if secret_prompt("Repeat password: ") != password:
+            print("Passwords do not match", file=sys.stderr)
+            return 1
 
     # Resolving the use case connects to Mongo and applies pending migrations first.
     container = create_container(settings, migrations=migrations)

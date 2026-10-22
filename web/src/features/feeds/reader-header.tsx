@@ -6,6 +6,7 @@ import { CategoryMarker } from "../../components/ui/category-label";
 import { formatRelative, formatToday } from "../../lib/dates";
 import { CATEGORIES, categoryLabel } from "../../lib/labels";
 import { cn } from "../../lib/utils";
+import { useSessionState } from "../session/session-context";
 
 const SHORTCUTS: readonly FeedCategory[] = [
   "POLITICS",
@@ -41,12 +42,15 @@ function FrontHeader({ updatedAt }: { updatedAt?: string }) {
     <header>
       <div className="flex flex-wrap items-center justify-between gap-3 py-3.5 text-caption text-meta">
         <span>{today.charAt(0).toUpperCase() + today.slice(1)}</span>
-        {updatedAt !== undefined && (
-          <span className="inline-flex items-center gap-2">
-            <span aria-hidden="true" className="size-1.5 rounded-full bg-success-fg" />
-            Actualizado {formatRelative(updatedAt)}
-          </span>
-        )}
+        <div className="flex items-center gap-5">
+          {updatedAt !== undefined && (
+            <span className="inline-flex items-center gap-2">
+              <span aria-hidden="true" className="size-1.5 rounded-full bg-success-fg" />
+              Actualizado {formatRelative(updatedAt)}
+            </span>
+          )}
+          <CmsLink className="font-semibold text-ink hover:text-accent" />
+        </div>
       </div>
 
       <div className="border-t border-ink pt-5 pb-5 sm:pt-7 sm:pb-6 sm:text-center">
@@ -179,9 +183,26 @@ function CompactHeader() {
                 Explorar
               </Link>
             </li>
+            <li>
+              <CmsLink className="text-meta hover:text-accent" />
+            </li>
           </ul>
         </nav>
       </div>
     </header>
+  );
+}
+
+/** *Acceder* without a session, *CMS* with one. */
+function CmsLink({ className }: { className: string }) {
+  const { status } = useSessionState();
+  return status === "active" ? (
+    <Link to="/admin" className={className}>
+      CMS
+    </Link>
+  ) : (
+    <Link to="/login" className={className}>
+      Acceder
+    </Link>
   );
 }
