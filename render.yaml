@@ -35,8 +35,9 @@ services:
     name: daily-trends-web
     runtime: static
     rootDir: web
-    # Node comes from web/.nvmrc and the engines of web/package.json, and pnpm from packageManager.
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    # Node comes from web/.nvmrc, and pnpm from packageManager through Corepack. `corepack enable`
+    # would write its shims to /usr/bin, which is read-only on Render.
+    buildCommand: corepack pnpm install --frozen-lockfile && corepack pnpm build
     staticPublishPath: dist
     autoDeployTrigger: checksPass
     buildFilter:

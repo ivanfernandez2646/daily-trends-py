@@ -243,10 +243,12 @@ Render when the service is created (regenerating it logs every administrator out
 terminates HTTPS. `MONGO_URL` is set in the Render dashboard. Render sets `PORT`, and the other
 settings keep their defaults.
 
-The web app is built in `web/` with `corepack enable && pnpm install --frozen-lockfile && pnpm
-build`, with Node 24 from `web/.nvmrc` and the `engines` of `web/package.json`, and `dist/` is
+The web app is built in `web/` with `corepack pnpm install --frozen-lockfile && corepack pnpm
+build`, with Node 24 from `web/.nvmrc` and pnpm at the version of `packageManager`, and `dist/` is
 published:
 
+- The build does not run `corepack enable`: it would write to `/usr/bin`, which is read-only on
+  Render.
 - `VITE_API_BASE_URL` in `render.yaml` is the API's public URL. Vite reads it at build time, so
   changing it needs a new build. The browser calls the API with a bearer token and no cookies, and
   CORS already allows any origin, so the API does not need the web app's URL.
