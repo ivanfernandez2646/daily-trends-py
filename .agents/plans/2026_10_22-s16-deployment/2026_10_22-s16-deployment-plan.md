@@ -2,7 +2,7 @@
 name: 's16-deployment'
 description: 'The API, the web app and MongoDB run on Render and Atlas free plans, described in render.yaml and a keep-alive workflow, deployed by a merge to main that passes CI'
 spec: 'specs/ops/S16-deployment.md'
-branch: 'chore/s16-api-on-render'
+branch: 'chore/s16-keep-alive'
 branches:
   phase_1: 'chore/s16-api-on-render'
   phase_2: 'chore/s16-keep-alive'
@@ -11,7 +11,7 @@ created_at: '2026-10-22T09:53:00Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-22T10:20:00Z'
+updated_at: '2026-10-22T11:20:00Z'
 ---
 
 # S16 · Deployment
@@ -76,11 +76,12 @@ owner instead of starting.
 - [x] **R2 · Scraping from Render** [before phase 1]: `daily-trends-api-spike` ran the migrations and
   saved feeds, with a 200 for each of the five sources.
 - [x] **R3 · Remove the spike** [before phase 1]: `daily-trends-api-spike` deleted.
-- [ ] **R4 · Create the Blueprint** [after phase 1 is merged]: a new Blueprint from `main`, with the
+- [x] **R4 · Create the Blueprint** [after phase 1 is merged]: a new Blueprint from `main`, with the
   `MONGO_URL` from R1. The first deploy passes its health check. Note the API URL.
-- [ ] **R5 · First administrator** [after R4]: `create-admin` from a developer machine against Atlas,
+  API URL: `https://daily-trends-api.onrender.com`.
+- [x] **R5 · First administrator** [after R4]: `create-admin` from a developer machine against Atlas,
   with a long password.
-- [ ] **R6 · Check the API** [after R5]: `/status` 200, `/docs` loads, `/feed/home` answers feeds,
+- [x] **R6 · Check the API** [after R5]: `/status` 200, `/docs` loads, `/feed/home` answers feeds,
   `/auth/login` answers a token.
 - [ ] **R7 · Keep-alive variable** [after phase 2 is merged]: the repository variable `API_URL`. A
   manual run is green. A day later, every scheduled run is green and the API logs show no restart.
@@ -192,16 +193,16 @@ skipped while `API_URL` is not set.
 
 ### Tests first
 
-- [ ] No test: configuration and documentation only (see *Context · Testing*).
+- [x] No test: configuration and documentation only (see *Context · Testing*).
 
 ### Implementation
 
-- [ ] Confirm phase 1 is merged and R4 is checked; otherwise stop and ask the owner.
-- [ ] Create `chore/s16-keep-alive` from an up-to-date `main` and record it in `branch`.
-- [ ] Add `keep-alive.yml`.
-- [ ] Add R7 and the keep-alive edge cases to `README.md`.
-- [ ] Run the quality gate from `AGENTS.md` and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Confirm phase 1 is merged and R4 is checked; otherwise stop and ask the owner.
+- [x] Create `chore/s16-keep-alive` from an up-to-date `main` and record it in `branch`.
+- [x] Add `keep-alive.yml`.
+- [x] Add R7 and the keep-alive edge cases to `README.md`.
+- [x] Run the quality gate from `AGENTS.md` and fix failures.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ### Verification
 
@@ -287,6 +288,6 @@ headers.
 
 ## Next step
 
-Phase 1 is implemented on `chore/s16-api-on-render` and waits for review, commit and merge.
-After the merge the owner runs R4, R5 and R6. Phase 2 (`chore/s16-keep-alive`) and phase 3
-(`chore/s16-web-app`, with the API URL from R4) start from `main` after that.
+Phase 1 is merged and R4–R6 are done. Phase 2 is implemented on `chore/s16-keep-alive` and waits
+for review, commit and merge; the owner then runs R7. Phase 3 (`chore/s16-web-app`) starts from an
+up-to-date `main` with the API URL `https://daily-trends-api.onrender.com`.

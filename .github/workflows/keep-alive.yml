@@ -1,0 +1,27 @@
+name: Keep-alive
+
+# Render stops a free web service after 15 minutes without inbound requests; its own health checks
+# do not count.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    # Skipped, not failed, until the API_URL repository variable exists.
+    if: vars.API_URL != ''
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+      # A cold start takes about a minute, plus the startup before /status answers.
+      - name: Request the API's status
+        env:
+          API_URL: ${{ vars.API_URL }}
+        run: >-
+          curl --fail --silent --show-error --max-time 120
+          --retry 3 --retry-delay 15 --retry-all-errors
+          "$API_URL/status"

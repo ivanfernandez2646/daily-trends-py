@@ -200,6 +200,7 @@ Production runs on free plans only, with no payment method on any account
 |---|---|---|
 | API (`Dockerfile`) | Render web service `daily-trends-api`, region Frankfurt | Free |
 | MongoDB | MongoDB Atlas cluster on AWS `eu-central-1` (Frankfurt) | Free |
+| Keep-alive | GitHub Actions scheduled workflow | Free (public repository) |
 
 There are two accounts, Render and Atlas, both created with GitHub and with no card, so neither can
 charge. The API and MongoDB share a region, so a query costs milliseconds.
@@ -211,7 +212,7 @@ The free plans have limits, and they are accepted:
 - Render gives 750 instance hours a month: enough for **one** free web service always on. A second
   free web service running at the same time would use them up before the month ends.
 - Render stops a free web service after 15 minutes without inbound requests and takes about a
-  minute to start it again.
+  minute to start it again. The keep-alive prevents it.
 - The free web service has no persistent disk, no shell and no fixed outbound IP.
 - The Atlas free cluster has 512 MB of storage and no backups.
 
@@ -238,6 +239,22 @@ Render when the service is created (regenerating it logs every administrator out
 `FORWARDED_ALLOW_IPS=*`, so the API trusts the `X-Forwarded-Proto` header of Render's proxy, which
 terminates HTTPS. `MONGO_URL` is set in the Render dashboard. Render sets `PORT`, and the other
 settings keep their defaults.
+
+### Keep-alive
+
+[`keep-alive.yml`](.github/workflows/keep-alive.yml) requests `GET <API_URL>/status` every 10
+minutes, and on demand from the *Actions* tab. Render's own health checks, which request `/status`
+every few seconds, do not count as inbound traffic, so without it the API would stop.
+
+- `API_URL` is a repository variable, not a secret: the URL is public anyway. Until it exists, every
+  run is skipped, not failed.
+- Each request waits up to 2 minutes and is retried 3 times, so a cold start does not fail the run.
+- A failed run marks the workflow red, and GitHub emails the owner. That is the only alerting.
+- GitHub delays scheduled runs under load. When one is missed, the API stops after 15 minutes, and
+  the next request or run starts it again in about a minute. It scrapes at startup, which repeats
+  work but never stores a feed twice.
+- GitHub disables scheduled workflows after 60 days without commits. A commit, or enabling the
+  workflow again in the *Actions* tab, turns it back on.
 
 ### Runbook
 
@@ -280,6 +297,11 @@ owner.
    Use a long password: the login has no rate limit or lockout.
 6. **R6 · Check the API.** `GET /status` answers 200, `/docs` loads, `/feed/home` answers feeds, and
    `/auth/login` with the administrator answers a token.
+7. **R7 · Keep-alive variable.**
+   - In GitHub, *Settings → Secrets and variables → Actions → Variables*, create the repository
+     variable `API_URL` with the URL from R4, without a trailing slash.
+   - Run the *Keep-alive* workflow by hand from the *Actions* tab: it is green.
+   - A day later, every scheduled run is green and the API logs show no restart.
 
 ## Development
 
