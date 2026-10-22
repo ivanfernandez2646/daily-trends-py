@@ -230,7 +230,7 @@ headers.
       name: daily-trends-web
       runtime: static
       rootDir: web
-      buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+      buildCommand: corepack pnpm install --frozen-lockfile && corepack pnpm build
       staticPublishPath: dist
       autoDeployTrigger: checksPass
       buildFilter:
@@ -290,8 +290,19 @@ headers.
 - From `web/`: `pnpm biome ci . && pnpm tsc --noEmit && pnpm vitest run && pnpm build && pnpm playwright test`.
 - After the merge: R8.
 
+## Follow-up: the first web build on Render
+
+The first build of `daily-trends-web` failed: `corepack enable` tried to replace `/usr/bin/pnpm`,
+and `/usr/bin` is read-only on Render (`EROFS`). The same log showed `Using Node.js version 24.22.1
+via /opt/render/project/src/web/.nvmrc`, so `NODE_VERSION` stays unset.
+
+- [x] The build command runs pnpm through Corepack without enabling it:
+  `corepack pnpm install --frozen-lockfile && corepack pnpm build`. Spec, `render.yaml`, README
+  and this plan updated, on `fix/s16-web-build-on-render`.
+- [x] The command builds a clean copy of `web/` locally.
+- [ ] R8 after the merge.
+
 ## Next step
 
-Phases 1 and 2 are merged. Phase 3 is implemented on `chore/s16-web-app` and waits for review,
-commit and merge. Then the owner runs R7, if not done yet, and R8, which notes the web app's URL
-in the README.
+Merge `fix/s16-web-build-on-render` once CI passes, then the owner runs R8, and R7 if not done
+yet.

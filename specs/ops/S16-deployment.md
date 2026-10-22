@@ -69,9 +69,11 @@ A Render Blueprint at the repository root. It holds no secret.
 
 ### `render.yaml`: web service
 - Name `daily-trends-web`, a static site with root directory `web/`.
-- Build command: `corepack enable && pnpm install --frozen-lockfile && pnpm build`; published
-  directory `dist`. Node comes from `web/.nvmrc` (S14), or from `NODE_VERSION` when Render does not
-  read it, with the same version.
+- Build command: `corepack pnpm install --frozen-lockfile && corepack pnpm build`; published
+  directory `dist`. pnpm runs through Corepack at the version of `packageManager`, without
+  `corepack enable`: Render's `/usr/bin` is read-only, so the shims it writes there fail the build.
+  Node comes from `web/.nvmrc` (S14), or from `NODE_VERSION` when Render does not read it, with the
+  same version.
 - `VITE_API_BASE_URL` is the public URL of the API service, known after R4. It is not a secret, so it
   is a literal value in the file. Vite reads it at build time: changing it needs a new build.
 - Every path that is not a file is rewritten to `/index.html`, so a reload on `/feeds?…` or a CMS
