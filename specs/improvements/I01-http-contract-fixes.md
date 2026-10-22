@@ -1,6 +1,6 @@
 # I01 · HTTP contract fixes
 
-**Status:** draft · **Fidelity:** intentional break with the ported behavior. Depends on S00–S07.
+**Status:** implemented · **Fidelity:** intentional break with the ported behavior. Depends on S00–S07.
 Resolves improvements #2, #7, #11, #16 and #19 from `README.md`.
 
 ## Goal

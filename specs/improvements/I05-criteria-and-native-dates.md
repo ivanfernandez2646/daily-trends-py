@@ -1,6 +1,6 @@
 # I05 · Search criteria and native dates
 
-**Status:** draft · **Fidelity:** intentional break with the ported behavior. Depends on S02, S03,
+**Status:** implemented · **Fidelity:** intentional break with the ported behavior. Depends on S02, S03,
 S07, I01, I02 and I04. Resolves improvements #10 and #12 from `README.md`.
 
 ## Goal

@@ -1,6 +1,6 @@
 # S12 · Browse feeds
 
-**Status:** draft · **Fidelity:** new capability, breaks the `/feed/list` contract on purpose (the
+**Status:** implemented · **Fidelity:** new capability, breaks the `/feed/list` contract on purpose (the
 response becomes a page). Depends on S03, S08, S09, I05, I07 and I08. Resolves the pagination half of
 improvement #15 from `improvements/README.md`.
 

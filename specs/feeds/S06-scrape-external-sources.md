@@ -1,6 +1,6 @@
 # S06 · Scrape external sources
 
-**Status:** draft · **Fidelity:** exact (including the defects in `improvements/`), except for the
+**Status:** implemented · **Fidelity:** exact (including the defects in `improvements/`), except for the
 source replacement described in "Deliberate divergences". Depends on S02.
 
 ## `GET /feed/scrap`

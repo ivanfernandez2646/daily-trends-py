@@ -1,6 +1,6 @@
 # S04 · Update a feed
 
-**Status:** draft · **Fidelity:** exact. Depends on S02.
+**Status:** implemented · **Fidelity:** exact. Depends on S02.
 
 ## `PATCH /feed/:id`
 - Body: optional `title` and `description`.

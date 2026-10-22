@@ -1,6 +1,6 @@
 # S03 · List feeds
 
-**Status:** draft · **Fidelity:** exact. Depends on S02.
+**Status:** implemented · **Fidelity:** exact. Depends on S02.
 
 ## Goal
 Return all feeds, most recent first. This spec also defines the search criteria used by the front page (S07).

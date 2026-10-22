@@ -1,6 +1,6 @@
 # S02 · Create and find a feed
 
-**Status:** draft · **Fidelity:** exact. Depends on S01.
+**Status:** implemented · **Fidelity:** exact. Depends on S01.
 
 ## Goal
 Create a CMS feed and retrieve it by id. This spec also defines the domain building blocks reused by all later capabilities.

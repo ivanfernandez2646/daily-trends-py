@@ -1,6 +1,6 @@
 # I02 · Scraper robustness
 
-**Status:** draft · **Fidelity:** intentional break with the ported behavior. Depends on S06, S07
+**Status:** implemented · **Fidelity:** intentional break with the ported behavior. Depends on S06, S07
 and I01. Resolves improvements #3, #6, #8 and #9 from `README.md`.
 
 ## Goal

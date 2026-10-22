@@ -1,6 +1,6 @@
 # I07 · Mongo migrations
 
-**Status:** draft · **Fidelity:** new capability; no HTTP behavior changes. Depends on S01 and I04.
+**Status:** implemented · **Fidelity:** new capability; no HTTP behavior changes. Depends on S01 and I04.
 Resolves improvement #25 from `README.md`.
 
 ## Goal

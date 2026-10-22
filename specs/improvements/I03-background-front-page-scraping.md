@@ -1,6 +1,6 @@
 # I03 · Background front-page scraping
 
-**Status:** draft · **Fidelity:** intentional break with the ported behavior. Depends on S06, S07,
+**Status:** implemented · **Fidelity:** intentional break with the ported behavior. Depends on S06, S07,
 I01 and I02. Resolves improvements #4, #5 and #17 from `README.md`.
 
 ## Goal

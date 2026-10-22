@@ -1,6 +1,6 @@
 # I09 · Domain correctness and Python idioms
 
-**Status:** draft · **Fidelity:** no observable change except the `SCRAPE_*` environment
+**Status:** implemented · **Fidelity:** no observable change except the `SCRAPE_*` environment
 variables (see #30). Routes, OpenAPI, request and response bodies, status codes, messages and
 stored documents stay exactly as they are. Depends on S00–S07,
 I01–I08 (the 500 body for invalid stored data is the generic one from I08). Resolves improvements

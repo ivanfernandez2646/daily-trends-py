@@ -11,7 +11,7 @@ created_at: '2026-10-22T09:53:00Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-22T11:45:00Z'
+updated_at: '2026-10-22T12:00:00Z'
 implemented_at: '2026-10-22T11:45:00Z'
 implemented_by:
   tool: 'Claude Code'
@@ -87,12 +87,13 @@ owner instead of starting.
   with a long password.
 - [x] **R6 · Check the API** [after R5]: `/status` 200, `/docs` loads, `/feed/home` answers feeds,
   `/auth/login` answers a token.
-- [ ] **R7 · Keep-alive variable** [after phase 2 is merged]: the repository variable `API_URL`. A
+- [x] **R7 · Keep-alive variable** [after phase 2 is merged]: the repository variable `API_URL`. A
   manual run is green. A day later, every scheduled run is green and the API logs show no restart.
-- [ ] **R8 · Check the web app** [after phase 3 is merged]:
+- [x] **R8 · Check the web app** [after phase 3 is merged]:
   - The Blueprint sync creates `daily-trends-web`, and its first build passes using Node 24.
   - The front page shows feeds, and a reload on a deep route opens the app.
   - The administrator logs in to the CMS and creates a feed.
+  - Web app URL: `https://daily-trends-web.onrender.com`.
 
 ## Phase 1: API on Render
 
@@ -300,9 +301,9 @@ via /opt/render/project/src/web/.nvmrc`, so `NODE_VERSION` stays unset.
   `corepack pnpm install --frozen-lockfile && corepack pnpm build`. Spec, `render.yaml`, README
   and this plan updated, on `fix/s16-web-build-on-render`.
 - [x] The command builds a clean copy of `web/` locally.
-- [ ] R8 after the merge.
+- [x] R8 after the merge: the build passed, and the web app answers at
+  `https://daily-trends-web.onrender.com`.
 
 ## Next step
 
-Merge `fix/s16-web-build-on-render` once CI passes, then the owner runs R8, and R7 if not done
-yet.
+None: S16 is implemented, and every runbook step is done.

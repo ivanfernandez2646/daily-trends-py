@@ -1,6 +1,6 @@
 # S16 · Deployment
 
-**Status:** draft · **Fidelity:** no application change (the API and the web app behave as in S14 and
+**Status:** implemented · **Fidelity:** no application change (the API and the web app behave as in S14 and
 S15). Depends on S10 and S11; phase 3 depends on S14.
 
 ## Goal
@@ -96,7 +96,8 @@ A Render Blueprint at the repository root. It holds no secret.
 
 ### Documentation
 - `README.md` gains a *Deployment* section: the platform table, the free-plan limits and the manual
-  runbook below, so the steps live next to the code. Each phase adds the part it enables.
+  runbook below, so the steps live next to the code. Each phase adds the part it enables. Once S16
+  was done, the section moved to `docs/deployment.md`, linked from `README.md`.
 - `AGENTS.md` notes that `render.yaml` and `keep-alive.yml` describe production, that agents never
   run runbook steps, and that an API contract change is additive first.
 

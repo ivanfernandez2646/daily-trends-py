@@ -1,6 +1,6 @@
 # I04 · Configuration and business timezone
 
-**Status:** draft · **Fidelity:** intentional break with the ported behavior. Depends on S01, S06,
+**Status:** implemented · **Fidelity:** intentional break with the ported behavior. Depends on S01, S06,
 S07, I02 and I03. Resolves improvements #1 and #18 from `README.md`.
 
 ## Goal

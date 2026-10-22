@@ -1,6 +1,6 @@
 # S05 · Delete a feed
 
-**Status:** draft · **Fidelity:** exact. Depends on S02.
+**Status:** implemented · **Fidelity:** exact. Depends on S02.
 
 ## `DELETE /feed/:id`
 - Feed missing → 404; otherwise it is removed and the response is 200 with an empty body.
