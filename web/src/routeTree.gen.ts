@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as FeedsIndexRouteImport } from './routes/feeds.index'
 import { Route as FeedsIdRouteImport } from './routes/feeds.$id'
+import { Route as AdminFeedsNewRouteImport } from './routes/admin.feeds.new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +47,11 @@ const FeedsIdRoute = FeedsIdRouteImport.update({
   path: '/feeds/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminFeedsNewRoute = AdminFeedsNewRouteImport.update({
+  id: '/feeds/new',
+  path: '/feeds/new',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/feeds/$id': typeof FeedsIdRoute
   '/admin/': typeof AdminIndexRoute
   '/feeds/': typeof FeedsIndexRoute
+  '/admin/feeds/new': typeof AdminFeedsNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -61,6 +68,7 @@ export interface FileRoutesByTo {
   '/feeds/$id': typeof FeedsIdRoute
   '/admin': typeof AdminIndexRoute
   '/feeds': typeof FeedsIndexRoute
+  '/admin/feeds/new': typeof AdminFeedsNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -70,12 +78,20 @@ export interface FileRoutesById {
   '/feeds/$id': typeof FeedsIdRoute
   '/admin/': typeof AdminIndexRoute
   '/feeds/': typeof FeedsIndexRoute
+  '/admin/feeds/new': typeof AdminFeedsNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/login' | '/feeds/$id' | '/admin/' | '/feeds/'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/login'
+    | '/feeds/$id'
+    | '/admin/'
+    | '/feeds/'
+    | '/admin/feeds/new'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/feeds/$id' | '/admin' | '/feeds'
+  to: '/' | '/login' | '/feeds/$id' | '/admin' | '/feeds' | '/admin/feeds/new'
   id:
     | '__root__'
     | '/'
@@ -84,6 +100,7 @@ export interface FileRouteTypes {
     | '/feeds/$id'
     | '/admin/'
     | '/feeds/'
+    | '/admin/feeds/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -138,15 +155,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FeedsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/feeds/new': {
+      id: '/admin/feeds/new'
+      path: '/feeds/new'
+      fullPath: '/admin/feeds/new'
+      preLoaderRoute: typeof AdminFeedsNewRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
 interface AdminRouteChildren {
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminFeedsNewRoute: typeof AdminFeedsNewRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminIndexRoute: AdminIndexRoute,
+  AdminFeedsNewRoute: AdminFeedsNewRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)

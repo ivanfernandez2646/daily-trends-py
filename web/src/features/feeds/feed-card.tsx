@@ -14,6 +14,8 @@ type FeedCardProps = {
   variant: Variant;
   /** Defaults to the level each variant has on the reader's pages. */
   headingLevel?: 2 | 3;
+  /** `false` for a feed that has no page yet, such as the preview of a new one. */
+  linked?: boolean;
 };
 
 const DEFAULT_HEADING_LEVEL: Record<Variant, 2 | 3> = {
@@ -40,7 +42,7 @@ const HEADLINE_CLASS: Record<Variant, string> = {
   compact: "text-xl leading-tight",
 };
 
-export function FeedCard({ feed, variant, headingLevel }: FeedCardProps) {
+export function FeedCard({ feed, variant, headingLevel, linked = true }: FeedCardProps) {
   const Heading = `h${headingLevel ?? DEFAULT_HEADING_LEVEL[variant]}` as const;
   const showsDescription = variant === "lead" || variant === "grid" || variant === "row";
   const showsAuthor = showsDescription;
@@ -50,13 +52,17 @@ export function FeedCard({ feed, variant, headingLevel }: FeedCardProps) {
     <article className={cn("flex min-w-0 flex-col", ARTICLE_CLASS[variant])}>
       <CategoryLabel category={feed.category} />
       <Heading className={cn("font-serif text-ink", HEADLINE_CLASS[variant])}>
-        <Link
-          to="/feeds/$id"
-          params={{ id: feed.id }}
-          className="transition-colors duration-150 ease-out hover:text-accent"
-        >
-          {feed.title}
-        </Link>
+        {linked ? (
+          <Link
+            to="/feeds/$id"
+            params={{ id: feed.id }}
+            className="transition-colors duration-150 ease-out hover:text-accent"
+          >
+            {feed.title}
+          </Link>
+        ) : (
+          feed.title
+        )}
       </Heading>
       {showsDescription && feed.description !== null && (
         <p

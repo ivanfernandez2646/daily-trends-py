@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useFeedList } from "../api/feeds";
@@ -51,9 +51,11 @@ function FeedsAdminPage() {
         <h1 className="font-serif text-title-1">Noticias</h1>
         <div className="flex flex-wrap gap-3">
           <ScrapeButton />
-          <Button disabled>
-            <Plus aria-hidden="true" />
-            Nueva noticia
+          <Button asChild>
+            <Link to="/admin/feeds/new">
+              <Plus aria-hidden="true" />
+              Nueva noticia
+            </Link>
           </Button>
         </div>
       </div>

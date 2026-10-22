@@ -9,7 +9,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { ApiError, api, unwrap, unwrapEmpty } from "./client";
-import type { FeedCategory, FeedFilters, FeedPageResponse } from "./types";
+import type { CreateFeedRequest, FeedCategory, FeedFilters, FeedPageResponse } from "./types";
 
 const PAGE_SIZE = 20;
 
@@ -125,5 +125,15 @@ export function useDeleteFeed() {
       queryClient.removeQueries({ queryKey: feedKeys.detail(id) });
       void queryClient.invalidateQueries({ queryKey: feedKeys.all });
     },
+  });
+}
+
+/** Create a newsroom feed with the id the app generated. Never retried. */
+export function useCreateFeed() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, feed }: { id: string; feed: CreateFeedRequest }) =>
+      unwrap(api.PUT("/feed/{id}", { params: { path: { id } }, body: feed })),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: feedKeys.all }),
   });
 }

@@ -7,7 +7,7 @@ created_at: '2026-10-22T10:00:00Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-22T14:00:00Z'
+updated_at: '2026-10-22T16:00:00Z'
 implemented_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -421,9 +421,9 @@ pages, and deletes a feed after a confirmation.
 
 ### Tests first
 
-- [ ] `feed-form.test.ts`: blank (whitespace) title and author and a missing category give their
+- [x] `feed-form.test.ts`: blank (whitespace) title and author and a missing category give their
   messages; values are trimmed; a blank description is omitted.
-- [ ] `routes/admin.feeds.new.test.tsx` (MSW, active session):
+- [x] `routes/admin.feeds.new.test.tsx` (MSW, active session):
   - submitting empty shows the three messages and sends nothing;
   - the preview shows the typed title, description, category and *Redacción*;
   - the request is `PUT /feed/<uuid>` with the trimmed body;
@@ -431,16 +431,42 @@ pages, and deletes a feed after a confirmation.
   - 409 → the error, the values kept, and the next submit uses another id;
   - 500 → the error with its detail;
   - the request is not retried.
-- [ ] `category-picker.test.tsx`: each chip has its marker, one is pressed, and the error is
+- [x] `category-picker.test.tsx`: each chip has its marker, one is pressed, and the error is
   linked.
-- [ ] `web/tests/e2e/admin-create.spec.ts`: an administrator creates a feed, sees it in
+- [x] `web/tests/e2e/admin-create.spec.ts`: an administrator creates a feed, sees it in
   `/admin`, and finds it on `/feeds` filtered by its category.
 
 ### Implementation
 
-- [ ] Add the helpers, the components and the route.
-- [ ] Run the web gate including `pnpm e2e`.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Add the helpers, the components and the route.
+- [x] Run the web gate including `pnpm e2e`.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
+
+### Implementation notes
+
+- **Files:**
+  - The pure helpers live in `features/admin/feed-form-values.ts`, not `feed-form.ts`, so the
+    component file can be `feed-form.tsx`, matching what it exports.
+  - The helpers also export `EMPTY_FEED_FORM` and `previewFeed(values, base)`. The preview shows
+    *Titular de la noticia*, *Autor* and `OTHER` while those fields are blank. Phase 4 builds the
+    preview from the stored feed.
+- **FeedForm:**
+  - It has no `mode` yet. It takes the values, errors, preview, submit label and an `error` node.
+  - Phase 4 adds the read-only fields and *Borrar* where it needs them.
+  - The submit button reads *Guardando…* while pending, and *Cancelar* is a link to `/admin`.
+- **Validation:** errors show after the first submit and then follow each change, so a fixed
+  field loses its message at once.
+- **`SaveError`** is shared with phase 4. It shows *No se pudo guardar la noticia* with the API
+  message for an `ApiError`, no detail for a network error, and nothing for a 401.
+- **Components:**
+  - `Field` and `TextareaField` share a private `Labelled` wrapper for the label, the error and
+    `aria-describedby`.
+  - `CategoryPicker` keeps the chosen category when it is pressed again.
+- **Tests:**
+  - `fakeCreateFeed({ taken })` answers 409 to the first `taken` requests, as a collision would,
+    and 201 with a `CMS` feed otherwise.
+  - The E2E scenario asks for the `feeds` fixture only to start from an empty collection, because
+    an empty `seed()` is an empty `insertMany`, which Mongo rejects.
 
 ## Phase 4: Edit a feed, and docs
 
@@ -504,5 +530,5 @@ unsaved changes, and deletes from the form. The README explains the CMS.
 
 ## Next step
 
-Phases 1 and 2 are implemented. After review, commit Phase 2 and run `/ai-project-implement-phase`
-for Phase 3 (create a feed).
+Phases 1 to 3 are implemented. After review, commit Phase 3 and run `/ai-project-implement-phase`
+for Phase 4 (edit a feed, and docs).
