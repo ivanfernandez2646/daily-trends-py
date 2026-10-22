@@ -199,6 +199,7 @@ Production runs on free plans only, with no payment method on any account
 | Piece | Where | Plan |
 |---|---|---|
 | API (`Dockerfile`) | Render web service `daily-trends-api`, region Frankfurt | Free |
+| Web app (`web/`) | Render static site `daily-trends-web`, on Render's CDN | Free |
 | MongoDB | MongoDB Atlas cluster on AWS `eu-central-1` (Frankfurt) | Free |
 | Keep-alive | GitHub Actions scheduled workflow | Free (public repository) |
 
@@ -224,6 +225,8 @@ CI also runs on every push to `main`, and Render deploys a commit only after its
 - The API deploys only when the commit changes what goes into its image: `src/`, `pyproject.toml`,
   `uv.lock`, `.python-version`, `Dockerfile` or `.dockerignore`. A merge that only changes `web/`,
   `specs/`, `tests/` or docs does not deploy it.
+- The web app deploys only when the commit changes `web/`. A merge that changes both `web/` and
+  `src/` deploys both, each after CI passes.
 - A deploy that fails its health check (`GET /status`) leaves the previous one serving. That is
   what happens when `MONGO_URL` is missing, or names no database: the API does not start.
 - Migrations run when the API starts ([I07](specs/improvements/I07-mongo-migrations.md)). A rollback
@@ -239,6 +242,18 @@ Render when the service is created (regenerating it logs every administrator out
 `FORWARDED_ALLOW_IPS=*`, so the API trusts the `X-Forwarded-Proto` header of Render's proxy, which
 terminates HTTPS. `MONGO_URL` is set in the Render dashboard. Render sets `PORT`, and the other
 settings keep their defaults.
+
+The web app is built in `web/` with `corepack enable && pnpm install --frozen-lockfile && pnpm
+build`, with Node 24 from `web/.nvmrc` and the `engines` of `web/package.json`, and `dist/` is
+published:
+
+- `VITE_API_BASE_URL` in `render.yaml` is the API's public URL. Vite reads it at build time, so
+  changing it needs a new build. The browser calls the API with a bearer token and no cookies, and
+  CORS already allows any origin, so the API does not need the web app's URL.
+- Every path that is not a file is rewritten to `/index.html`, so a reload on `/feeds?…` or a CMS
+  route opens the app.
+- Files under `/assets/` carry a content hash in their names and are cached for a year.
+  `/index.html` is never cached, so a deploy reaches the next page load.
 
 ### Keep-alive
 
@@ -302,6 +317,15 @@ owner.
      variable `API_URL` with the URL from R4, without a trailing slash.
    - Run the *Keep-alive* workflow by hand from the *Actions* tab: it is green.
    - A day later, every scheduled run is green and the API logs show no restart.
+8. **R8 · Check the web app.**
+   - Render's Blueprint sync creates `daily-trends-web`, and its first build passes. Its log says
+     it uses Node 24; if it shows another version, add `NODE_VERSION` to the web service in
+     `render.yaml`.
+   - Note the web app's URL. It is `https://daily-trends-web.onrender.com`, unless the name was
+     taken and Render added a suffix.
+   - The front page shows feeds, and a reload on a deep route, such as
+     `/feeds?category=POLITICS`, opens the app on that page.
+   - The administrator logs in to the CMS and creates a feed.
 
 ## Development
 
