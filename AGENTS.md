@@ -118,7 +118,8 @@ pnpm biome ci . && pnpm tsc --noEmit && pnpm vitest run && pnpm build && pnpm pl
   are out of date. Never edit generated files (`*.gen.ts`, `openapi.json`).
 - Layout of `web/src`: `api/` (generated types, client, one query module per resource),
   `components/ui/` (Tinta components on shadcn/ui primitives), `features/<area>/` (screens and their
-  parts), `routes/` (TanStack Router file routes, thin), `lib/` (labels, dates and small helpers),
+  parts: `feeds/` for the reader, `admin/` for the CMS, `session/` for the administrator's
+  session), `routes/` (TanStack Router file routes, thin), `lib/` (labels, dates and small helpers),
   `styles/` (tokens and global styles).
 - Components never call `fetch`: they use the hooks of `src/api`, built on the typed client
   (`src/api/client.ts`). Response types come from `schema.gen.ts`, never from hand-written

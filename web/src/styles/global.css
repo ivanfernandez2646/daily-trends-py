@@ -17,6 +17,7 @@
   --color-success-fg: var(--success-fg);
   --color-error-bg: var(--error-bg);
   --color-error-fg: var(--error-fg);
+  --color-overlay: var(--overlay);
   --color-transparent: transparent;
   --color-current: currentColor;
 

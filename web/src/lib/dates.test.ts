@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { formatFullDate, formatRelative, formatTimeColumn, formatToday } from "./dates";
+import {
+  formatClock,
+  formatFullDate,
+  formatRelative,
+  formatTimeColumn,
+  formatToday,
+} from "./dates";
 
 const NOW = new Date("2026-10-21T10:00:00Z"); // 12:00 in Madrid
 
@@ -61,4 +67,15 @@ it("formats the full date and time in Madrid", () => {
 
 it("formats today's date in Madrid for the top bar", () => {
   expect(formatToday(new Date("2026-10-20T22:30:00Z"))).toBe("miércoles, 21 de octubre de 2026");
+});
+
+describe("formatClock", () => {
+  it.each([
+    ["2026-10-21T16:05:00Z", "18:05"],
+    ["2026-10-25T00:30:00Z", "02:30"],
+    ["2026-10-25T01:30:00Z", "02:30"],
+    ["2026-10-25T02:30:00Z", "03:30"],
+  ])("shows %s as %s in Madrid", (iso, clock) => {
+    expect(formatClock(iso)).toBe(clock);
+  });
 });

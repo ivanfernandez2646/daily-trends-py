@@ -1,4 +1,4 @@
-import createClient from "openapi-fetch";
+import createClient, { type Middleware } from "openapi-fetch";
 import type { paths } from "./schema.gen";
 
 export const api = createClient<paths>({
@@ -32,6 +32,46 @@ export async function unwrap<R extends ApiResult>(
     return result.data;
   }
   throw new ApiError(result.response.status, errorMessage(result.error, result.response));
+}
+
+/** Resolve on a successful answer without a body, such as a 204; any other answer throws. */
+export async function unwrapEmpty(request: Promise<ApiResult>): Promise<void> {
+  const result = await request;
+  if (!result.response.ok) {
+    throw new ApiError(result.response.status, errorMessage(result.error, result.response));
+  }
+}
+
+/** The part of the administrator's session that requests need. */
+type AccessTokenHolder = { token(): string | undefined; end(reason: "expired"): void };
+
+/**
+ * Send the session's token as `Authorization: Bearer` while it is active, and end the session when
+ * the API rejects that token. Answers the function that stops it.
+ */
+export function sendAccessToken(holder: AccessTokenHolder): () => void {
+  const middleware: Middleware = {
+    onRequest({ request }) {
+      const token = holder.token();
+      if (token !== undefined && !request.headers.has("Authorization")) {
+        request.headers.set("Authorization", `Bearer ${token}`);
+      }
+      return request;
+    },
+    onResponse({ request, response }) {
+      const token = holder.token();
+      if (
+        response.status === 401 &&
+        token !== undefined &&
+        request.headers.get("Authorization") === `Bearer ${token}`
+      ) {
+        holder.end("expired");
+      }
+      return response;
+    },
+  };
+  api.use(middleware);
+  return () => api.eject(middleware);
 }
 
 function errorMessage(error: unknown, response: Response): string {

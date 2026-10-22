@@ -9,6 +9,7 @@ import { CategoryChips } from "../features/feeds/category-chips";
 import {
   countFilters,
   describeFilters,
+  filtersToRewrite,
   parseFeedFilters,
   updateFilters,
 } from "../features/feeds/feed-filters";
@@ -24,13 +25,9 @@ export const Route = createFileRoute("/feeds/")({
   // A link with an invalid filter is rewritten to the URL the page really uses. The raw
   // `location.search` is checked: the route's `search` also keeps the root's unvalidated params.
   beforeLoad: ({ location }) => {
-    const raw: Record<string, unknown> = location.search;
-    const filters = parseFeedFilters(raw);
-    const kept = Object.entries(raw).every(
-      ([key, value]) => filters[key as keyof FeedFilters] === value,
-    );
-    if (!kept) {
-      throw redirect({ to: "/feeds", search: filters, replace: true });
+    const rewrite = filtersToRewrite(location.search);
+    if (rewrite !== undefined) {
+      throw redirect({ to: "/feeds", search: rewrite, replace: true });
     }
   },
   component: BrowsePage,

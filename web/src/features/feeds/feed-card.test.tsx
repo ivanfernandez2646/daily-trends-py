@@ -122,3 +122,10 @@ it("takes the heading level of the page it is on", async () => {
 
   expect(await headline(2)).toBeInTheDocument();
 });
+
+it("shows the headline as text, without a link, when it is not linked", async () => {
+  renderWithRouter(<FeedCard feed={feed} variant="grid" linked={false} />);
+
+  expect(await screen.findByRole("heading", { level: 3, name: feed.title })).toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: feed.title })).not.toBeInTheDocument();
+});

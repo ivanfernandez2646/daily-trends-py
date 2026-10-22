@@ -71,6 +71,11 @@ export function formatTimeColumn(
   return { time: time.format(date), day };
 }
 
+/** The time of day in Madrid, such as *18:05*. */
+export function formatClock(iso: string): string {
+  return time.format(new Date(iso));
+}
+
 export function formatFullDate(iso: string): string {
   return fullDate.format(new Date(iso));
 }

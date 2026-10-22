@@ -116,7 +116,13 @@ uv run daily-trends-py create-admin --email admin@example.com
 ```
 
 The password is asked twice without echo and needs at least 12 characters. The email is asked
-for when `--email` is missing, and is stored trimmed and lowercased. The command exits with code 1
+for when `--email` is missing, and is stored trimmed and lowercased. Scripts pass the password on
+standard input instead, read once from its first line (`--email` is then required):
+
+```bash
+printf '%s\n' "$ADMIN_PASSWORD" | uv run daily-trends-py create-admin --email admin@example.com --password-stdin
+```
+ The command exits with code 1
 and creates nothing for an invalid email, a short password, passwords that do not match or an
 email that already exists. Changing passwords and removing users are done directly in MongoDB
 ([S11](specs/users/S11-authentication.md)).
@@ -142,9 +148,9 @@ unknown email and a wrong password both answer 401 `{"error": "Invalid email or 
 
 ## Web app
 
-The reader lives in [`web/`](web/) ([S14](specs/web/S14-web-reader.md)): Vite, React and TypeScript,
-with types generated from the API's OpenAPI document. Requirements: Node 24 (`web/.nvmrc`) and
-pnpm through Corepack.
+The reader and the CMS live in [`web/`](web/) ([S14](specs/web/S14-web-reader.md),
+[S15](specs/web/S15-web-cms.md)): Vite, React and TypeScript, with types generated from the API's
+OpenAPI document. Requirements: Node 24 (`web/.nvmrc`) and pnpm through Corepack.
 
 ```bash
 corepack enable                   # once: provides the pnpm version pinned in web/package.json
@@ -157,6 +163,12 @@ proxies `/feed/…`, `/auth/…` and `/status` to `http://localhost:<PORT>`, wit
 repository's `.env` (default `5000`), so the browser talks to a single origin. `VITE_API_BASE_URL`
 sets the API origin for a build.
 
+To manage feeds, create an administrator (see [Administrators](#administrators)) and open *Acceder*
+in the header, or `/login`. The CMS at `/admin` lists every feed, refreshes the front pages, and
+creates, edits and deletes feeds. The session is kept in the tab (`sessionStorage`): it survives a
+reload, and ends when the tab is closed, when the token expires (`AUTH_TOKEN_TTL_SECONDS`) or with
+*Cerrar sesión*.
+
 After changing a route or a schema in the API, regenerate the contract and commit it:
 
 ```bash
@@ -168,7 +180,10 @@ any configuration. CI fails when `web/openapi.json` or `web/src/api/schema.gen.t
 
 End-to-end tests need MongoDB (`docker compose up -d --wait mongo`) and Chromium
 (`pnpm exec playwright install chromium`, once). `pnpm e2e` starts the API on port 5199 against the
-`daily-trends-e2e` database, with scheduled scraping off, and the built app on port 4173.
+`daily-trends-e2e` database, with scheduled scraping off, and the built app on port 4173. It also
+starts a second API on port 5198 whose tokens expire after 10 seconds, with the app on port 4174,
+for the expired session scenario, and creates a test administrator with `create-admin
+--password-stdin`.
 
 Web quality gate, from `web/`:
 

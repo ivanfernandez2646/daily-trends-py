@@ -1,12 +1,21 @@
 import {
+  type InfiniteData,
   infiniteQueryOptions,
   queryOptions,
   skipToken,
   useInfiniteQuery,
+  useMutation,
   useQuery,
+  useQueryClient,
 } from "@tanstack/react-query";
-import { api, unwrap } from "./client";
-import type { FeedCategory, FeedFilters } from "./types";
+import { ApiError, api, unwrap, unwrapEmpty } from "./client";
+import type {
+  CreateFeedRequest,
+  FeedCategory,
+  FeedFilters,
+  FeedPageResponse,
+  UpdateFeedRequest,
+} from "./types";
 
 const PAGE_SIZE = 20;
 
@@ -66,6 +75,11 @@ export function useFeed(id: string) {
   return useQuery(feedQuery(id));
 }
 
+/** The feed as stored right now: a form edits what is there, never what was cached. */
+export function useFeedForEditing(id: string) {
+  return useQuery({ ...feedQuery(id), refetchOnMount: "always" });
+}
+
 /** Up to three other feeds of `category`, newest first, once the category is known. */
 export function useRelatedFeeds(category: FeedCategory | undefined, excludeId: string) {
   return useQuery({
@@ -81,5 +95,66 @@ export function useRelatedFeeds(category: FeedCategory | undefined, excludeId: s
               }),
             ),
     select: (page) => page.items.filter((feed) => feed.id !== excludeId).slice(0, RELATED_COUNT),
+  });
+}
+
+/** Scrape the front pages now; it answers the feeds this run stored. Never retried. */
+export function useScrapeFeeds() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => unwrap(api.GET("/feed/scrap")),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: feedKeys.all }),
+  });
+}
+
+/** Delete a feed; one that is already gone counts as deleted. Never retried. */
+export function useDeleteFeed() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      try {
+        await unwrapEmpty(api.DELETE("/feed/{id}", { params: { path: { id } } }));
+      } catch (error) {
+        if (!(error instanceof ApiError && error.status === 404)) {
+          throw error;
+        }
+      }
+    },
+    onSuccess: (_, id) => {
+      // Gone from the lists at once, without waiting for them to load again.
+      queryClient.setQueriesData<InfiniteData<FeedPageResponse>>(
+        { queryKey: [...feedKeys.all, "list"] },
+        (data) =>
+          data && {
+            ...data,
+            pages: data.pages.map((page) => ({
+              ...page,
+              items: page.items.filter((feed) => feed.id !== id),
+            })),
+          },
+      );
+      queryClient.removeQueries({ queryKey: feedKeys.detail(id) });
+      void queryClient.invalidateQueries({ queryKey: feedKeys.all });
+    },
+  });
+}
+
+/** Create a newsroom feed with the id the app generated. Never retried. */
+export function useCreateFeed() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, feed }: { id: string; feed: CreateFeedRequest }) =>
+      unwrap(api.PUT("/feed/{id}", { params: { path: { id } }, body: feed })),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: feedKeys.all }),
+  });
+}
+
+/** Change the fields in `changes` of a feed; absent keys keep their value. Never retried. */
+export function useUpdateFeed() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, changes }: { id: string; changes: UpdateFeedRequest }) =>
+      unwrap(api.PATCH("/feed/{id}", { params: { path: { id } }, body: changes })),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: feedKeys.all }),
   });
 }
