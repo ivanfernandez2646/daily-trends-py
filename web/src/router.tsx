@@ -1,5 +1,6 @@
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, type RouterHistory } from "@tanstack/react-router";
+import { ToastProvider } from "./components/ui/toaster";
 import type { Session } from "./features/session/session";
 import { SessionProvider } from "./features/session/session-context";
 import { routeTree } from "./routeTree.gen";
@@ -13,7 +14,9 @@ export function createAppRouter({ queryClient, session, history }: AppRouterOpti
     ...(history && { history }),
     Wrap: ({ children }) => (
       <SessionProvider session={session}>
-        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        <QueryClientProvider client={queryClient}>
+          <ToastProvider>{children}</ToastProvider>
+        </QueryClientProvider>
       </SessionProvider>
     ),
   });

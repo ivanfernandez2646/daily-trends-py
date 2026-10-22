@@ -7,7 +7,7 @@ created_at: '2026-10-22T10:00:00Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-22T12:00:00Z'
+updated_at: '2026-10-22T14:00:00Z'
 implemented_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -326,14 +326,14 @@ pages, and deletes a feed after a confirmation.
 
 ### Tests first
 
-- [ ] `confirm-dialog.test.tsx`:
+- [x] `confirm-dialog.test.tsx`:
   - role `alertdialog` with its name;
   - focus moves into it;
   - Escape and *Cancelar* close it without confirming;
   - the confirm button is destructive.
-- [ ] `toaster.test.tsx`: a success toast has role `status` and an error toast `alert`, with the
+- [x] `toaster.test.tsx`: a success toast has role `status` and an error toast `alert`, with the
   detail.
-- [ ] `routes/admin.index.test.tsx` (MSW, active session):
+- [x] `routes/admin.index.test.tsx` (MSW, active session):
   - the first 20 feeds in the table, and *Cargar más* appends the next page;
   - the filters set the URL and the request, and invalid params are rewritten;
   - each headline links to `/feeds/<id>`, and the icon buttons have their accessible names;
@@ -344,16 +344,53 @@ pages, and deletes a feed after a confirmation.
     404 removes the row and shows *Noticia borrada*. A 500 keeps the row and shows the error;
   - a 401 from any write sends the user to `/login` with `redirect`;
   - every write request carries `Authorization`, and none is retried.
-- [ ] `web/tests/e2e/admin-list.spec.ts`: with seeded feeds, filtering by category shows only
+- [x] `web/tests/e2e/admin-list.spec.ts`: with seeded feeds, filtering by category shows only
   those feeds, and deleting a seeded feed from the table removes it from the table and from
   `/feeds`.
 
 ### Implementation
 
-- [ ] Add the components, the mutations, the table and the screen. The existing filter
+- [x] Add the components, the mutations, the table and the screen. The existing filter
   components are reused as they are.
-- [ ] Run the web gate including `pnpm e2e`.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Run the web gate including `pnpm e2e`.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
+
+### Implementation notes
+
+- **Toasts:**
+  - `ToastProvider` and `useToast()` live in `components/ui/toaster.tsx`, built without Radix
+    Toast. Radix announces each toast through a second, hidden live region, which would duplicate
+    the `status`/`alert` roles that tests and screen readers rely on.
+  - The notices sit in a region named *Avisos* at the bottom and reuse `Notice`.
+  - A success hides after 5 s. An error stays until *Cerrar aviso*, so it can be read.
+  - The provider sits in the router's `Wrap`, under the session and the query client.
+- **ConfirmDialog:**
+  - Radix only gives focus back to its own trigger. The dialog opens from table buttons, so it
+    remembers the element focused when it opened and focuses it again on close.
+  - Confirming does not close it, so a pending state and an error can show inside.
+  - The delete error stays inline in the dialog rather than in a toast, so trying again is one
+    click away.
+- **The filter rewrite:** `filtersToRewrite(search)` answers the filters to rewrite to, or
+  `undefined`, instead of `rewriteInvalidFilters(to)`, because a typed `redirect` needs a literal
+  route. `/feeds` and `/admin` both use it.
+- **Mutations:**
+  - `useDeleteFeed` removes the feed from every cached list page at once, then invalidates
+    `feedKeys.all`.
+  - Neither mutation shows its own error for a 401 (`isSessionEnd`), because the session ends and
+    the login page takes over.
+- **Copy:** the table's date column reads *Hoy, 11:00*, using the time column of `/feeds`, with
+  the full date as its `title`.
+- **Placeholders until later phases:** *Nueva noticia* is disabled until phase 3, and *Editar* in
+  each row until phase 4. Their typed links need the routes those phases add.
+- **Tests:**
+  - While the dialog is open, Radix hides the rest of the page from assistive technology. The
+    failing-delete test therefore cancels the dialog before checking the row is still there.
+  - `src/test/fake-feed-writes.ts` has `fakeDeleteFeed(feeds)`. It shares the array of
+    `fakeFeedList`, so a deleted feed leaves the list.
+- **E2E:**
+  - `tests/e2e/admin.ts` gains `openAsAdmin(page, path)`.
+  - `admin-list.spec.ts` covers the category filter and a delete, and then checks that `/feeds`
+    no longer lists the feed.
 
 ## Phase 3: Create a feed
 
@@ -467,5 +504,5 @@ unsaved changes, and deletes from the form. The README explains the CMS.
 
 ## Next step
 
-Phase 1 is implemented. After review, commit it and run `/ai-project-implement-phase` for Phase 2
-(feed list, scraping and deleting).
+Phases 1 and 2 are implemented. After review, commit Phase 2 and run `/ai-project-implement-phase`
+for Phase 3 (create a feed).

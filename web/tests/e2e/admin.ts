@@ -11,3 +11,10 @@ export async function logIn(
   await page.getByLabel("Contraseña").fill(password);
   await page.getByRole("button", { name: "Entrar" }).click();
 }
+
+/** Open a page of the CMS, logging in on the way as the administrator. */
+export async function openAsAdmin(page: Page, path = "/admin") {
+  await page.goto(path);
+  await logIn(page);
+  await expect(page).toHaveURL(path);
+}

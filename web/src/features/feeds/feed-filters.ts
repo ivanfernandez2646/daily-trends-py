@@ -14,6 +14,18 @@ export function parseFeedFilters(search: Record<string, unknown>): FeedFilters {
   };
 }
 
+/**
+ * The filters to rewrite a URL to, when any of its raw search params is invalid, unknown or not
+ * as the page would write it; `undefined` when the URL is already right.
+ */
+export function filtersToRewrite(search: Record<string, unknown>): FeedFilters | undefined {
+  const filters = parseFeedFilters(search);
+  const kept = Object.entries(search).every(
+    ([key, value]) => filters[key as keyof FeedFilters] === value,
+  );
+  return kept ? undefined : filters;
+}
+
 /** The filters with `change` applied; a filter set to `undefined` is removed. */
 export function updateFilters(filters: FeedFilters, change: Partial<FeedFilters>): FeedFilters {
   const next = { ...filters, ...change };
