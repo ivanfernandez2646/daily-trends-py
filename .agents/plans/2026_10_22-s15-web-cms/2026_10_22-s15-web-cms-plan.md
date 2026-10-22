@@ -7,7 +7,8 @@ created_at: '2026-10-22T10:00:00Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-22T16:00:00Z'
+updated_at: '2026-10-22T18:00:00Z'
+implemented_at: '2026-10-22T18:00:00Z'
 implemented_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -499,9 +500,9 @@ unsaved changes, and deletes from the form. The README explains the CMS.
 
 ### Tests first
 
-- [ ] `feed-form.test.ts`: `toUpdateRequest` sends only the changed fields. Emptying an existing
+- [x] `feed-form.test.ts`: `toUpdateRequest` sends only the changed fields. Emptying an existing
   description sends `null`, and an unchanged blank description sends nothing.
-- [ ] `routes/admin.feeds.$id.edit.test.tsx` (MSW, active session):
+- [x] `routes/admin.feeds.$id.edit.test.tsx` (MSW, active session):
   - the form is prefilled, and a scraped feed shows its author, newspaper and link read-only;
   - *Guardar cambios* is disabled until something changes, and again after the change is undone;
   - changing the title and category sends exactly those two fields;
@@ -513,22 +514,64 @@ unsaved changes, and deletes from the form. The README explains the CMS.
   - the session expiring while the form is dirty goes to `/login` without asking, and logging in
     returns to the form, which requests the feed again;
   - delete from the form → `/admin` with *Noticia borrada*.
-- [ ] `web/tests/e2e/admin-edit.spec.ts`: an administrator creates a feed, edits its title and
+- [x] `web/tests/e2e/admin-edit.spec.ts`: an administrator creates a feed, edits its title and
   category, sees the change on `/feeds/<id>`, deletes it from the form, and it is gone from
   `/feeds`.
 
 ### Implementation
 
-- [ ] Add the update mutation, the edit route and the blocker. Update `README.md` and `AGENTS.md`.
-- [ ] Run the Python quality gate and the full web gate:
+- [x] Add the update mutation, the edit route and the blocker. Update `README.md` and `AGENTS.md`.
+- [x] Run the Python quality gate and the full web gate:
   `pnpm biome ci . && pnpm tsc --noEmit && pnpm vitest run && pnpm build && pnpm playwright test`.
-- [ ] Check the design system's acceptance criteria by hand:
+- [x] Check the design system's acceptance criteria by hand:
   - `/login`, `/admin`, the create form and the edit form at 1440 px and 390 px, in both themes,
     against the canvas;
   - no horizontal page scroll at 360 px; the table scrolls inside its panel.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
+
+### Implementation notes
+
+- **Helpers:**
+  - `formFromFeed(feed)` and `toUpdateRequest(original, values)` live in `feed-form-values.ts`.
+  - Unchanged means equal after trimming, so trailing spaces alone never enable *Guardar
+    cambios*.
+- **FeedForm:**
+  - The `mode: "edit"` props carry `feed`, `changed` and `onDelete`.
+  - In edit mode the author is not a field. A `fieldset` named *No se puede cambiar* shows the
+    author, the newspaper and the shortened link, which opens in a new tab, or *Sin enlace*, with
+    the spec's note.
+  - *Borrar noticia* is a danger-colored link button at the end of the actions.
+- **Loading:**
+  - `useFeedForEditing(id)` refetches on mount, and the form appears only once
+    `isFetchedAfterMount`, so it never starts from a cached copy.
+  - A 404, or a 400 for an id that is not a UUID, shows the toast *Esta noticia ya no existe* and
+    returns to `/admin`.
+- **Leaving:**
+  - Saving, deleting and a missing feed leave with `ignoreBlocker: true`.
+  - `useBlocker` runs with `withResolver` and `enableBeforeUnload` while there are changes.
+  - `ConfirmDialog` gained `cancelLabel` for *Seguir editando*.
+  - After a delete the dialog shows *Noticia borrada* itself, so the form leaves without a second
+    toast.
+- **Hand checks:**
+  - The screenshots covered `/login`, `/admin`, the create form, the edit form and the delete
+    dialog, at 1440 px and 390 px, in both themes.
+  - They found two defects, both fixed:
+    - At 390 px and 360 px `/admin` scrolled sideways: the table's visually hidden *Acciones*
+      title is absolutely positioned and escaped the scroll panel. The panel is now `relative`.
+      `admin-list.spec.ts` checks that the page does not scroll sideways at 360 px.
+    - In dark mode the dialog overlay brightened the page instead of dimming it. It used
+      `bg-ink/40`, and ink is light in that theme. A new `--overlay` token defines it for both
+      themes.
+  - Nothing else differed in layout or hierarchy.
+- **Docs:**
+  - The README shows `--password-stdin` with `printf`, explains logging in to the CMS and its
+    session, and describes the second API and app the E2E run starts.
+  - `AGENTS.md` names `feeds/`, `admin/` and `session/` under `features/`.
+- **E2E:** the edit scenario uses the reader's headline link with `exact: true`, because
+  Playwright matches names by substring and *Editar «…»* matches too. It checks toasts inside the
+  *Avisos* region, where two can show at once.
 
 ## Next step
 
-Phases 1 to 3 are implemented. After review, commit Phase 3 and run `/ai-project-implement-phase`
-for Phase 4 (edit a feed, and docs).
+All phases are implemented. After review, commit Phase 4 and open the pull request for
+`feat/s15-web-cms`.

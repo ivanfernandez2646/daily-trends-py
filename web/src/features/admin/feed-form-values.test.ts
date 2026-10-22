@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { type FeedFormValues, toCreateRequest, validateFeedForm } from "./feed-form-values";
+import { aFeed } from "../../test/feed-mother";
+import {
+  type FeedFormValues,
+  formFromFeed,
+  toCreateRequest,
+  toUpdateRequest,
+  validateFeedForm,
+} from "./feed-form-values";
 
 const VALID = {
   title: "El alquiler sube por tercer trimestre",
@@ -50,5 +57,53 @@ describe("toCreateRequest", () => {
 
   it("leaves out a blank description", () => {
     expect(toCreateRequest({ ...VALID, description: "  " })).not.toHaveProperty("description");
+  });
+});
+
+describe("toUpdateRequest", () => {
+  const original = aFeed({
+    title: "El alquiler sube",
+    description: "Madrid y Barcelona.",
+    category: "ECONOMY",
+  });
+
+  it("sends nothing for the values the feed already has, spaces aside", () => {
+    expect(toUpdateRequest(original, formFromFeed(original))).toEqual({});
+    expect(
+      toUpdateRequest(original, { ...formFromFeed(original), title: " El alquiler sube  " }),
+    ).toEqual({});
+  });
+
+  it("sends only the fields that changed, trimmed", () => {
+    expect(
+      toUpdateRequest(original, {
+        ...formFromFeed(original),
+        title: " El alquiler baja ",
+        category: "SOCIETY",
+      }),
+    ).toEqual({ title: "El alquiler baja", category: "SOCIETY" });
+  });
+
+  it("clears the description with null when it is emptied", () => {
+    expect(toUpdateRequest(original, { ...formFromFeed(original), description: "  " })).toEqual({
+      description: null,
+    });
+  });
+
+  it("sends nothing for a blank description the feed did not have", () => {
+    const withoutDescription = aFeed({ description: null });
+
+    expect(toUpdateRequest(withoutDescription, formFromFeed(withoutDescription))).toEqual({});
+  });
+
+  it("sends a description the feed did not have", () => {
+    const withoutDescription = aFeed({ description: null });
+
+    expect(
+      toUpdateRequest(withoutDescription, {
+        ...formFromFeed(withoutDescription),
+        description: "Nueva entradilla",
+      }),
+    ).toEqual({ description: "Nueva entradilla" });
   });
 });

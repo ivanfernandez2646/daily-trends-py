@@ -22,7 +22,8 @@ const CELL = "px-4 py-2 align-middle";
 export function FeedsTable({ feeds, hasMore, loadingMore, onLoadMore, onDelete }: FeedsTableProps) {
   return (
     <div className="rounded-card border border-rule bg-surface">
-      <div className="overflow-x-auto">
+      {/* Positioned, so the hidden column title scrolls with the table instead of widening the page. */}
+      <div className="relative overflow-x-auto">
         <table aria-label="Noticias" className="w-full min-w-[720px] border-collapse text-sm">
           <thead className="border-b border-rule">
             <tr>
@@ -69,8 +70,10 @@ export function FeedsTable({ feeds, hasMore, loadingMore, onLoadMore, onDelete }
                     </time>
                   </td>
                   <td className={`${CELL} whitespace-nowrap text-right`}>
-                    <IconButton label={`Editar «${feed.title}»`} disabled>
-                      <Pencil aria-hidden="true" />
+                    <IconButton asChild label={`Editar «${feed.title}»`}>
+                      <Link to="/admin/feeds/$id/edit" params={{ id: feed.id }}>
+                        <Pencil aria-hidden="true" />
+                      </Link>
                     </IconButton>
                     <IconButton
                       label={`Borrar «${feed.title}»`}

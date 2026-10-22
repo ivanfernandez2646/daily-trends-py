@@ -1,5 +1,5 @@
 import { HttpResponse, http } from "msw/http";
-import type { CreateFeedRequest, FeedResponse } from "../api/types";
+import type { CreateFeedRequest, FeedResponse, UpdateFeedRequest } from "../api/types";
 import { aFeed } from "./feed-mother";
 import { server } from "./server";
 
@@ -51,4 +51,43 @@ export function fakeCreateFeed({ taken = 0 }: { taken?: number } = {}) {
     }),
   );
   return { requests };
+}
+
+type UpdateRequest = WriteRequest & { body: UpdateFeedRequest };
+
+/**
+ * `GET /feed/{id}` and `PATCH /feed/{id}` over `feeds`, the array the other fakes share: an
+ * absent key keeps its value and a missing feed answers 404, like the API.
+ */
+export function fakeFeedDetail(feeds: FeedResponse[]) {
+  const reads: string[] = [];
+  const updates: UpdateRequest[] = [];
+  const notFound = (id: string) =>
+    HttpResponse.json({ error: `Feed with id <${id}> not found` }, { status: 404 });
+  server.use(
+    http.get("/feed/:id", ({ params }) => {
+      const id = String(params.id);
+      // The list and the front page have their own fakes.
+      if (id === "list" || id === "home") {
+        return undefined;
+      }
+      reads.push(id);
+      const feed = feeds.find((candidate) => candidate.id === id);
+      return feed === undefined ? notFound(id) : HttpResponse.json(feed);
+    }),
+    http.patch("/feed/:id", async ({ params, request }) => {
+      const id = String(params.id);
+      const body = (await request.json()) as UpdateFeedRequest;
+      updates.push({ id, body, authorization: request.headers.get("Authorization") });
+      const index = feeds.findIndex((candidate) => candidate.id === id);
+      const feed = feeds[index];
+      if (feed === undefined) {
+        return notFound(id);
+      }
+      const updated = { ...feed, ...body, updated_at: new Date().toISOString() };
+      feeds[index] = updated;
+      return HttpResponse.json(updated);
+    }),
+  );
+  return { reads, updates };
 }

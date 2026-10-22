@@ -69,7 +69,10 @@ describe("the table", () => {
     expect(first).toHaveTextContent("El Español");
     expect(first).toHaveTextContent("Economía");
     expect(within(first).getByRole("button", { name: "Borrar «El alquiler sube»" })).toBeEnabled();
-    expect(within(first).getByRole("button", { name: "Editar «El alquiler sube»" })).toBeDisabled();
+    expect(within(first).getByRole("link", { name: "Editar «El alquiler sube»" })).toHaveAttribute(
+      "href",
+      `/admin/feeds/${feeds[0]?.id}/edit`,
+    );
   });
 
   it("loads the next page until there is none", async () => {

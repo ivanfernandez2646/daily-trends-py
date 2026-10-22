@@ -40,3 +40,17 @@ test("deleting a feed from the CMS removes it from the reader", async ({ page, f
   await expect(page.getByRole("list", { name: "Noticias" })).toContainText(kept.title);
   await expect(page.getByRole("list", { name: "Noticias" })).not.toContainText(deleted.title);
 });
+
+test("the CMS fits a phone, scrolling the table inside its panel", async ({ page, feeds }) => {
+  await feeds.seed(aStoredFeed({ title: "Un titular bastante largo para la tabla del CMS" }));
+  await page.setViewportSize({ width: 360, height: 800 });
+
+  await openAsAdmin(page);
+  await expect(page.getByRole("table", { name: "Noticias" })).toBeVisible();
+
+  const width = await page.evaluate(() => {
+    const { scrollWidth, clientWidth } = document.documentElement;
+    return { scrollWidth, clientWidth };
+  });
+  expect(width.scrollWidth).toBe(width.clientWidth);
+});

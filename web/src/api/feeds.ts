@@ -9,7 +9,13 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { ApiError, api, unwrap, unwrapEmpty } from "./client";
-import type { CreateFeedRequest, FeedCategory, FeedFilters, FeedPageResponse } from "./types";
+import type {
+  CreateFeedRequest,
+  FeedCategory,
+  FeedFilters,
+  FeedPageResponse,
+  UpdateFeedRequest,
+} from "./types";
 
 const PAGE_SIZE = 20;
 
@@ -67,6 +73,11 @@ export function feedQuery(id: string) {
 
 export function useFeed(id: string) {
   return useQuery(feedQuery(id));
+}
+
+/** The feed as stored right now: a form edits what is there, never what was cached. */
+export function useFeedForEditing(id: string) {
+  return useQuery({ ...feedQuery(id), refetchOnMount: "always" });
 }
 
 /** Up to three other feeds of `category`, newest first, once the category is known. */
@@ -134,6 +145,16 @@ export function useCreateFeed() {
   return useMutation({
     mutationFn: ({ id, feed }: { id: string; feed: CreateFeedRequest }) =>
       unwrap(api.PUT("/feed/{id}", { params: { path: { id } }, body: feed })),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: feedKeys.all }),
+  });
+}
+
+/** Change the fields in `changes` of a feed; absent keys keep their value. Never retried. */
+export function useUpdateFeed() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, changes }: { id: string; changes: UpdateFeedRequest }) =>
+      unwrap(api.PATCH("/feed/{id}", { params: { path: { id } }, body: changes })),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: feedKeys.all }),
   });
 }

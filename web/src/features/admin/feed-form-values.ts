@@ -1,4 +1,9 @@
-import type { CreateFeedRequest, FeedCategory, FeedResponse } from "../../api/types";
+import type {
+  CreateFeedRequest,
+  FeedCategory,
+  FeedResponse,
+  UpdateFeedRequest,
+} from "../../api/types";
 
 /** What the feed form holds, as typed: the API's values are trimmed out of it. */
 export type FeedFormValues = {
@@ -36,6 +41,33 @@ export function toCreateRequest(
     author: values.author.trim(),
     category: values.category,
     ...(description !== "" && { description }),
+  };
+}
+
+/** The form of a stored feed, as it is now. */
+export function formFromFeed(feed: FeedResponse): FeedFormValues {
+  return {
+    title: feed.title,
+    description: feed.description ?? "",
+    author: feed.author,
+    category: feed.category,
+  };
+}
+
+/**
+ * The body of `PATCH /feed/{id}`: only the fields that differ from `original`. An emptied
+ * description is `null`, which clears it; the author cannot change.
+ */
+export function toUpdateRequest(original: FeedResponse, values: FeedFormValues): UpdateFeedRequest {
+  const title = values.title.trim();
+  const description = values.description.trim();
+  return {
+    ...(title !== original.title && { title }),
+    ...(description !== (original.description ?? "") && {
+      description: description === "" ? null : description,
+    }),
+    ...(values.category !== undefined &&
+      values.category !== original.category && { category: values.category }),
   };
 }
 

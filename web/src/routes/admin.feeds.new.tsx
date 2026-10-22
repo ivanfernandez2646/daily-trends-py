@@ -54,6 +54,7 @@ function NewFeedPage() {
     <div className="mx-auto flex max-w-content flex-col gap-6">
       <h1 className="font-serif text-title-1">Nueva noticia</h1>
       <FeedForm
+        mode="create"
         values={values}
         errors={errors}
         onChange={(change) => setValues((current) => ({ ...current, ...change }))}

@@ -8,6 +8,7 @@ type ConfirmDialogProps = {
   title: string;
   description: string;
   confirmLabel: string;
+  cancelLabel?: string;
   /** What the confirm button says while `pending`, such as *Borrando…*. */
   pendingLabel?: string;
   pending?: boolean;
@@ -24,6 +25,7 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel,
+  cancelLabel = "Cancelar",
   pendingLabel = confirmLabel,
   pending = false,
   destructive = true,
@@ -35,7 +37,7 @@ export function ConfirmDialog({
   return (
     <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
       <AlertDialog.Portal>
-        <AlertDialog.Overlay className="fixed inset-0 z-40 bg-ink/40" />
+        <AlertDialog.Overlay className="fixed inset-0 z-40 bg-overlay" />
         <AlertDialog.Content
           onOpenAutoFocus={() => {
             opener.current =
@@ -54,7 +56,7 @@ export function ConfirmDialog({
           {children}
           <div className="mt-2 flex flex-wrap justify-end gap-3">
             <AlertDialog.Cancel asChild>
-              <Button variant="secondary">Cancelar</Button>
+              <Button variant="secondary">{cancelLabel}</Button>
             </AlertDialog.Cancel>
             {/* Not an AlertDialog.Action: the dialog stays open until the action has finished. */}
             <Button
