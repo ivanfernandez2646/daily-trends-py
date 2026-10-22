@@ -2,6 +2,9 @@ name: CI
 
 on:
   pull_request:
+  # Render deploys a commit on main only after its checks pass.
+  push:
+    branches: [main]
 
 jobs:
   quality-gate:

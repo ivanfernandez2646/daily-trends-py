@@ -1,0 +1,32 @@
+# Production on Render (S16). It holds no secret: MONGO_URL is set in the Render dashboard.
+services:
+  - type: web
+    name: daily-trends-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    region: frankfurt
+    healthCheckPath: /status
+    autoDeployTrigger: checksPass
+    # Only what goes into the image deploys the API: a change to web/, specs/, tests/ or docs does not.
+    buildFilter:
+      paths:
+        - src/**
+        - pyproject.toml
+        - uv.lock
+        - .python-version
+        - Dockerfile
+        - .dockerignore
+    envVars:
+      - key: ENV
+        value: production
+      - key: MONGO_URL
+        sync: false
+      # Generated once, when the service is created. Regenerating it logs every administrator out.
+      - key: AUTH_SECRET_KEY
+        generateValue: true
+      # Render's proxy terminates HTTPS: trusting its X-Forwarded-Proto keeps the URLs the API
+      # builds on https://.
+      - key: FORWARDED_ALLOW_IPS
+        value: "*"
