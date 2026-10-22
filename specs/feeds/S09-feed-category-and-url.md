@@ -1,6 +1,6 @@
 # S09 · Feed category and article URL
 
-**Status:** draft · **Fidelity:** new capability, breaks the create contract on purpose (`category` is
+**Status:** implemented · **Fidelity:** new capability, breaks the create contract on purpose (`category` is
 required). Depends on S02, S03, S04, S06, S08, I02 and I07.
 
 ## Goal

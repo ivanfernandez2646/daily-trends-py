@@ -1,6 +1,6 @@
 # I08 · Persistence and error hardening
 
-**Status:** draft · **Fidelity:** intentional break with the ported behavior. Depends on S00–S07,
+**Status:** implemented · **Fidelity:** intentional break with the ported behavior. Depends on S00–S07,
 I01–I05 and I07 (the indexes are its first migration). Independent of I06; if I06 is implemented
 first, the 500 rule below applies to its exception handlers. Resolves improvements #21, #22, #23
 and #24 from `README.md`.

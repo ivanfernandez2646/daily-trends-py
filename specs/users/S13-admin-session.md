@@ -1,6 +1,6 @@
 # S13 · Administrator session
 
-**Status:** draft · **Fidelity:** new capability, additive (no existing route changes). Depends on
+**Status:** implemented · **Fidelity:** new capability, additive (no existing route changes). Depends on
 S11.
 
 ## Goal

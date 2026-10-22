@@ -1,6 +1,6 @@
 # Design system · Tinta
 
-**Status:** draft · The visual contract of the web app (S14, S15). It is not a capability of its own:
+**Status:** implemented · The visual contract of the web app (S14, S15). It is not a capability of its own:
 S14 implements it in its first phase, and every screen of S14 and S15 uses it.
 
 Reference mockups: the *Daily Trends · Diseño web* canvas

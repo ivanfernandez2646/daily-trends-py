@@ -1,6 +1,6 @@
 # I06 · Idiomatic FastAPI layer
 
-**Status:** draft · **Fidelity:** intentional break with the ported behavior. Depends on S00–S07 and
+**Status:** implemented · **Fidelity:** intentional break with the ported behavior. Depends on S00–S07 and
 I01–I05. Resolves improvement #20 from `README.md`.
 
 ## Goal

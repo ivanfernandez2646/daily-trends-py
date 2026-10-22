@@ -1,6 +1,6 @@
 # S15 · Web CMS
 
-**Status:** draft · **Fidelity:** new screens in the web app, plus one option for `create-admin`.
+**Status:** implemented · **Fidelity:** new screens in the web app, plus one option for `create-admin`.
 Depends on S11, S12, S13 and S14. Its look is the [Tinta design system](design-system.md).
 
 ## Goal

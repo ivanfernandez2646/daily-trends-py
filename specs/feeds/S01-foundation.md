@@ -1,6 +1,6 @@
 # S01 · Foundation
 
-**Status:** draft · **Fidelity:** exact observable behavior; the platform is updated to Python.
+**Status:** implemented · **Fidelity:** exact observable behavior; the platform is updated to Python.
 
 ## Goal
 A running app that starts, reads configuration, connects to Mongo, answers `GET /status` and formats errors the way every later capability expects.

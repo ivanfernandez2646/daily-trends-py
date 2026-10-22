@@ -1,6 +1,6 @@
 # S08 · More sources
 
-**Status:** draft · **Fidelity:** new capability. Depends on S06, S07, I02 and I03.
+**Status:** implemented · **Fidelity:** new capability. Depends on S06, S07, I02 and I03.
 
 ## Goal
 Scrape three more Spanish newspapers, El Confidencial, La Razón and La Vanguardia, alongside El

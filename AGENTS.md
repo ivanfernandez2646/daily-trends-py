@@ -135,8 +135,7 @@ pnpm biome ci . && pnpm tsc --noEmit && pnpm vitest run && pnpm build && pnpm pl
 
 ## Production
 
-Deployment is described in `specs/ops/S16-deployment.md` and in the *Deployment* section of
-`README.md`.
+Deployment is described in `specs/ops/S16-deployment.md` and in `docs/deployment.md`.
 
 - `render.yaml` and `.github/workflows/keep-alive.yml` describe production. A merge to `main`
   whose CI passes deploys it. A deployment change goes in the same pull request as the code that

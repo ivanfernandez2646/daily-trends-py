@@ -1,6 +1,6 @@
 # S11 · Authentication
 
-**Status:** draft · **Fidelity:** new capability, breaks the write contract on purpose (every write
+**Status:** implemented · **Fidelity:** new capability, breaks the write contract on purpose (every write
 needs a token). Depends on S01, S02, S04, S05, S06, I04, I06 and I07. Resolves the authentication
 half of improvement #15 from `improvements/README.md`. Independent of S09 and S10.
 

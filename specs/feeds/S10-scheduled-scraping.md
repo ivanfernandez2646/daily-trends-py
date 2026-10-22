@@ -1,6 +1,6 @@
 # S10 · Scheduled scraping
 
-**Status:** draft · **Fidelity:** new capability; replaces the front-page background refresh of I03.
+**Status:** implemented · **Fidelity:** new capability; replaces the front-page background refresh of I03.
 Depends on S06, S07, S08, I02, I03 and I04.
 
 ## Goal

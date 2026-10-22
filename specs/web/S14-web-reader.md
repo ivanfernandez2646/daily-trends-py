@@ -1,6 +1,6 @@
 # S14 · Web app and reader
 
-**Status:** draft · **Fidelity:** new app, additive (the API gains one command and no route
+**Status:** implemented · **Fidelity:** new app, additive (the API gains one command and no route
 changes). Depends on S07, S08, S09 and S12. Its look is the [Tinta design system](design-system.md).
 The CMS is S15.
 

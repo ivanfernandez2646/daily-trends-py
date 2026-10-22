@@ -1,6 +1,6 @@
 # S07 · Front page
 
-**Status:** draft · **Fidelity:** exact. Depends on S03 (criteria) and S06 (scraping).
+**Status:** implemented · **Fidelity:** exact. Depends on S03 (criteria) and S06 (scraping).
 
 ## `GET /feed/home`
 1. Search with filter `source = EL_MUNDO OR source = EL_ESPANOL`, sort `createdAt` desc, `limit 10`. (`EL_ESPANOL` replaces `EL_PAIS`, as it replaces El País as a scraped source, see S06. The database starts empty, so there are no stored `EL_PAIS` feeds to show; the `EL_PAIS` source stays valid for other routes.)

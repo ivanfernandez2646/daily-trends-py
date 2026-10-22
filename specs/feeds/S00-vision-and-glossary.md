@@ -1,6 +1,6 @@
 # S00 · Vision and glossary
 
-**Status:** draft · **General rule:** the port is **faithful to the current behavior** of daily-trends (Node). Anything we would like to change lives in `specs/improvements/` and is NOT implemented in this migration.
+**Status:** implemented · **General rule:** the port is **faithful to the current behavior** of daily-trends (Node). Anything we would like to change lives in `specs/improvements/` and is NOT implemented in this migration.
 
 ## Goal
 Re-implement daily-trends in Python (FastAPI + Mongo) with the same observable behavior: same API, same status codes and bodies, same data in Mongo.
