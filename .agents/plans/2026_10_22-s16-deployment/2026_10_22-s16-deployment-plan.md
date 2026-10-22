@@ -2,7 +2,7 @@
 name: 's16-deployment'
 description: 'The API, the web app and MongoDB run on Render and Atlas free plans, described in render.yaml and a keep-alive workflow, deployed by a merge to main that passes CI'
 spec: 'specs/ops/S16-deployment.md'
-branch: 'chore/s16-keep-alive'
+branch: 'chore/s16-web-app'
 branches:
   phase_1: 'chore/s16-api-on-render'
   phase_2: 'chore/s16-keep-alive'
@@ -11,7 +11,11 @@ created_at: '2026-10-22T09:53:00Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-22T11:20:00Z'
+updated_at: '2026-10-22T11:45:00Z'
+implemented_at: '2026-10-22T11:45:00Z'
+implemented_by:
+  tool: 'Claude Code'
+  model: 'claude-opus-5-5'
 ---
 
 # S16 · Deployment
@@ -266,19 +270,19 @@ headers.
 
 ### Tests first
 
-- [ ] No test: configuration and documentation only (see *Context · Testing*).
+- [x] No test: configuration and documentation only (see *Context · Testing*).
 
 ### Implementation
 
-- [ ] Confirm phase 1 is merged and R4 is checked, and ask the owner for the API URL; otherwise stop.
-- [ ] Create `chore/s16-web-app` from an up-to-date `main` and record it in `branch`.
-- [ ] Add the web service to `render.yaml`.
-- [ ] Add R8 and the web app's part of *Deployment* to `README.md`.
-- [ ] Build locally the way Render will:
+- [x] Confirm phase 1 is merged and R4 is checked, and ask the owner for the API URL; otherwise stop.
+- [x] Create `chore/s16-web-app` from an up-to-date `main` and record it in `branch`.
+- [x] Add the web service to `render.yaml`.
+- [x] Add R8 and the web app's part of *Deployment* to `README.md`.
+- [x] Build locally the way Render will:
   `cd web && VITE_API_BASE_URL=https://<api>.onrender.com pnpm build`. Check that `dist/` has
   `index.html` and hashed files under `assets/`, and that the URL is in the bundle.
-- [ ] Run the quality gate from `AGENTS.md` and the web quality gate, and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Run the quality gate from `AGENTS.md` and the web quality gate, and fix failures.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ### Verification
 
@@ -288,6 +292,6 @@ headers.
 
 ## Next step
 
-Phase 1 is merged and R4–R6 are done. Phase 2 is implemented on `chore/s16-keep-alive` and waits
-for review, commit and merge; the owner then runs R7. Phase 3 (`chore/s16-web-app`) starts from an
-up-to-date `main` with the API URL `https://daily-trends-api.onrender.com`.
+Phases 1 and 2 are merged. Phase 3 is implemented on `chore/s16-web-app` and waits for review,
+commit and merge. Then the owner runs R7, if not done yet, and R8, which notes the web app's URL
+in the README.
