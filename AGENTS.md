@@ -132,3 +132,17 @@ pnpm biome ci . && pnpm tsc --noEmit && pnpm vitest run && pnpm build && pnpm pl
 - TypeScript is `strict`. No `any` without a comment that justifies it.
 - The interface is in Spanish; code, comments, tests and commits stay in English.
 - Styles use the Tinta tokens, never raw colors.
+
+## Production
+
+Deployment is described in `specs/ops/S16-deployment.md` and in the *Deployment* section of
+`README.md`.
+
+- `render.yaml` and `.github/workflows/keep-alive.yml` describe production. A merge to `main`
+  whose CI passes deploys it. A deployment change goes in the same pull request as the code that
+  needs it.
+- Steps in the Render, Atlas and GitHub dashboards (the runbook, `R1`, `R2`, …) are done by the
+  owner. Agents never run them: a phase that needs one stops and asks.
+- The API and the web app deploy separately, so an API contract change is additive first: add the
+  new field or route, use it in the web app, then remove the old shape in a later change.
+- Migrations stay additive: a rollback in Render does not undo one.
