@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw/http";
 import { describe, expect, it } from "vitest";
@@ -27,6 +27,14 @@ it("shows the login form", async () => {
   expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Accede al CMS");
   expect(screen.getByLabelText("Email")).toHaveAttribute("type", "email");
   expect(screen.getByLabelText("Contraseña")).toHaveAttribute("type", "password");
+});
+
+it("links back to the front page next to the form, where narrow screens still see it", async () => {
+  fakeAuth();
+  renderRoute("/login");
+
+  const main = await screen.findByRole("main");
+  expect(within(main).getByRole("link", { name: "Daily Trends" })).toHaveAttribute("href", "/");
 });
 
 describe("with wrong credentials", () => {

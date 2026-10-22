@@ -65,7 +65,12 @@ function LoginPage() {
 
       <main className="flex items-center justify-center px-4 py-16">
         <div className="w-full max-w-sm rounded-card border border-rule bg-surface p-8">
-          <p className="text-label text-meta uppercase lg:hidden">Daily Trends · CMS</p>
+          <p className="text-label text-meta uppercase lg:hidden">
+            <Link to="/" className="hover:text-accent">
+              Daily Trends
+            </Link>{" "}
+            · CMS
+          </p>
           <h1 className="mt-2 font-serif text-title-2 lg:mt-0">Accede al CMS</h1>
           <p className="mt-2 text-caption text-meta">
             Entra con la cuenta de administrador que te han dado.
