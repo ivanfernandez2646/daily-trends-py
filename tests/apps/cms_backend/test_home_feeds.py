@@ -9,7 +9,7 @@ from pytest_bdd import scenarios
 
 from daily_trends_py.contexts.cms.feeds.domain.feed import Feed
 from daily_trends_py.contexts.cms.feeds.domain.feed_repository import FeedRepository
-from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedSource
+from daily_trends_py.contexts.cms.feeds.domain.value_objects import FeedCategory, FeedSource
 from tests.apps.cms_backend.conftest import resolve, run_in_app
 from tests.contexts.cms.feeds.domain.feed_created_at_mother import FeedCreatedAtMother
 from tests.contexts.cms.feeds.domain.feed_mother import FeedMother
@@ -20,14 +20,17 @@ pytestmark = pytest.mark.integration
 scenarios("features/home-feed.feature")
 
 
-def _feed_created_at(created_at: datetime, source: FeedSource) -> Feed:
+def _feed_created_at(
+    created_at: datetime, source: FeedSource, category: FeedCategory = FeedCategory.POLITICS
+) -> Feed:
     return FeedMother.random(
         source=source,
+        category=category,
         created_at=FeedCreatedAtMother.create(created_at),
     )
 
 
-def test_home_returns_the_two_newest_feeds_of_each_external_source(
+def test_home_returns_the_two_newest_feeds_of_each_external_source_when_categories_vary(
     container: AsyncContainer, client: TestClient
 ) -> None:
     now = datetime.now(UTC)
@@ -38,9 +41,15 @@ def test_home_returns_the_two_newest_feeds_of_each_external_source(
         FeedSource.LA_RAZON,
         FeedSource.LA_VANGUARDIA,
     ]
+    # Ten categories for the ten feeds on the page; a third feed repeats its source's first one.
+    categories = [category for category in FeedCategory if category is not FeedCategory.OTHER]
     external_feeds = [
         [
-            _feed_created_at(now - timedelta(minutes=10 * index + age), source=source)
+            _feed_created_at(
+                now - timedelta(minutes=10 * index + age),
+                source=source,
+                category=categories[2 * index + age % 2],
+            )
             for age in range(1, 4)
         ]
         for index, source in enumerate(external_sources)
@@ -58,7 +67,9 @@ def test_home_returns_the_two_newest_feeds_of_each_external_source(
     ]
 
 
-def test_home_shows_two_feeds_of_each_source_after_scraping(client: TestClient) -> None:
+def test_home_shows_two_feeds_of_each_source_and_category_at_most_after_scraping(
+    client: TestClient,
+) -> None:
     client.get("/feed/scrap")
 
     response = client.get("/feed/home")
@@ -71,6 +82,7 @@ def test_home_shows_two_feeds_of_each_source_after_scraping(client: TestClient) 
         "LA_RAZON": 2,
         "LA_VANGUARDIA": 2,
     }
+    assert max(Counter(feed["category"] for feed in response.json()).values()) <= 2
 
 
 def test_home_answers_a_stale_front_page_as_it_is_without_scraping(

@@ -122,8 +122,8 @@ async def scrap_feeds(scraper: FromDishka[FeedScraper]) -> list[FeedResponse]:
 
 @router.get("/feed/home", responses=_errors(500))
 async def home_feeds(home_searcher: FromDishka[FeedHomeSearcher]) -> list[FeedResponse]:
-    """The 2 newest feeds of each external source, filled with the newest of any of them up to 10,
-    newest first."""
+    """Up to 10 feeds of the external sources, newest first: at most 2 per source and 2 per
+    category among the 15 newest of each source, filled with the newest of the rest."""
     return [FeedResponse.from_feed(feed) for feed in await home_searcher.execute()]
 
 

@@ -7,7 +7,8 @@ created_at: '2026-10-23T10:22:34Z'
 created_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
-updated_at: '2026-10-23T10:30:09Z'
+updated_at: '2026-10-23T10:55:48Z'
+implemented_at: '2026-10-23T10:55:48Z'
 implemented_by:
   tool: 'Claude Code'
   model: 'claude-opus-5-5'
@@ -164,31 +165,37 @@ fills up to 10, and its OpenAPI description says so.
 
 ### Tests first
 
-- [ ] `test_feed_home_searcher.py`, with the in-memory fake and distinct `created_at` values:
-  - [ ] With enough variety: at most 2 per source and 2 per category, 10 feeds, newest first.
-  - [ ] Category cap across sources: every source's newest feed is `POLITICS`, so only the 2
+- [x] `test_feed_home_searcher.py`, with the in-memory fake, distinct `created_at` values and
+  explicit categories:
+  - [x] With enough variety: at most 2 per source and 2 per category, 10 feeds, newest first.
+  - [x] Category cap across sources: every source's newest feed is `POLITICS`, so only the 2
     newest of them are picked in step 1 and the other categories fill the rest.
-  - [ ] Every candidate is `POLITICS`: 2 in step 1, 8 in step 2, so the page still has 10.
-  - [ ] Only one source has feeds (12): the 10 newest.
-  - [ ] Fewer than 10 home feeds: all of them.
-  - [ ] `CMS` and `EL_PAIS` feeds never appear.
-  - [ ] Only the 15 newest feeds of each source are candidates: a 16th, older feed of a category
-    nobody else has is never picked.
-  - [ ] No feeds give `[]`.
-- [ ] Adapt or remove the S08 tests that no longer hold (the two newest of each source regardless
-  of category; the fill with the newest of any source).
+  - [x] Every candidate is `POLITICS`: 2 in step 1, 8 in step 2, so the page still has 10.
+  - [x] Only one source has feeds (12): the 10 newest.
+  - [x] Fewer than 10 home feeds: all of them.
+  - [x] `CMS` and `EL_PAIS` feeds never appear.
+  - [x] Only the 15 newest feeds of each source are candidates. The planned case (a 16th, older
+    feed is never picked) cannot fail: step 2 needs at most 8 more feeds, fewer than the 13 a
+    source has left among its 15. The test checks instead that the use case searches each home
+    source, newest first, with `limit=15`, through the fake's `searched_criteria`.
+  - [x] No feeds give `[]`.
+- [x] Adapt or remove the S08 tests that no longer hold. They built feeds with random categories,
+  which the category limit makes flaky, so they now set them. The same applies to
+  `test_home_feeds.py`, whose scraping test also checks at most 2 per category on the page.
+  `test_openapi.py` checks the new description.
 
 ### Implementation
 
-- [ ] Rewrite `FeedHomeSearcher.execute` with the candidates and the two steps; remove the global
+- [x] Rewrite `FeedHomeSearcher.execute` with the candidates and the two steps; remove the global
   search.
-- [ ] Update the `/feed/home` description, then run `pnpm api:generate` in `web/`.
-- [ ] Set S18's status to `implemented`.
-- [ ] Refactor without changing behavior.
-- [ ] Run the quality gate from `AGENTS.md` and the web quality gate, and fix failures.
-- [ ] STOP for user review. Suggest three Conventional Commit messages.
+- [x] Update the `/feed/home` description, then run `pnpm api:generate` in `web/` (only the
+  description changes in `openapi.json` and `schema.gen.ts`).
+- [x] Set S18's status to `implemented`.
+- [x] Refactor without changing behavior.
+- [x] Run the quality gate from `AGENTS.md` and the web quality gate, and fix failures.
+- [x] STOP for user review. Suggest three Conventional Commit messages.
 
 ## Next step
 
-Phase 1 is implemented. After review and its commit, run `/ai-project-implement-phase` for phase 2
-in the worktree on `feat/s18-varied-categories`.
+Every phase is implemented. After review, commit phase 2 and open a pull request from
+`feat/s18-varied-categories` to `main`.
