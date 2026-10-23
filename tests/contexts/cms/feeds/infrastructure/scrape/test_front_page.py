@@ -74,12 +74,95 @@ def test_skips_articles_without_author_or_title() -> None:
     assert [feed.title.value for feed in feeds] == ["Kept"]
 
 
-def test_stops_at_five_feeds() -> None:
-    html = "".join(_article(title=f"Title {index}") for index in range(7))
+EVERY_SECTION = dataclasses.replace(
+    MAPPING,
+    categories={
+        category.value.lower(): category
+        for category in FeedCategory
+        if category is not FeedCategory.OTHER
+    },
+)
 
-    feeds = extract_feeds(html, MAPPING, NOW, PAGE_URL)
 
-    assert [feed.title.value for feed in feeds] == [f"Title {index}" for index in range(5)]
+def _in(category: FeedCategory, title: str) -> str:
+    return _article(title=title, href=f"/{category.value.lower()}/{title}.html")
+
+
+def _titles(html: str) -> list[str]:
+    return [feed.title.value or "" for feed in extract_feeds(html, EVERY_SECTION, NOW, PAGE_URL)]
+
+
+def test_selects_the_first_article_of_each_category_then_the_second_in_page_order() -> None:
+    politics, sports, culture = FeedCategory.POLITICS, FeedCategory.SPORTS, FeedCategory.CULTURE
+    html = (
+        _in(politics, "p1")
+        + _in(politics, "p2")
+        + _in(sports, "s1")
+        + _in(politics, "p3")
+        + _in(culture, "c1")
+        + _in(sports, "s2")
+    )
+
+    assert _titles(html) == ["p1", "p2", "s1", "c1", "s2"]
+
+
+def test_keeps_at_most_two_feeds_of_a_category() -> None:
+    html = "".join(_in(FeedCategory.POLITICS, f"p{index}") for index in range(5))
+
+    assert _titles(html) == ["p0", "p1"]
+
+
+def test_counts_every_unknown_section_as_the_same_other_category() -> None:
+    html = "".join(
+        _article(title=section, href=f"/{section}/1.html")
+        for section in ("juegos", "papel", "viajes")
+    )
+
+    feeds = extract_feeds(html, EVERY_SECTION, NOW, PAGE_URL)
+
+    assert [(feed.title.value, feed.category) for feed in feeds] == [
+        ("juegos", FeedCategory.OTHER),
+        ("papel", FeedCategory.OTHER),
+    ]
+
+
+def test_takes_the_first_two_of_each_category_when_every_category_has_more() -> None:
+    categories = (FeedCategory.POLITICS, FeedCategory.SPORTS, FeedCategory.CULTURE)
+    html = "".join(
+        _in(category, f"{category.value}{index}") for category in categories for index in range(5)
+    )
+
+    assert _titles(html) == [
+        f"{category.value}{index}" for category in categories for index in range(2)
+    ]
+
+
+def test_stops_at_fifteen_feeds_taking_the_second_round_in_page_order() -> None:
+    categories = [category for category in FeedCategory if category is not FeedCategory.OTHER]
+    html = "".join(
+        _in(category, f"{category.value}{index}") for category in categories for index in (1, 2)
+    )
+
+    titles = _titles(html)
+
+    seconds_taken = 15 - len(categories)
+    assert titles == [
+        f"{category.value}{index}"
+        for position, category in enumerate(categories)
+        for index in ((1, 2) if position < seconds_taken else (1,))
+    ]
+
+
+def test_does_not_count_unusable_articles_toward_the_quota_of_their_category() -> None:
+    sports = "/deportes/1.html"
+    html = (
+        _article(author="", title="No author", href=sports)
+        + _article(title="", href=sports)
+        + _in(FeedCategory.SPORTS, "s1")
+        + _in(FeedCategory.SPORTS, "s2")
+    )
+
+    assert _titles(html) == ["s1", "s2"]
 
 
 def test_stores_a_missing_or_blank_description_as_null() -> None:
@@ -212,11 +295,11 @@ def test_skips_articles_without_a_usable_link_and_tries_the_next_ones() -> None:
         _article(title="Script", href="javascript:void(0)"),
         _article(title="Ftp", href="ftp://news.example/1.html"),
     ]
-    html = "".join(unusable) + "".join(_article(title=f"Title {index}") for index in range(6))
+    html = "".join(unusable) + _article(title="Sports") + _article(title="Culture", href="/cultura")
 
     feeds = extract_feeds(html, MAPPING, NOW, PAGE_URL)
 
-    assert [feed.title.value for feed in feeds] == [f"Title {index}" for index in range(5)]
+    assert [feed.title.value for feed in feeds] == ["Sports", "Culture"]
 
 
 @pytest.mark.parametrize(

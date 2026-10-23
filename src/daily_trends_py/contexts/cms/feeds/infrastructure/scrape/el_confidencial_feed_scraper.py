@@ -19,10 +19,10 @@ _MAPPING = ScrapeMapping(
         {
             FeedCategory.POLITICS: ("espana",),
             FeedCategory.INTERNATIONAL: ("mundo",),
-            FeedCategory.ECONOMY: ("economia", "empresas", "mercados", "vivienda"),
+            FeedCategory.ECONOMY: ("economia", "empresas", "mercados", "vivienda", "inmobiliario"),
             FeedCategory.SOCIETY: ("sociedad",),
             FeedCategory.SPORTS: ("deportes",),
-            FeedCategory.CULTURE: ("cultura",),
+            FeedCategory.CULTURE: ("cultura", "television"),
             FeedCategory.TECHNOLOGY: ("tecnologia",),
             FeedCategory.SCIENCE: ("ciencia",),
             FeedCategory.HEALTH: ("salud",),

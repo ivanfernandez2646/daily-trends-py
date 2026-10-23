@@ -176,10 +176,14 @@ def test_the_feed_source_lists_every_source(document: Json) -> None:
     ]
 
 
-def test_the_front_page_describes_its_per_source_selection(document: Json) -> None:
-    description = cast(str, _get(document, "paths", "/feed/home", "get", "description"))
+def test_the_front_page_describes_its_per_source_and_per_category_selection(
+    document: Json,
+) -> None:
+    description = " ".join(
+        cast(str, _get(document, "paths", "/feed/home", "get", "description")).split()
+    )
 
-    assert "2 newest feeds of each external source" in description
+    assert "at most 2 per source and 2 per category" in description
     assert "refresh" not in description
 
 

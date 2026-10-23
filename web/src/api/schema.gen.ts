@@ -142,8 +142,8 @@ export interface paths {
         };
         /**
          * Home Feeds
-         * @description The 2 newest feeds of each external source, filled with the newest of any of them up to 10,
-         *     newest first.
+         * @description Up to 10 feeds of the external sources, newest first: at most 2 per source and 2 per
+         *     category among the 15 newest of each source, filled with the newest of the rest.
          */
         get: operations["home_feeds_feed_home_get"];
         put?: never;

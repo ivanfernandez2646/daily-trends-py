@@ -29,7 +29,7 @@ def test_scraping_reads_the_five_front_pages(
         "www.lavanguardia.com",
     }
     scraped = response.json()
-    assert len(scraped) == 25
+    assert len(scraped) == 31
     assert _sources(scraped) == sorted([*OTHER_SOURCES_THAN_EL_MUNDO, "EL_MUNDO"])
 
 
@@ -61,7 +61,7 @@ def test_scraping_stores_and_returns_the_other_sources_when_one_fails(
 
     assert response.status_code == 200
     scraped = response.json()
-    assert len(scraped) == 20
+    assert len(scraped) == 25
     assert _sources(scraped) == sorted(OTHER_SOURCES_THAN_EL_MUNDO)
     stored = client.get("/feed/list", params={"limit": 100}).json()["items"]
     assert sorted(feed["id"] for feed in stored) == sorted(feed["id"] for feed in scraped)
@@ -100,5 +100,5 @@ def test_scraping_returns_the_other_sources_when_one_times_out(client: TestClien
 
     assert response.status_code == 200
     scraped = response.json()
-    assert len(scraped) == 20
+    assert len(scraped) == 25
     assert _sources(scraped) == sorted(OTHER_SOURCES_THAN_EL_MUNDO)

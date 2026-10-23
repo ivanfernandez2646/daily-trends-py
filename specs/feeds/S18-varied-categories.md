@@ -1,6 +1,6 @@
 # S18 · Varied categories
 
-**Status:** draft · **Fidelity:** changes which scraped feeds are stored and which ones the front page
+**Status:** implemented · **Fidelity:** changes which scraped feeds are stored and which ones the front page
 shows; no route, field or schema changes. Depends on S06, S08, S09, I02 and S10.
 
 ## Goal
