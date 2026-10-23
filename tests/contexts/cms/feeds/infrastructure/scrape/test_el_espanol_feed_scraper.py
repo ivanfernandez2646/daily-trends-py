@@ -1,3 +1,4 @@
+from collections import Counter
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from urllib.parse import urlsplit
@@ -45,7 +46,9 @@ async def test_requests_the_front_page(
     assert str(request.url) == "https://www.elespanol.com/"
 
 
-async def test_scrapes_five_feeds_from_the_front_page(client: httpx.AsyncClient) -> None:
+async def test_scrapes_seven_feeds_keeping_two_of_its_four_political_ones(
+    client: httpx.AsyncClient,
+) -> None:
     feeds = await ElEspanolFeedScraper(client, FixedClock(NOW)).scrape()
 
     assert [(feed.author.value, feed.title.value) for feed in feeds] == [
@@ -54,9 +57,13 @@ async def test_scrapes_five_feeds_from_the_front_page(client: httpx.AsyncClient)
         ("Ramón Ficticio", "El festival de cometas reúne a cien familias"),
         ("Lucía Muestra", "Los vecinos piden un carril bici junto al río"),
         ("Óscar Inventado", "La panadería más antigua celebra su centenario"),
+        ("Carmen Ejemplo", "El pleno aprueba la nueva ordenanza de terrazas"),
+        ("Nadie", "Una noticia sin sección también se guarda"),
     ]
     assert [feed.description.value for feed in feeds] == [
         "La obra costará menos de lo previsto según el pleno.",
+        None,
+        None,
         None,
         None,
         None,
@@ -91,6 +98,11 @@ async def test_credits_each_feed_with_its_article_url_and_section_category(
             "https://www.elespanol.com/omicrono/20261020/panaderia-centenaria.html",
             FeedCategory.TECHNOLOGY,
         ),
+        (
+            "https://www.elespanol.com/espana/20261020/ordenanza-terrazas.html",
+            FeedCategory.POLITICS,
+        ),
+        ("https://www.elespanol.com/noticia-8.html", FeedCategory.OTHER),
     ]
 
 
@@ -103,6 +115,7 @@ async def test_credits_each_feed_with_its_article_url_and_section_category(
         ("valencia", FeedCategory.SOCIETY),
         ("deportes", FeedCategory.SPORTS),
         ("cultura", FeedCategory.CULTURE),
+        ("el-cultural", FeedCategory.CULTURE),
         ("omicrono", FeedCategory.TECHNOLOGY),
         ("ciencia", FeedCategory.SCIENCE),
         ("salud", FeedCategory.HEALTH),
@@ -123,11 +136,12 @@ async def test_maps_its_sections_to_categories(section: str, category: FeedCateg
 
 
 @pytest.mark.network
-async def test_scrapes_five_feeds_from_the_real_front_page() -> None:
+async def test_scrapes_a_varied_selection_from_the_real_front_page() -> None:
     async with httpx.AsyncClient(timeout=None, follow_redirects=True) as client:
         feeds = await ElEspanolFeedScraper(client, FixedClock(NOW)).scrape()
 
-    assert len(feeds) == 5
+    assert 1 <= len(feeds) <= 15
+    assert max(Counter(feed.category for feed in feeds).values()) <= 2
     for feed in feeds:
         assert feed.source == FeedSource.EL_ESPANOL
         assert feed.url.value is not None

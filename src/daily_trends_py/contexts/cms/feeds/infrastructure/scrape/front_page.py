@@ -1,5 +1,6 @@
 import asyncio
 import codecs
+from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -24,7 +25,8 @@ from daily_trends_py.contexts.cms.shared.domain.invalid_argument_error import (
     InvalidArgumentError,
 )
 
-MAX_FEEDS_PER_SOURCE = 5
+MAX_FEEDS_PER_SOURCE = 15
+MAX_FEEDS_PER_CATEGORY = 2
 
 
 def _unchanged(text: str) -> str:
@@ -48,6 +50,17 @@ class ScrapeMapping:
     # The first segment of an article's URL path, lowercased; any other section is `OTHER`.
     categories: Mapping[str, FeedCategory]
     clean_description: Callable[[str], str] = _unchanged
+
+
+@dataclass(frozen=True)
+class _Teaser:
+    """A usable article as the front page shows it, before it is selected and becomes a feed."""
+
+    author: str
+    title: str
+    description: str
+    url: FeedUrl
+    category: FeedCategory
 
 
 async def scrape_front_page(
@@ -84,30 +97,54 @@ def _is_known(charset: str) -> bool:
 
 
 def extract_feeds(html: str, mapping: ScrapeMapping, now: datetime, page_url: str) -> list[Feed]:
-    feeds: list[Feed] = []
-    for article in BeautifulSoup(html, "lxml").select("article"):
-        author = _text(article, mapping.author_selector)
-        title = _text(article, mapping.title_selector)
-        url = _article_url(article, mapping.title_selector, page_url)
-        # A scraped feed always credits the article it took the headline from.
-        if not author or not title or url is None:
-            continue
-        description = mapping.clean_description(_text(article, mapping.description_selector))
-        feeds.append(
-            Feed.create(
-                id=FeedId.random(),
-                title=FeedTitle(title),
-                description=FeedDescription(description or None),
-                author=FeedAuthor(author),
-                source=mapping.source,
-                category=_category(url, mapping.categories),
-                url=url,
-                now=now,
-            )
+    teasers = [
+        teaser
+        for article in BeautifulSoup(html, "lxml").select("article")
+        if (teaser := _teaser(article, mapping, page_url)) is not None
+    ]
+    return [
+        Feed.create(
+            id=FeedId.random(),
+            title=FeedTitle(teaser.title),
+            description=FeedDescription(teaser.description or None),
+            author=FeedAuthor(teaser.author),
+            source=mapping.source,
+            category=teaser.category,
+            url=teaser.url,
+            now=now,
         )
-        if len(feeds) >= MAX_FEEDS_PER_SOURCE:
-            break
-    return feeds
+        for teaser in _varied(teasers)
+    ]
+
+
+def _teaser(article: Tag, mapping: ScrapeMapping, page_url: str) -> _Teaser | None:
+    author = _text(article, mapping.author_selector)
+    title = _text(article, mapping.title_selector)
+    url = _article_url(article, mapping.title_selector, page_url)
+    # A scraped feed always credits the article it took the headline from.
+    if not author or not title or url is None:
+        return None
+    return _Teaser(
+        author=author,
+        title=title,
+        description=mapping.clean_description(_text(article, mapping.description_selector)),
+        url=url,
+        category=_category(url, mapping.categories),
+    )
+
+
+def _varied(teasers: Sequence[_Teaser]) -> list[_Teaser]:
+    """The first teaser of each category, then the second, up to the limit, in page order."""
+    # Front pages open with one section, usually politics, so their first teasers alone repeat it.
+    seen: Counter[FeedCategory] = Counter()
+    candidates: list[tuple[int, int]] = []
+    for position, teaser in enumerate(teasers):
+        rank = seen[teaser.category]
+        seen[teaser.category] += 1
+        if rank < MAX_FEEDS_PER_CATEGORY:
+            candidates.append((rank, position))
+    selected = sorted(candidates)[:MAX_FEEDS_PER_SOURCE]
+    return [teasers[position] for _, position in sorted(selected, key=lambda pair: pair[1])]
 
 
 def _text(article: Tag, selector: str) -> str:

@@ -29,7 +29,7 @@ _MAPPING = ScrapeMapping(
                 "castilla-y-leon",
             ),
             FeedCategory.SPORTS: ("deportes",),
-            FeedCategory.CULTURE: ("cultura",),
+            FeedCategory.CULTURE: ("cultura", "el-cultural"),
             FeedCategory.TECHNOLOGY: ("omicrono",),
             FeedCategory.SCIENCE: ("ciencia",),
             FeedCategory.HEALTH: ("salud",),

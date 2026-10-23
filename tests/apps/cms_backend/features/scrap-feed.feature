@@ -15,7 +15,7 @@ Feature: Scrap feed
     And The response is a page with 2 items
     When I send a GET request to "/feed/scrap"
     Then The response status code should be 200
-    And The response is an array with length 25
+    And The response is an array with length 31
     When I send a GET request to "/feed/list?limit=100&category=SPORTS"
     Then The response status code should be 200
     And The response is a page with 4 items
@@ -24,10 +24,10 @@ Feature: Scrap feed
     And The response is an array with length 10
     When I send a GET request to "/feed/list?limit=100"
     Then The response status code should be 200
-    And The response is a page with 27 items
+    And The response is a page with 33 items
     When I send a GET request to "/feed/scrap"
     Then The response status code should be 200
     And The response is an array with length 0
     When I send a GET request to "/feed/list?limit=100"
     Then The response status code should be 200
-    And The response is a page with 27 items
+    And The response is a page with 33 items
