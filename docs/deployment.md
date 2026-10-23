@@ -1,7 +1,7 @@
 # Deployment
 
 Production runs on free plans only, with no payment method on any account
-([S16](../specs/ops/S16-deployment.md)):
+([S16](../specs/ops/S16-deployment.md), [S17](../specs/ops/S17-reliable-keep-alive.md)):
 
 - Web app: <https://daily-trends-web.onrender.com>
 - API: <https://daily-trends-api.onrender.com> (Swagger UI at
@@ -14,10 +14,10 @@ Production runs on free plans only, with no payment method on any account
 | API (`Dockerfile`) | Render web service `daily-trends-api`, region Frankfurt | Free |
 | Web app (`web/`) | Render static site `daily-trends-web`, on Render's CDN | Free |
 | MongoDB | MongoDB Atlas cluster on AWS `eu-central-1` (Frankfurt) | Free |
-| Keep-alive | GitHub Actions scheduled workflow | Free (public repository) |
+| Keep-alive | [cron-job.org](https://cron-job.org) job | Free |
 
-There are two accounts, Render and Atlas, both created with GitHub and with no card, so neither can
-charge. The API and MongoDB share a region, so a query costs milliseconds.
+There are three accounts: Render and Atlas, both created with GitHub, and cron-job.org, created with
+an email. None has a card, so none can charge. The API and MongoDB share a region, so a query costs milliseconds.
 
 The free plans have limits, and they are accepted:
 
@@ -72,23 +72,25 @@ published:
 
 ## Keep-alive
 
-[`keep-alive.yml`](../.github/workflows/keep-alive.yml) requests `GET <API_URL>/status` every 10
-minutes, and on demand from the *Actions* tab. Render's own health checks, which request `/status`
-every few seconds, do not count as inbound traffic, so without it the API would stop.
+A [cron-job.org](https://cron-job.org) job requests `GET https://daily-trends-api.onrender.com/status`
+every 5 minutes, well inside the 15 minutes after which Render stops the API. Render's own health
+checks, which request `/status` every few seconds, do not count as inbound traffic, so without it
+the API would stop.
 
-- `API_URL` is a repository variable, not a secret: the URL is public anyway. Until it exists, every
-  run is skipped, not failed.
-- Each request waits up to 2 minutes and is retried 3 times, so a cold start does not fail the run.
-- A failed run marks the workflow red, and GitHub emails the owner. That is the only alerting.
-- GitHub delays scheduled runs under load. When one is missed, the API stops after 15 minutes, and
-  the next request or run starts it again in about a minute. It scrapes at startup, which repeats
-  work but never stores a feed twice.
-- GitHub disables scheduled workflows after 60 days without commits. A commit, or enabling the
-  workflow again in the *Actions* tab, turns it back on.
+- cron-job.org is free, with no paid plans, and funded by donations. It only knows the public URL:
+  no token, no access to GitHub, Render or Atlas, and `/status` answers an empty body.
+- It closes a request after 30 seconds. After a deploy, the API's cold start can take longer, so
+  that run fails, but the request has already woken the API and the next run answers 200.
+- It emails the owner when a run fails, when the API answers again, and when it disables the job,
+  which it does after more than 25 failures in a row (about 2 hours). Once the API is fixed, enable
+  the job again in its dashboard. That is the only alerting.
+- `/status` does not read Mongo, so the job does not notice a failing database.
+- A GitHub Actions scheduled workflow did this before. GitHub ran it only a few times a day, with
+  gaps of hours, so the API slept most of the time, and it was removed.
 
 ## Runbook
 
-These steps are done by hand in the Atlas, Render and GitHub dashboards, in this order, by the
+These steps are done by hand in the Atlas, Render and cron-job.org dashboards, in this order, by the
 owner. They have all been done once; they stay here to rebuild production from scratch.
 
 1. **R1 · Atlas cluster.**
@@ -127,11 +129,20 @@ owner. They have all been done once; they stay here to rebuild production from s
    Use a long password: the login has no rate limit or lockout.
 6. **R6 · Check the API.** `GET /status` answers 200, `/docs` loads, `/feed/home` answers feeds, and
    `/auth/login` with the administrator answers a token.
-7. **R7 · Keep-alive variable.**
-   - In GitHub, *Settings → Secrets and variables → Actions → Variables*, create the repository
-     variable `API_URL` with the URL from R4, without a trailing slash.
-   - Run the *Keep-alive* workflow by hand from the *Actions* tab: it is green.
-   - A day later, every scheduled run is green and the API logs show no restart.
+7. **R7 · Keep-alive job.**
+   - Create a free [cron-job.org](https://cron-job.org) account with an email and a password from a
+     password manager, and turn on two-factor authentication if the account settings offer it. Do
+     not sign in with GitHub: the job needs no access to it. Nothing asks for a card; if something
+     does, stop.
+   - Create one job:
+     - title `daily-trends-api keep-alive`;
+     - URL: the API URL from R4 followed by `/status`;
+     - schedule every 5 minutes;
+     - request method `GET`, no headers, no body, no authentication;
+     - notifications by email on failure, on recovery, and when the job is disabled.
+   - Run it once by hand from the dashboard: it answers 200.
+   - A day later, the job's history shows every run with 200, or only the failures of a deploy, and
+     the API logs show no startup between scheduled scrapes, so it never restarted.
 8. **R8 · Check the web app.**
    - Render's Blueprint sync creates `daily-trends-web`, and its first build passes. Its log says
      it uses Node 24; if it shows another version, add `NODE_VERSION` to the web service in
