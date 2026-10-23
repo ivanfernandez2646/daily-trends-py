@@ -107,6 +107,9 @@ A fixed enum, required on every feed (never `null`):
   La Vanguardia `lacontra`, `comer` and `historiayvida`.
 - Deduplication (I02) is unchanged: source + title + day, not the URL.
 
+> **See [S18](S18-varied-categories.md):** it adds sections to these tables (regional, television,
+> literary supplements, real estate).
+
 ## Persistence
 - Stored documents gain `category` (string) and `url` (string or `null`).
 - A migration (I07) reshapes the existing feeds: every document without `category` gets `OTHER`, and

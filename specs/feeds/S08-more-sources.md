@@ -36,6 +36,9 @@ parsed like any other.
 - The selectors were checked on 2026-10-20 against the live front pages with the app's own client:
   each returned 200 and yielded 5 feeds with author and title.
 
+> **Superseded by [S18](S18-varied-categories.md):** each scraper selects up to 15 feeds, at most 2
+> per category, so a run stores at most 75.
+
 ### Scraping runs
 - Every scraping run (`/feed/scrap` and the background refresh, I03) runs the **five** scrapers in
   parallel. One failing or timing-out source is dropped and logged; the others are saved (S06).
@@ -55,6 +58,9 @@ Replaces the home search of S07 (`EL_MUNDO OR EL_ESPANOL`, newest 10).
      filled with the newest remaining feeds of any home source.
   3. The result is at most 10 feeds, ordered by `createdAt` descending. Feeds with the same
      `createdAt` (one scraper's batch) have no guaranteed order among themselves.
+
+> **Superseded by [S18](S18-varied-categories.md):** the selection picks at most 2 feeds per source
+> and 2 per category among the 15 newest of each source, then fills up to 10.
 - **Staleness** (S07, I03, I04) is unchanged: the newest feed of the result is the newest home feed
   overall, and the page is stale when it is from a day before today in the business timezone.
 - No results → `[]` and no refresh (unchanged).
