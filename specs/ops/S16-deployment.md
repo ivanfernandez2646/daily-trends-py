@@ -83,8 +83,8 @@ A Render Blueprint at the repository root. It holds no secret.
 - Deploys automatically after the CI checks pass on `main`. Build filter: only changes under `web/`.
 
 ### Keep-alive workflow
-> Superseded in part by [S17](S17-reliable-keep-alive.md): GitHub drops most scheduled runs, so an
-> external cron-job.org job is the keep-alive and this workflow is its backup.
+> Superseded by [S17](S17-reliable-keep-alive.md): GitHub drops most scheduled runs, so a
+> cron-job.org job is the keep-alive and this workflow is deleted.
 
 - `.github/workflows/keep-alive.yml` runs every 10 minutes and on demand. It requests
   `GET <API_URL>/status`, with a timeout long enough to cover a cold start and a few retries.
